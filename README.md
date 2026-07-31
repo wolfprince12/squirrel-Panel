@@ -71,6 +71,25 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ---
 
+## 关于作者
+
+**Mr 大狼** —— 导演 / 制作人 / AI 产品创作者。
+
+20 余年影视传媒与演出制作经验，现用 AI 把经验激烈跨界重构成产品。
+
+- 公众号：**爻知云AI**
+- 智能合同管理：[DealV](https://www.dealv.cn)
+
+---
+
+## 赞助 · 请杯咖啡
+
+如果这个项目帮到了你，欢迎扫微信二维码请作者一杯咖啡 ☕
+
+<img src="./docs/assets/WeChatPay-QRCode.jpg" width="240" alt="微信支付二维码">
+
+---
+
 ## 许可
 
 [GNU General Public License v3.0](./LICENSE)
@@ -82,6 +101,21 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 A standalone, third-party graphical settings app for the [Squirrel](https://github.com/rime/squirrel) Rime input method on macOS.
 
 This project is independent of the Squirrel input method itself. After installing this app, users can control their local Squirrel installation through a GUI, without editing YAML by hand.
+
+## About the Author
+
+**Mr. Dawolf** — Director / Producer / AI Product Creator.
+
+20+ years in film, television, and live production. Reconstructing cross-domain experience into AI-powered products.
+
+- WeChat Official Account: **爻知云AI**
+- Smart contract management: [DealV](https://www.dealv.cn)
+
+## Sponsor · Buy Me a Coffee
+
+If this project helped you, feel free to buy me a coffee via WeChat Pay ☕
+
+<img src="./docs/assets/WeChatPay-QRCode.jpg" width="240" alt="WeChat Pay QR Code">
 
 ## License
 
