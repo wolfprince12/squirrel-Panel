@@ -14,12 +14,12 @@ struct AppearancePage: View {
       VStack(alignment: .leading, spacing: 20) {
         CandidatePreview()
 
-        SettingsGroup("配色方案") {
+        SettingsGroup("appearance.scheme.title") {
           ColorSchemeGrid()
-          Toggle("跟随系统深浅色，深色模式使用另一套配色", isOn: $store.followSystemAppearance)
+          Toggle("appearance.scheme.followSystem", isOn: $store.followSystemAppearance)
             .padding(.top, 4)
           if store.followSystemAppearance {
-            Picker("深色模式配色", selection: $store.colorSchemeDarkID) {
+            Picker("appearance.scheme.dark", selection: $store.colorSchemeDarkID) {
               ForEach(store.colorSchemes) { scheme in
                 Text(scheme.name).tag(scheme.id)
               }
@@ -27,51 +27,51 @@ struct AppearancePage: View {
           }
         }
 
-        SettingsGroup("字体") {
+        SettingsGroup("appearance.font.title") {
           FontFamilyPicker(selection: $store.fontFace)
-          SliderRow(title: "候选字号", value: $store.fontPoint, range: 10...36, step: 1, unit: "pt")
-          SliderRow(title: "编号字号", value: $store.labelFontPoint, range: 8...30, step: 1, unit: "pt")
-          SliderRow(title: "注释字号", value: $store.commentFontPoint, range: 8...30, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.font.candidateSize"), value: $store.fontPoint, range: 10...36, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.font.labelSize"), value: $store.labelFontPoint, range: 8...30, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.font.commentSize"), value: $store.commentFontPoint, range: 8...30, step: 1, unit: "pt")
         }
 
-        SettingsGroup("布局") {
-          Picker("候选排列", selection: $store.useLinearLayout) {
-            Text("竖排列表").tag(false)
-            Text("横排一行").tag(true)
+        SettingsGroup("appearance.layout.title") {
+          Picker("appearance.layout.arrangement", selection: $store.useLinearLayout) {
+            Text("appearance.layout.vertical").tag(false)
+            Text("appearance.layout.horizontal").tag(true)
           }
           .pickerStyle(.segmented)
 
-          Picker("文字方向", selection: $store.useVerticalText) {
-            Text("横向").tag(false)
-            Text("竖向").tag(true)
+          Picker("appearance.layout.textOrientation", selection: $store.useVerticalText) {
+            Text("appearance.layout.horizontalText").tag(false)
+            Text("appearance.layout.verticalText").tag(true)
           }
           .pickerStyle(.segmented)
 
-          SliderRow(title: "候选窗圆角", value: $store.cornerRadius, range: 0...24, step: 1, unit: "pt")
-          SliderRow(title: "高亮圆角", value: $store.hilitedCornerRadius, range: 0...20, step: 1, unit: "pt")
-          SliderRow(title: "候选间距", value: $store.lineSpacing, range: 0...24, step: 1, unit: "pt")
-          SliderRow(title: "编码区间距", value: $store.preeditSpacing, range: 0...24, step: 1, unit: "pt")
-          SliderRow(title: "边框宽度", value: $store.borderWidth, range: 0...20, step: 1, unit: "pt")
-          SliderRow(title: "边框高度", value: $store.borderHeight, range: 0...20, step: 1, unit: "pt")
-          SliderRow(title: "整体不透明度", value: $store.alpha, range: 0.2...1, step: 0.05, unit: "")
+          SliderRow(title: String(localized: "appearance.layout.cornerRadius"), value: $store.cornerRadius, range: 0...24, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.hilitedCornerRadius"), value: $store.hilitedCornerRadius, range: 0...20, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.lineSpacing"), value: $store.lineSpacing, range: 0...24, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.preeditSpacing"), value: $store.preeditSpacing, range: 0...24, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.borderWidth"), value: $store.borderWidth, range: 0...20, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.borderHeight"), value: $store.borderHeight, range: 0...20, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.alpha"), value: $store.alpha, range: 0.2...1, step: 0.05, unit: "")
 
-          LabeledContent("候选格式") {
+          LabeledContent("appearance.layout.candidateFormat") {
             TextField("", text: $store.candidateFormat)
               .textFieldStyle(.roundedBorder)
               .frame(width: 240)
           }
-          Text("可用占位符：[label] 编号 · [candidate] 候选词 · [comment] 注释")
+          Text("appearance.layout.candidateFormat.hint")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
 
-        SettingsGroup("行为") {
-          Toggle("内嵌编码：拼音直接显示在输入位置", isOn: $store.inlinePreedit)
-          Toggle("内嵌候选：把第一候选也写进输入位置", isOn: $store.inlineCandidate)
-          Toggle("毛玻璃背景（需配色带透明度）", isOn: $store.translucency)
-          Toggle("显示翻页箭头", isOn: $store.showPaging)
-          Toggle("记住候选窗尺寸", isOn: $store.memorizeSize)
-          Toggle("横排时高亮互斥", isOn: $store.mutualExclusive)
+        SettingsGroup("appearance.behavior.title") {
+          Toggle("appearance.behavior.inlineCode", isOn: $store.inlinePreedit)
+          Toggle("appearance.behavior.inlineCandidate", isOn: $store.inlineCandidate)
+          Toggle("appearance.behavior.translucency", isOn: $store.translucency)
+          Toggle("appearance.behavior.showPaging", isOn: $store.showPaging)
+          Toggle("appearance.behavior.memorizeSize", isOn: $store.memorizeSize)
+          Toggle("appearance.behavior.mutualExclusive", isOn: $store.mutualExclusive)
         }
       }
       .padding(20)
@@ -130,7 +130,7 @@ struct SchemeSwatch: View {
           .lineLimit(1)
           .truncationMode(.middle)
         if scheme.isCustom {
-          Text("自定义")
+          Text("appearance.scheme.custom")
             .font(.system(size: 9))
             .padding(.horizontal, 4)
             .padding(.vertical, 1)
@@ -150,7 +150,7 @@ struct SchemeSwatch: View {
                       lineWidth: isSelected ? 2.5 : 0.5)
     )
     .contentShape(Rectangle())
-    .help(scheme.author.map { "作者：\($0)" } ?? scheme.id)
+    .help(scheme.author.map { String(format: String(localized: "appearance.scheme.author"), $0) } ?? scheme.id)
   }
 }
 
@@ -166,12 +166,12 @@ struct FontFamilyPicker: View {
   }()
 
   var body: some View {
-    LabeledContent("候选字体") {
+    LabeledContent("appearance.font.candidate") {
       Picker("", selection: Binding(
         get: { Self.families.contains(selection) ? selection : "" },
         set: { selection = $0 }
       )) {
-        Text("跟随系统").tag("")
+        Text("appearance.font.system").tag("")
         Divider()
         ForEach(Self.families, id: \.self) { family in
           Text(family).tag(family)
@@ -186,10 +186,10 @@ struct FontFamilyPicker: View {
 // MARK: - 通用组件
 
 struct SettingsGroup<Content: View>: View {
-  let title: String
+  let title: LocalizedStringKey
   @ViewBuilder let content: Content
 
-  init(_ title: String, @ViewBuilder content: () -> Content) {
+  init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
     self.title = title
     self.content = content()
   }

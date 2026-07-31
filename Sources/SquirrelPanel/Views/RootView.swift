@@ -10,14 +10,14 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
   var id: String { rawValue }
 
-  var title: String {
+  var title: LocalizedStringKey {
     switch self {
-    case .appearance: return "外观"
-    case .schemas: return "输入方案"
-    case .behavior: return "按键与行为"
-    case .appOptions: return "应用适配"
-    case .dictionary: return "词库与同步"
-    case .about: return "关于"
+    case .appearance: return "nav.appearance"
+    case .schemas: return "nav.schemas"
+    case .behavior: return "nav.behavior"
+    case .appOptions: return "nav.appOptions"
+    case .dictionary: return "nav.dictionary"
+    case .about: return "nav.about"
     }
   }
 
@@ -64,7 +64,7 @@ struct RootView: View {
       }
       .navigationSplitViewColumnWidth(196)
       .safeAreaInset(edge: .bottom) {
-        Text("所有改动写入 custom.yaml 补丁，不会覆盖你手写的配置。")
+        Text("footer.hint")
           .font(.caption2)
           .foregroundStyle(.secondary)
           .padding(.horizontal, 12)
@@ -87,13 +87,13 @@ struct RootView: View {
       .safeAreaInset(edge: .top, spacing: 0) { banners }
       .safeAreaInset(edge: .bottom, spacing: 0) { footer }
     }
-    .navigationTitle("鼠须管控制面板")
+    .navigationTitle("app.name")
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
-    .alert("恢复默认设置？", isPresented: $showingResetAlert) {
-      Button("取消", role: .cancel) {}
-      Button("恢复默认", role: .destructive) { store.resetManagedSettings() }
+    .alert("alert.resetTitle", isPresented: $showingResetAlert) {
+      Button("alert.cancel", role: .cancel) {}
+      Button("alert.reset", role: .destructive) { store.resetManagedSettings() }
     } message: {
-      Text("将移除控制面板写入的全部配置项。你手写的其他补丁条目会保留，操作前会自动生成 .bak 备份。")
+      Text("alert.resetMessage")
     }
   }
 
@@ -104,16 +104,17 @@ struct RootView: View {
     VStack(spacing: 0) {
       if !store.environment.isInstalled {
         Banner(kind: .warning,
-               text: "未检测到鼠须管。设置仍可保存，安装后会自动生效。",
-               action: ("前往下载", { NSWorkspace.shared.open(URL(string: "https://rime.im/download/")!) }))
+               text: String(localized: "banner.squirrelNotInstalled"),
+               action: (String(localized: "banner.download"), { NSWorkspace.shared.open(URL(string: "https://rime.im/download/")!) }))
       } else if !store.environment.isUserDirectoryReady {
         Banner(kind: .info,
-               text: "鼠须管尚未初始化用户目录。首次保存时会自动创建 ~/Library/Rime。",
+               text: String(localized: "banner.userDirNotReady"),
                action: nil)
       }
       if let warning = store.unparsableWarning {
-        Banner(kind: .error, text: warning + " 为避免损坏配置，写入已禁用。",
-               action: ("打开用户目录", { SquirrelBridge.reveal(RimeEnvironment.userDirectory) }))
+        Banner(kind: .error,
+               text: String(format: String(localized: "banner.unparsable"), warning),
+               action: (String(localized: "banner.openUserDir"), { SquirrelBridge.reveal(RimeEnvironment.userDirectory) }))
       }
       if let error = store.lastError {
         Banner(kind: .error, text: error, action: nil)
@@ -128,16 +129,23 @@ struct RootView: View {
       if store.isApplying {
         ProgressView().controlSize(.small)
       }
-      Text(store.isDirty ? "有未应用的更改" : store.statusMessage)
-        .font(.callout)
-        .foregroundStyle(store.isDirty ? Color.orange : Color.secondary)
-        .lineLimit(1)
+      if store.isDirty {
+        Text("footer.dirty")
+          .font(.callout)
+          .foregroundStyle(Color.orange)
+          .lineLimit(1)
+      } else {
+        Text(LocalizedStringKey(store.statusMessage))
+          .font(.callout)
+          .foregroundStyle(Color.secondary)
+          .lineLimit(1)
+      }
       Spacer()
       if store.isDirty {
-        Button("放弃更改") { store.revert() }
+        Button("button.revert") { store.revert() }
       }
-      Button("查看 YAML") { showingYAML = true }
-      Button("应用并重新部署") { store.apply() }
+      Button("button.viewYAML") { showingYAML = true }
+      Button("button.applyDeploy") { store.apply() }
         .buttonStyle(.borderedProminent)
         .disabled(!store.isDirty || !store.canWrite)
     }

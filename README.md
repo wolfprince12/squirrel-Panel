@@ -21,11 +21,15 @@
 
 ## 下载 / 安装
 
-1. 从 [Releases](https://github.com/wolfprince12/squirrel-Panel/releases) 下载最新 `Squirrel Panel.app`。
-2. 将其拖入 **应用程序** 文件夹。
+1. 从 [Releases](https://github.com/wolfprince12/squirrel-Panel/releases) 下载最新 `Squirrel-Panel.dmg`。
+2. 打开 DMG，将 `Squirrel Panel.app` 拖入 **应用程序** 文件夹。
 3. 首次运行如提示「无法打开」，请前往 **系统设置 → 隐私与安全性** 点击「仍要打开」。
 
 > 使用前请确保你的 Mac 已安装鼠须管输入法（[官方下载](https://rime.im/download/)）。
+
+## 语言
+
+界面跟随系统语言，目前支持简体中文与英文。
 
 ---
 

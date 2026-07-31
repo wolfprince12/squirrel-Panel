@@ -12,7 +12,7 @@ struct SchemaPage: View {
     store.enabledSchemaIDs.compactMap { id in
       store.availableSchemas.first { $0.id == id }
         ?? RimeSchema(id: id, name: id, version: nil, author: nil,
-                      description: "方案文件未找到，可能尚未安装", isUserProvided: false)
+                      description: String(localized: "schema.notFound"), isUserProvided: false)
     }
   }
 
@@ -23,11 +23,11 @@ struct SchemaPage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        SettingsGroup("已启用的方案") {
+        SettingsGroup("schema.enabled.title") {
           if enabled.isEmpty {
-            EmptyHint(text: "还没有启用任何方案。从下方列表勾选，或先在鼠须管中完成一次部署。")
+            EmptyHint(text: String(localized: "schema.enabled.empty"))
           } else {
-            Text("按住拖动可调整顺序，第一项为默认方案")
+            Text("schema.enabled.hint")
               .font(.caption)
               .foregroundStyle(.secondary)
             List {
@@ -63,22 +63,22 @@ struct SchemaPage: View {
           }
         }
 
-        SettingsGroup("可用方案") {
+        SettingsGroup("schema.available.title") {
           if disabled.isEmpty {
             EmptyHint(text: store.availableSchemas.isEmpty
-                      ? "未扫描到任何 *.schema.yaml。请确认鼠须管已安装并至少部署过一次。"
-                      : "本机所有方案都已启用。")
+                      ? String(localized: "schema.available.empty")
+                      : String(localized: "schema.available.allEnabled"))
           } else {
             ForEach(disabled) { schema in
               HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                   Text(schema.name)
-                  Text(schema.subtitle + (schema.isUserProvided ? " · 用户目录" : ""))
+                  Text(schema.subtitle + (schema.isUserProvided ? " · " + String(localized: "schema.userProvided") : ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("启用") {
+                Button("generic.enable") {
                   store.enabledSchemaIDs.append(schema.id)
                 }
                 .controlSize(.small)
@@ -88,25 +88,25 @@ struct SchemaPage: View {
             }
           }
           HStack {
-            Text("扫描自 ~/Library/Rime 与 Squirrel.app 的 SharedSupport")
+            Text("dictionary.scannedFrom")
               .font(.caption)
               .foregroundStyle(.secondary)
             Spacer()
-            Button("重新扫描") { store.reload() }
+            Button("schema.available.rescan") { store.reload() }
               .controlSize(.small)
           }
         }
 
-        SettingsGroup("方案切换") {
-          LabeledContent("切换快捷键") {
+        SettingsGroup("schema.switch.title") {
+          LabeledContent("schema.hotkeys") {
             TextField("Control+grave, F4", text: $store.switcherHotkeys)
               .textFieldStyle(.roundedBorder)
               .frame(width: 240)
           }
-          Text("多个快捷键用英文逗号分隔。留空则沿用鼠须管默认值。")
+          Text("schema.hotkeys.hint")
             .font(.caption)
             .foregroundStyle(.secondary)
-          LabeledContent("切换菜单标题") {
+          LabeledContent("schema.caption") {
             TextField("〔方案選單〕", text: $store.switcherCaption)
               .textFieldStyle(.roundedBorder)
               .frame(width: 240)
@@ -114,13 +114,13 @@ struct SchemaPage: View {
           Divider()
           HStack {
             VStack(alignment: .leading, spacing: 2) {
-              Text("安装更多方案")
-              Text("通过东风破 plum 从官方仓库获取")
+              Text("schema.installMore")
+              Text("schema.installMore.hint")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("打开方案库") {
+            Button("schema.openPlum") {
               NSWorkspace.shared.open(URL(string: "https://github.com/rime/plum")!)
             }
             .controlSize(.small)

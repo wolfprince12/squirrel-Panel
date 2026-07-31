@@ -109,10 +109,10 @@ final class SettingsStore: ObservableObject {
 
   var unparsableWarning: String? {
     if case .unparsable(let reason) = squirrelPatch.state {
-      return "squirrel.custom.yaml 解析失败：\(reason)"
+      return String(format: String(localized: "error.parse.squirrel"), reason)
     }
     if case .unparsable(let reason) = defaultPatch.state {
-      return "default.custom.yaml 解析失败：\(reason)"
+      return String(format: String(localized: "error.parse.default"), reason)
     }
     return nil
   }
@@ -136,7 +136,7 @@ final class SettingsStore: ObservableObject {
     readIntoUI()
     baselineSquirrel = compileSquirrelPatch()
     baselineDefault = compileDefaultPatch()
-    statusMessage = environment.isInstalled ? "已读取当前配置" : "未检测到鼠须管"
+    statusMessage = environment.isInstalled ? "status.loaded" : "status.notInstalled"
   }
 
   // MARK: - 读：补丁 → 界面
@@ -399,7 +399,7 @@ final class SettingsStore: ObservableObject {
     }
     isApplying = true
     lastError = nil
-    statusMessage = "正在写入配置…"
+    statusMessage = "status.saving"
     do {
       let squirrelSet = compileSquirrelPatch()
       let defaultSet = compileDefaultPatch()
@@ -411,22 +411,22 @@ final class SettingsStore: ObservableObject {
       baselineDefault = defaultSet
 
       if environment.isInstalled {
-        statusMessage = "正在重新部署…"
+        statusMessage = "status.deploying"
         try SquirrelBridge.deploy(environment: environment)
-        statusMessage = "已应用，鼠须管正在重新部署"
+        statusMessage = "status.deployed"
       } else {
-        statusMessage = "配置已保存（未检测到鼠须管，安装后自动生效）"
+        statusMessage = "status.savedWithoutSquirrel"
       }
     } catch {
       lastError = error.localizedDescription
-      statusMessage = "写入失败"
+      statusMessage = "status.writeFailed"
     }
     isApplying = false
   }
 
   func revert() {
     reload()
-    statusMessage = "已放弃未保存的改动"
+    statusMessage = "status.reverted"
   }
 
   /// 移除本面板写入的全部配置项，保留用户手写的其他条目
@@ -442,7 +442,7 @@ final class SettingsStore: ObservableObject {
       try defaultPatch.save()
       reload()
       if environment.isInstalled { try SquirrelBridge.deploy(environment: environment) }
-      statusMessage = "已恢复默认设置"
+      statusMessage = "status.reset"
     } catch {
       lastError = error.localizedDescription
     }
@@ -456,8 +456,8 @@ final class SettingsStore: ObservableObject {
     let defaultCopy = CustomYAMLFile(fileURL: defaultPatch.fileURL)
     for (key, value) in compileSquirrelPatch() { squirrelCopy.set(value?.yamlObject, forPath: key) }
     for (key, value) in compileDefaultPatch() { defaultCopy.set(value?.yamlObject, forPath: key) }
-    return ((try? squirrelCopy.serialize()) ?? "（无法生成预览）",
-            (try? defaultCopy.serialize()) ?? "（无法生成预览）")
+    return ((try? squirrelCopy.serialize()) ?? String(localized: "yaml.unavailable"),
+            (try? defaultCopy.serialize()) ?? String(localized: "yaml.unavailable"))
   }
 
   var currentScheme: RimeColorSchemeInfo {

@@ -16,9 +16,9 @@ struct AppOptionsPage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        SettingsGroup("按应用设定") {
+        SettingsGroup("appOptions.title") {
           if store.appOptions.isEmpty {
-            EmptyHint(text: "还没有任何应用规则。常见用法：在终端、代码编辑器里默认切换到英文。")
+            EmptyHint(text: String(localized: "appOptions.empty"))
           } else {
             headerRow
             Divider()
@@ -34,9 +34,9 @@ struct AppOptionsPage: View {
             Button {
               chooseApplication()
             } label: {
-              Label("从「应用程序」添加", systemImage: "plus")
+              Label("appOptions.addFromApps", systemImage: "plus")
             }
-            Menu("添加常用应用") {
+            Menu("appOptions.addCommon") {
               ForEach(Self.presets, id: \.bundleID) { preset in
                 Button(preset.name) { add(bundleID: preset.bundleID, defaultASCII: true) }
                   .disabled(store.appOptions.contains { $0.bundleID == preset.bundleID })
@@ -48,15 +48,15 @@ struct AppOptionsPage: View {
           .padding(.top, 4)
         }
 
-        SettingsGroup("选项说明") {
-          ExplainRow(title: "默认英文",
-                     detail: "切换到该应用时自动进入英文（ASCII）模式，对应 ascii_mode。")
-          ExplainRow(title: "禁用内嵌",
-                     detail: "该应用中不把拼音写进输入位置，改用候选窗顶部显示，对应 no_inline。适合内嵌显示异常的应用。")
-          ExplainRow(title: "强制内嵌",
-                     detail: "该应用中强制使用内嵌编码，对应 inline。")
-          ExplainRow(title: "Vim 模式",
-                     detail: "该应用失去输入焦点时自动切回英文，对应 vim_mode。适合 Vim、Emacs 一类的模式化编辑器。")
+        SettingsGroup("appOptions.explain.title") {
+          ExplainRow(title: String(localized: "appOptions.asciiMode"),
+                     detail: String(localized: "appOptions.asciiMode.detail"))
+          ExplainRow(title: String(localized: "appOptions.noInline"),
+                     detail: String(localized: "appOptions.noInline.detail"))
+          ExplainRow(title: String(localized: "appOptions.inline"),
+                     detail: String(localized: "appOptions.inline.detail"))
+          ExplainRow(title: String(localized: "appOptions.vimMode"),
+                     detail: String(localized: "appOptions.vimMode.detail"))
         }
       }
       .padding(20)
@@ -65,11 +65,11 @@ struct AppOptionsPage: View {
 
   private var headerRow: some View {
     HStack(spacing: 0) {
-      Text("应用").frame(maxWidth: .infinity, alignment: .leading)
+      Text("appOptions.header.app").frame(maxWidth: .infinity, alignment: .leading)
       Group {
-        Text("默认英文").frame(width: 68)
-        Text("禁用内嵌").frame(width: 68)
-        Text("强制内嵌").frame(width: 68)
+        Text("appOptions.column.ascii").frame(width: 68)
+        Text("appOptions.column.noInline").frame(width: 68)
+        Text("appOptions.column.inline").frame(width: 68)
         Text("Vim").frame(width: 44)
         Color.clear.frame(width: 28)
       }
@@ -95,8 +95,8 @@ struct AppOptionsPage: View {
     panel.allowedContentTypes = [.application]
     panel.allowsMultipleSelection = true
     panel.directoryURL = URL(fileURLWithPath: "/Applications")
-    panel.prompt = "添加"
-    panel.message = "选择要单独设定输入状态的应用"
+    panel.prompt = String(localized: "generic.add")
+    panel.message = String(localized: "appOptions.panel.message")
     guard panel.runModal() == .OK else { return }
     for url in panel.urls {
       guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { continue }

@@ -1,0 +1,273 @@
+/* RootView & Navigation */
+"app.name" = "鼠须管控制面板";
+"nav.appearance" = "外观";
+"nav.schemas" = "输入方案";
+"nav.behavior" = "按键与行为";
+"nav.appOptions" = "应用适配";
+"nav.dictionary" = "词库与同步";
+"nav.about" = "关于";
+"footer.dirty" = "有未应用的更改";
+"footer.saved" = "设置已保存";
+"footer.reloaded" = "配置已重新读取";
+"footer.reset" = "已恢复默认设置";
+"button.revert" = "放弃更改";
+"button.viewYAML" = "查看 YAML";
+"button.applyDeploy" = "应用并重新部署";
+"footer.hint" = "所有改动写入 custom.yaml 补丁，不会覆盖你手写的配置。";
+"menu.openUserDir" = "在访达中打开用户目录";
+
+/* Status Messages */
+"status.loaded" = "已读取当前配置";
+"status.notInstalled" = "未检测到鼠须管";
+"status.saving" = "正在写入配置…";
+"status.deploying" = "正在重新部署…";
+"status.deployed" = "已应用，鼠须管正在重新部署";
+"status.savedWithoutSquirrel" = "配置已保存（未检测到鼠须管，安装后自动生效）";
+"status.writeFailed" = "写入失败";
+"status.reverted" = "已放弃未保存的改动";
+"status.reset" = "已恢复默认设置";
+
+/* Error Messages */
+"error.parse.squirrel" = "squirrel.custom.yaml 解析失败：%@";
+"error.parse.default" = "default.custom.yaml 解析失败：%@";
+"error.yaml.notMapping" = "文件顶层不是键值映射。";
+"error.refusedToOverwrite" = "%@ 无法解析，为避免损坏你的配置，控制面板拒绝写入。请手动检查该文件的 YAML 语法。";
+"error.squirrelNotInstalled" = "未检测到鼠须管，请先安装 Squirrel 输入法。";
+"error.commandFailed" = "命令执行失败（%@，退出码 %d）。";
+
+/* Banners */
+"banner.squirrelNotInstalled" = "未检测到鼠须管。设置仍可保存，安装后会自动生效。";
+"banner.userDirNotReady" = "鼠须管尚未初始化用户目录。首次保存时会自动创建 ~/Library/Rime。";
+"banner.unparsable" = "%@ YAML 解析失败。为避免损坏配置，写入已禁用。";
+"banner.openUserDir" = "打开用户目录";
+"banner.download" = "前往下载";
+
+/* Alert */
+"alert.resetTitle" = "恢复默认设置？";
+"alert.resetMessage" = "将移除控制面板写入的全部配置项。你手写的其他补丁条目会保留，操作前会自动生成 .bak 备份。";
+"alert.cancel" = "取消";
+"alert.reset" = "恢复默认";
+
+/* AppearancePage */
+"appearance.preview.title" = "候选窗预览";
+"appearance.scheme.title" = "配色方案";
+"appearance.scheme.custom" = "自定义";
+"appearance.font.title" = "字体";
+"appearance.font.candidate" = "候选字体";
+"appearance.font.comment" = "注释字体";
+"appearance.font.label" = "编号字体";
+"appearance.layout.title" = "布局";
+"appearance.layout.horizontal" = "横排";
+"appearance.layout.vertical" = "竖排";
+"appearance.layout.textOrientation" = "文字方向";
+"appearance.layout.horizontalText" = "横向";
+"appearance.layout.verticalText" = "竖向";
+"appearance.layout.candidateFormat" = "候选格式";
+"appearance.layout.candidateFormat.hint" = "可用占位符：[label] 编号 · [candidate] 候选词 · [comment] 注释";
+"appearance.layout.inlinePreedit" = "内嵌编辑";
+"appearance.layout.pageSizeSync" = "同步每页候选数";
+
+/* SchemaPage */
+"schema.enabled.title" = "已启用方案";
+"schema.enabled.empty" = "还没有启用任何方案。从下方列表勾选，或先在鼠须管中完成一次部署。";
+"schema.enabled.hint" = "按住拖动可调整顺序，第一项为默认方案。";
+"schema.available.title" = "可用方案";
+"schema.available.empty" = "未扫描到任何 *.schema.yaml。请确认鼠须管已安装并至少部署过一次。";
+"schema.userProvided" = "用户目录";
+"schema.hotkeys" = "切换快捷键";
+"schema.hotkeys.hint" = "多个快捷键用英文逗号分隔。留空则沿用鼠须管默认值。";
+"schema.caption" = "菜单标题";
+"schema.openPlum" = "打开方案库（plum）";
+"schema.needDeploy" = "方案文件改动后需要重新部署才会生效。";
+
+/* BehaviorPage */
+"behavior.pageSize" = "每页候选数";
+"behavior.pageSize.hint" = "写入 default.custom.yaml 的 menu/page_size。部分输入方案会自行覆盖此项。";
+"behavior.capsLock" = "经典 Caps Lock";
+"behavior.capsLock.hint" = "开启后 Caps Lock 只切换大小写；关闭后它会被用作中英文切换键。";
+"behavior.switchKey.title" = "切换键";
+"behavior.switchKey.Caps_Lock" = "Caps Lock";
+"behavior.switchKey.Shift_L" = "左 Shift";
+"behavior.switchKey.Shift_R" = "右 Shift";
+"behavior.switchKey.Control_L" = "左 Control";
+"behavior.switchKey.Control_R" = "右 Control";
+"behavior.keyboardLayout" = "键盘布局";
+"behavior.layout.last" = "沿用上次";
+"behavior.layout.US" = "US";
+"behavior.layout.ABC" = "美式键盘 ABC";
+"behavior.layout.USExtended" = "US Extended";
+"behavior.notifications" = "通知时机";
+"behavior.notifications.appropriate" = "适当时";
+"behavior.notifications.always" = "总是";
+"behavior.notifications.never" = "从不";
+"behavior.quickActions" = "快速操作";
+"button.asciiMode" = "切换英文";
+"button.chineseMode" = "切换中文";
+"button.restartSquirrel" = "重启鼠须管";
+
+/* AppOptionsPage */
+"appOptions.title" = "按应用配置";
+"appOptions.add" = "添加应用";
+"appOptions.selectApp" = "选择应用";
+"appOptions.asciiMode" = "聚焦时启用 ASCII 模式";
+"appOptions.noInline" = "禁用内嵌编辑";
+"appOptions.inline" = "强制内嵌编辑";
+"appOptions.vimMode" = "Vim 模式";
+"appOptions.empty" = "还没有任何应用规则。常见用法：在终端、代码编辑器里默认切换到英文。";
+"appOptions.explain.title" = "选项说明";
+"appOptions.hint" = "选择应用，为每个应用单独配置输入法行为。";
+
+/* DictionaryPage */
+"dictionary.title" = "用户词库";
+"dictionary.location" = "词库位于 ~/Library/Rime";
+"dictionary.scannedFrom" = "扫描自 ~/Library/Rime 与 Squirrel.app 的 SharedSupport";
+"dictionary.sync.title" = "同步设置";
+"dictionary.sync.id" = "安装标识";
+"dictionary.sync.id.hint" = "多台设备之间必须各不相同，否则同步会互相覆盖。";
+"dictionary.sync.dir" = "同步目录";
+"dictionary.sync.dir.hint" = "可以指向 iCloud 云盘或其他同步盘中的文件夹，实现多机同步。";
+"button.syncNow" = "立即同步";
+"button.redeploy" = "重新部署";
+
+/* AboutPage */
+"about.title" = "关于";
+"about.header.developer" = "开发者";
+"about.header.moreWorks" = "更多作品";
+"about.header.status" = "运行状态";
+"about.header.paths" = "路径";
+"about.header.maintenance" = "维护";
+"about.header.project" = "关于项目";
+"about.panel.version" = "控制面板";
+"about.squirrel.installed" = "鼠须管";
+"about.squirrel.version" = "已安装 v%@";
+"about.squirrel.notInstalled" = "未检测到";
+"about.squirrel.process" = "输入法进程";
+"about.squirrel.running" = "运行中";
+"about.squirrel.notRunning" = "未运行";
+"about.userDir" = "用户目录";
+"about.userDir.ready" = "已就绪";
+"about.userDir.notReady" = "尚未创建";
+"about.reload.title" = "重新读取配置";
+"about.reload.subtitle" = "如果你在外部编辑过 YAML，用它刷新界面。";
+"about.reload.button" = "重新读取";
+"about.reset.title" = "恢复默认设置";
+"about.reset.subtitle" = "移除控制面板写入的全部配置项，保留你手写的条目。";
+"about.reset.button" = "恢复默认";
+"about.description" = "鼠须管控制面板是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
+"about.disclaimer" = "本项目不隶属于 RIME 官方，也不会修改鼠须管本体。所有改动都以标准的 Rime 补丁文件形式写入用户目录，随时可以手动编辑或删除。";
+"about.license" = "以 GPL-3.0 协议开源。";
+"about.link.home" = "项目主页";
+"about.link.issues" = "反馈问题";
+"about.link.rime" = "RIME 官网";
+"about.link.squirrel" = "鼠须管源码";
+
+/* Developer & Promotion */
+"about.developer.name" = "Winter Zheng / 大狼";
+"about.developer.title" = "导演 / 制作人 / AI 产品创作者";
+"about.developer.company" = "云珩（北京）文化传媒有限公司";
+"about.developer.bio" = "20 余年影视传媒与演出制作经验，现用 AI 把跨界积累重构成产品。";
+"promo.yaozhi.title" = "爻知云AI";
+"promo.yaozhi.subtitle" = "微信服务号";
+"promo.yaozhi.description" = "关注获取 AI 创作助手、工作流技巧与项目动态。";
+"promo.yaozhi.action" = "打开微信";
+"promo.yaozhi.copied" = "已复制公众号名称：%@，请在微信中搜索关注。";
+"promo.dealv.title" = "DealV";
+"promo.dealv.subtitle" = "AI 智能合同管理";
+"promo.dealv.description" = "面向专业人群的合同智能审查与管理平台。";
+"promo.dealv.action" = "访问 DealV";
+
+/* YAML Inspector */
+"yaml.title" = "即将写入的配置";
+"yaml.subtitle" = "这是点击「应用并重新部署」后磁盘上的内容，可先核对再落盘。";
+"yaml.squirrel" = "squirrel.custom.yaml";
+"yaml.defaults" = "default.custom.yaml";
+"yaml.squirrel.note" = "外观、候选窗、应用适配";
+"yaml.defaults.note" = "输入方案、按键行为、每页候选数";
+"yaml.empty" = "（这份文件目前没有任何内容）";
+"yaml.unavailable" = "（无法生成预览）";
+"yaml.showInFinder" = "在访达中显示";
+"yaml.copy" = "复制内容";
+"yaml.copied" = "已复制";
+"yaml.close" = "关闭";
+
+/* Generic */
+"generic.open" = "打开";
+"generic.select" = "选择";
+"generic.remove" = "移除";
+"generic.enable" = "启用";
+"generic.version" = "版本";
+"generic.unknown" = "未知";
+"generic.dev" = "开发版";
+
+/* Added keys for view localization */
+"appearance.scheme.followSystem" = "跟随系统深浅色，深色模式使用另一套配色";
+"appearance.scheme.dark" = "深色模式配色";
+"appearance.layout.arrangement" = "候选排列";
+"appearance.font.candidateSize" = "候选字号";
+"appearance.font.labelSize" = "编号字号";
+"appearance.font.commentSize" = "注释字号";
+"appearance.layout.cornerRadius" = "候选窗圆角";
+"appearance.layout.hilitedCornerRadius" = "高亮圆角";
+"appearance.layout.lineSpacing" = "候选间距";
+"appearance.layout.preeditSpacing" = "编码区间距";
+"appearance.layout.borderWidth" = "边框宽度";
+"appearance.layout.borderHeight" = "边框高度";
+"appearance.layout.alpha" = "整体不透明度";
+"appearance.behavior.title" = "行为";
+"appearance.behavior.inlineCode" = "内嵌编码：拼音直接显示在输入位置";
+"appearance.behavior.inlineCandidate" = "内嵌候选：把第一候选也写进输入位置";
+"appearance.behavior.translucency" = "毛玻璃背景（需配色带透明度）";
+"appearance.behavior.showPaging" = "显示翻页箭头";
+"appearance.behavior.memorizeSize" = "记住候选窗尺寸";
+"appearance.behavior.mutualExclusive" = "横排时高亮互斥";
+"appearance.scheme.author" = "作者：%@";
+"appearance.font.system" = "跟随系统";
+
+"schema.available.allEnabled" = "本机所有方案都已启用。";
+"schema.available.rescan" = "重新扫描";
+"schema.switch.title" = "方案切换";
+"schema.installMore" = "安装更多方案";
+"schema.installMore.hint" = "通过东风破 plum 从官方仓库获取";
+"schema.notFound" = "方案文件未找到，可能尚未安装";
+
+"behavior.switch.commit_code" = "上屏编码";
+"behavior.switch.commit_code.detail" = "把已输入的拼音原样上屏后切换";
+"behavior.switch.commit_text" = "上屏候选";
+"behavior.switch.commit_text.detail" = "把当前候选词上屏后切换";
+"behavior.switch.clear" = "清空输入";
+"behavior.switch.clear.detail" = "丢弃已输入内容后切换";
+"behavior.switch.inline_ascii" = "临时英文";
+"behavior.switch.inline_ascii.detail" = "进入内嵌西文编辑模式";
+"behavior.switch.noop" = "不处理";
+"behavior.switch.noop.detail" = "该键不参与中英切换";
+"behavior.candidates.title" = "候选";
+"behavior.switching.title" = "中英文切换";
+"behavior.system.title" = "系统集成";
+"behavior.quickActions.hint" = "这些操作立即生效，不需要点「应用」。";
+
+"appOptions.addFromApps" = "从「应用程序」添加";
+"appOptions.addCommon" = "添加常用应用";
+"appOptions.header.app" = "应用";
+"appOptions.column.ascii" = "默认英文";
+"appOptions.column.noInline" = "禁用内嵌";
+"appOptions.column.inline" = "强制内嵌";
+"appOptions.asciiMode.detail" = "切换到该应用时自动进入英文（ASCII）模式，对应 ascii_mode。";
+"appOptions.noInline.detail" = "该应用中不把拼音写进输入位置，改用候选窗顶部显示，对应 no_inline。适合内嵌显示异常的应用。";
+"appOptions.inline.detail" = "该应用中强制使用内嵌编码，对应 inline。";
+"appOptions.vimMode.detail" = "该应用失去输入焦点时自动切回英文，对应 vim_mode。适合 Vim、Emacs 一类的模式化编辑器。";
+"appOptions.panel.message" = "选择要单独设定输入状态的应用";
+"generic.add" = "添加";
+
+"dictionary.empty" = "尚未生成任何用户词库。正常使用鼠须管输入一段时间后，这里会列出各方案的学习记录。";
+"dictionary.neverUsed" = "从未使用";
+"dictionary.lastUpdated" = "最近更新 %@";
+"dictionary.openInFinder" = "在访达中打开";
+"dictionary.sync.idPlaceholder" = "这台设备的标识";
+"dictionary.sync.dirPlaceholder" = "留空则使用 ~/Library/Rime/sync";
+"dictionary.save" = "保存同步设置";
+"dictionary.syncNowData" = "立即同步用户数据";
+"dictionary.message.syncStarted" = "已发起同步";
+"dictionary.maintenance.title" = "维护";
+"dictionary.redeploy.title" = "重新编译全部方案";
+"dictionary.message.deployStarted" = "已发起部署";
+"generic.choose" = "选择…";

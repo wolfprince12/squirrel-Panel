@@ -24,8 +24,8 @@ struct YAMLInspector: View {
     }
     var note: String {
       switch self {
-      case .squirrel: return "外观、候选窗、应用适配"
-      case .defaults: return "输入方案、按键行为、每页候选数"
+      case .squirrel: return String(localized: "yaml.squirrel.note")
+      case .defaults: return String(localized: "yaml.defaults.note")
       }
     }
   }
@@ -51,7 +51,7 @@ struct YAMLInspector: View {
       header
       Divider()
       ScrollView([.vertical, .horizontal]) {
-        Text(text.isEmpty ? "（这份文件目前没有任何内容）" : text)
+        Text(text.isEmpty ? "yaml.empty" : text)
           .font(.system(size: 12, design: .monospaced))
           .textSelection(.enabled)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,9 +68,9 @@ struct YAMLInspector: View {
     VStack(alignment: .leading, spacing: 10) {
       HStack {
         VStack(alignment: .leading, spacing: 2) {
-          Text("即将写入的配置")
+          Text("yaml.title")
             .font(.headline)
-          Text("这是点击「应用并重新部署」后磁盘上的内容，可先核对再落盘。")
+          Text("yaml.subtitle")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -94,21 +94,23 @@ struct YAMLInspector: View {
 
   private var footer: some View {
     HStack(spacing: 10) {
-      Button("在访达中显示") {
+      Button("yaml.showInFinder") {
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
       }
       .disabled(!FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)))
 
-      Button(copied ? "已复制" : "复制内容") {
+      Button {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         copied = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { copied = false }
+      } label: {
+        Text(LocalizedStringKey(copied ? "yaml.copied" : "yaml.copy"))
       }
 
       Spacer()
 
-      Button("关闭") { dismiss() }
+      Button("yaml.close") { dismiss() }
         .keyboardShortcut(.defaultAction)
     }
     .padding(12)

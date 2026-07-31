@@ -65,7 +65,7 @@ final class CustomYAMLFile {
         return
       }
       guard let mapping = object as? [String: Any] else {
-        state = .unparsable("文件顶层不是键值映射")
+        state = .unparsable(String(localized: "error.yaml.notMapping"))
         return
       }
       root = mapping
@@ -264,11 +264,11 @@ enum PanelError: LocalizedError {
   var errorDescription: String? {
     switch self {
     case .refusedToOverwrite(let name):
-      return "\(name) 无法解析，为避免损坏你的配置，控制面板拒绝写入。请手动检查该文件的 YAML 语法。"
+      return String(format: String(localized: "error.refusedToOverwrite"), name)
     case .squirrelNotInstalled:
-      return "未检测到鼠须管，请先安装 Squirrel 输入法。"
+      return String(localized: "error.squirrelNotInstalled")
     case .commandFailed(let cmd, let code):
-      return "命令执行失败（\(cmd)，退出码 \(code)）。"
+      return String(format: String(localized: "error.commandFailed"), cmd, code)
     }
   }
 }

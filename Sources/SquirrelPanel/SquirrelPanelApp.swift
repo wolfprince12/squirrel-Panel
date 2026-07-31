@@ -15,7 +15,7 @@ struct SquirrelPanelApp: App {
   @StateObject private var store = SettingsStore()
 
   var body: some Scene {
-    Window("鼠须管控制面板", id: "main") {
+    Window("app.name", id: "main") {
       RootView()
         .environmentObject(store)
         .frame(minWidth: 880, minHeight: 620)
@@ -24,13 +24,13 @@ struct SquirrelPanelApp: App {
     .commands {
       CommandGroup(replacing: .newItem) {}
       CommandGroup(after: .saveItem) {
-        Button("应用并重新部署") { store.apply() }
+        Button("button.applyDeploy") { store.apply() }
           .keyboardShortcut("s", modifiers: .command)
           .disabled(!store.isDirty)
-        Button("重新读取配置") { store.reload() }
+        Button("about.reload.button") { store.reload() }
           .keyboardShortcut("r", modifiers: .command)
         Divider()
-        Button("在访达中打开用户目录") {
+        Button("menu.openUserDir") {
           SquirrelBridge.reveal(RimeEnvironment.userDirectory)
         }
       }

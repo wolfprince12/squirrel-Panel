@@ -4,11 +4,12 @@ DIST        := dist
 BUNDLE      := $(DIST)/$(APP_NAME).app
 CONTENTS    := $(BUNDLE)/Contents
 CODESIGN_ID ?= -
+RESOURCES   := Sources/SquirrelPanel/Resources
 # 某些沙箱化的终端环境下 SwiftPM 无法执行清单编译，可用
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
 SWIFT_BUILD ?= swift build
 
-.PHONY: all debug release bundle universal install uninstall run clean
+.PHONY: all debug release bundle universal dmg install uninstall run clean
 
 all: release
 
@@ -30,11 +31,27 @@ bundle:
 	@rm -rf "$(BUNDLE)"
 	@mkdir -p "$(CONTENTS)/MacOS" "$(CONTENTS)/Resources"
 	@cp "$(BIN)" "$(CONTENTS)/MacOS/$(EXEC)"
-	@cp Resources/Info.plist "$(CONTENTS)/Info.plist"
-	@if [ -f Resources/AppIcon.icns ]; then cp Resources/AppIcon.icns "$(CONTENTS)/Resources/"; fi
+	@cp "$(RESOURCES)/AppInfo.plist" "$(CONTENTS)/Info.plist"
+	@if [ -f "$(RESOURCES)/AppIcon.icns" ]; then cp "$(RESOURCES)/AppIcon.icns" "$(CONTENTS)/Resources/"; fi
 	@printf 'APPL????' > "$(CONTENTS)/PkgInfo"
 	@codesign --force --deep --sign "$(CODESIGN_ID)" "$(BUNDLE)" 2>/dev/null || true
 	@echo "✅ 已生成 $(BUNDLE)"
+
+## 生成 DMG 安装包（需要 npm install -g appdmg）
+dmg: release
+	@swift tools/make_dmg_cover.swift
+	@rm -rf "$(DIST)/dmg-staging"
+	@mkdir -p "$(DIST)/dmg-staging"
+	@cp -R "$(BUNDLE)" "$(DIST)/dmg-staging/"
+	@ln -sf /Applications "$(DIST)/dmg-staging/Applications"
+	@cp tools/appdmg.json "$(DIST)/dmg-staging/appdmg.json"
+	@cd "$(DIST)/dmg-staging" && \
+	  NODE_PATH=/Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules \
+	  /Users/wolfprince/.workbuddy/binaries/node/versions/22.22.2/bin/node \
+	  /Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules/.bin/appdmg \
+	  appdmg.json "../Squirrel-Panel-0.2.0.dmg"
+	@rm -rf "$(DIST)/dmg-staging"
+	@echo "✅ 已生成 $(DIST)/Squirrel-Panel-0.2.0.dmg"
 
 ## 安装到 /Applications
 install: release

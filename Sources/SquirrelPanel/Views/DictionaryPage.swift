@@ -20,7 +20,7 @@ struct UserDictInfo: Identifiable {
   }
 
   var modifiedText: String {
-    guard let modified else { return "从未使用" }
+    guard let modified else { return String(localized: "dictionary.neverUsed") }
     let formatter = RelativeDateTimeFormatter()
     formatter.locale = Locale(identifier: "zh_CN")
     return formatter.localizedString(for: modified, relativeTo: Date())
@@ -37,15 +37,15 @@ struct DictionaryPage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        SettingsGroup("用户词库") {
+        SettingsGroup("dictionary.title") {
           if dictionaries.isEmpty {
-            EmptyHint(text: "尚未生成任何用户词库。正常使用鼠须管输入一段时间后，这里会列出各方案的学习记录。")
+            EmptyHint(text: String(localized: "dictionary.empty"))
           } else {
             ForEach(dictionaries) { dict in
               HStack {
                 VStack(alignment: .leading, spacing: 2) {
                   Text(dict.name)
-                  Text("\(dict.sizeText) · 最近更新 \(dict.modifiedText)")
+                  Text("\(dict.sizeText) · " + String(format: String(localized: "dictionary.lastUpdated"), dict.modifiedText))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
@@ -56,47 +56,47 @@ struct DictionaryPage: View {
             }
           }
           HStack {
-            Text("词库位于 ~/Library/Rime")
+            Text("dictionary.location")
               .font(.caption)
               .foregroundStyle(.secondary)
             Spacer()
-            Button("在访达中打开") {
+            Button("dictionary.openInFinder") {
               SquirrelBridge.reveal(RimeEnvironment.userDirectory)
             }
             .controlSize(.small)
           }
         }
 
-        SettingsGroup("同步") {
-          LabeledContent("安装 ID") {
-            TextField("这台设备的标识", text: $installationID)
+        SettingsGroup("dictionary.sync.title") {
+          LabeledContent("dictionary.sync.id") {
+            TextField("dictionary.sync.idPlaceholder", text: $installationID)
               .textFieldStyle(.roundedBorder)
               .frame(width: 220)
           }
-          Text("多台设备之间必须各不相同，否则同步会互相覆盖。")
+          Text("dictionary.sync.id.hint")
             .font(.caption)
             .foregroundStyle(.secondary)
 
-          LabeledContent("同步目录") {
+          LabeledContent("dictionary.sync.dir") {
             HStack(spacing: 6) {
-              TextField("留空则使用 ~/Library/Rime/sync", text: $syncDirectory)
+              TextField("dictionary.sync.dirPlaceholder", text: $syncDirectory)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 220)
-              Button("选择…") { chooseSyncDirectory() }
+              Button("generic.choose") { chooseSyncDirectory() }
                 .controlSize(.small)
             }
           }
-          Text("可以指向 iCloud 云盘或其他同步盘中的文件夹，实现多机同步。")
+          Text("dictionary.sync.dir.hint")
             .font(.caption)
             .foregroundStyle(.secondary)
 
           Divider()
           HStack(spacing: 10) {
-            Button("保存同步设置") { saveInstallation() }
-            Button("立即同步用户数据") {
+            Button("dictionary.save") { saveInstallation() }
+            Button("dictionary.syncNowData") {
               do {
                 try SquirrelBridge.sync(environment: store.environment)
-                message = "已发起同步"
+                message = String(localized: "dictionary.message.syncStarted")
               } catch {
                 message = error.localizedDescription
               }
@@ -109,19 +109,19 @@ struct DictionaryPage: View {
           }
         }
 
-        SettingsGroup("维护") {
+        SettingsGroup("dictionary.maintenance.title") {
           HStack {
             VStack(alignment: .leading, spacing: 2) {
-              Text("重新编译全部方案")
-              Text("方案文件改动后需要重新部署才会生效")
+              Text("dictionary.redeploy.title")
+              Text("schema.needDeploy")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("重新部署") {
+            Button("button.redeploy") {
               do {
                 try SquirrelBridge.deploy(environment: store.environment)
-                message = "已发起部署"
+                message = String(localized: "dictionary.message.deployStarted")
               } catch {
                 message = error.localizedDescription
               }
@@ -184,8 +184,8 @@ struct DictionaryPage: View {
     panel.canChooseDirectories = true
     panel.canChooseFiles = false
     panel.canCreateDirectories = true
-    panel.prompt = "选择"
-    panel.message = "选择用于同步的文件夹"
+    panel.prompt = String(localized: "generic.choose")
+    panel.message = String(localized: "dictionary.syncDir.message")
     guard panel.runModal() == .OK, let url = panel.url else { return }
     syncDirectory = url.path(percentEncoded: false)
   }
@@ -218,7 +218,7 @@ struct DictionaryPage: View {
       }
       let body = try Yams.dump(object: object, width: -1, allowUnicode: true, sortKeys: true)
       try body.write(to: url, atomically: true, encoding: .utf8)
-      message = "同步设置已保存"
+      message = String(localized: "dictionary.message.saved")
     } catch {
       message = error.localizedDescription
     }

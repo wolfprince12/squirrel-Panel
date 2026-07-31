@@ -1,0 +1,273 @@
+/* RootView & Navigation */
+"app.name" = "Squirrel Panel";
+"nav.appearance" = "Appearance";
+"nav.schemas" = "Schemas";
+"nav.behavior" = "Behavior";
+"nav.appOptions" = "App Options";
+"nav.dictionary" = "Dictionary";
+"nav.about" = "About";
+"footer.dirty" = "Unsaved Changes";
+"footer.saved" = "Settings saved";
+"footer.reloaded" = "Configuration reloaded";
+"footer.reset" = "Settings reset";
+"button.revert" = "Revert";
+"button.viewYAML" = "View YAML";
+"button.applyDeploy" = "Apply & Deploy";
+"footer.hint" = "All changes are written to custom.yaml patches and will not overwrite your manual settings.";
+"menu.openUserDir" = "Open User Directory in Finder";
+
+/* Status Messages */
+"status.loaded" = "Configuration loaded";
+"status.notInstalled" = "Squirrel not detected";
+"status.saving" = "Saving…";
+"status.deploying" = "Deploying…";
+"status.deployed" = "Applied. Squirrel is redeploying.";
+"status.savedWithoutSquirrel" = "Saved. Will take effect after Squirrel is installed.";
+"status.writeFailed" = "Write failed";
+"status.reverted" = "Unsaved changes discarded";
+"status.reset" = "Settings reset";
+
+/* Error Messages */
+"error.parse.squirrel" = "squirrel.custom.yaml parsing failed: %@";
+"error.parse.default" = "default.custom.yaml parsing failed: %@";
+"error.yaml.notMapping" = "The top level of the file is not a key-value mapping.";
+"error.refusedToOverwrite" = "%@ could not be parsed. To avoid corrupting your configuration, the panel refused to write. Please check the YAML syntax manually.";
+"error.squirrelNotInstalled" = "Squirrel not detected. Please install the Squirrel input method first.";
+"error.commandFailed" = "Command failed (%@, exit code %d).";
+
+/* Banners */
+"banner.squirrelNotInstalled" = "Squirrel not detected. Settings can still be saved and will take effect after installation.";
+"banner.userDirNotReady" = "Squirrel user directory is not initialized. It will be created automatically on first save.";
+"banner.unparsable" = "%@ YAML parsing failed. Write disabled to avoid corruption.";
+"banner.openUserDir" = "Open User Directory";
+"banner.download" = "Download";
+
+/* Alert */
+"alert.resetTitle" = "Reset to Defaults?";
+"alert.resetMessage" = "This removes all settings written by this panel. Your manual patches are preserved, and .bak backups are created automatically.";
+"alert.cancel" = "Cancel";
+"alert.reset" = "Reset";
+
+/* AppearancePage */
+"appearance.preview.title" = "Candidate Window Preview";
+"appearance.scheme.title" = "Color Scheme";
+"appearance.scheme.custom" = "Custom";
+"appearance.font.title" = "Font";
+"appearance.font.candidate" = "Candidate Font";
+"appearance.font.comment" = "Comment Font";
+"appearance.font.label" = "Label Font";
+"appearance.layout.title" = "Layout";
+"appearance.layout.horizontal" = "Horizontal";
+"appearance.layout.vertical" = "Vertical";
+"appearance.layout.textOrientation" = "Text Orientation";
+"appearance.layout.horizontalText" = "Horizontal";
+"appearance.layout.verticalText" = "Vertical";
+"appearance.layout.candidateFormat" = "Candidate Format";
+"appearance.layout.candidateFormat.hint" = "Placeholders: [label] index · [candidate] text · [comment] note";
+"appearance.layout.inlinePreedit" = "Inline preedit";
+"appearance.layout.pageSizeSync" = "Sync page size";
+
+/* SchemaPage */
+"schema.enabled.title" = "Enabled Schemas";
+"schema.enabled.empty" = "No enabled schemas yet. Select one from the list below, or deploy once in Squirrel first.";
+"schema.enabled.hint" = "Drag to reorder. The first item is the default schema.";
+"schema.available.title" = "Available Schemas";
+"schema.available.empty" = "No *.schema.yaml files were found. Make sure Squirrel is installed and has been deployed at least once.";
+"schema.userProvided" = "User Directory";
+"schema.hotkeys" = "Switcher Hotkeys";
+"schema.hotkeys.hint" = "Separate multiple hotkeys with commas. Leave empty to use Squirrel defaults.";
+"schema.caption" = "Menu Caption";
+"schema.openPlum" = "Open Schema Library (plum)";
+"schema.needDeploy" = "Schema changes require redeploy to take effect.";
+
+/* BehaviorPage */
+"behavior.pageSize" = "Candidates per Page";
+"behavior.pageSize.hint" = "Written to default.custom.yaml as menu/page_size. Some schemas override this.";
+"behavior.capsLock" = "Good Old Caps Lock";
+"behavior.capsLock.hint" = "When on, Caps Lock only toggles case. When off, it switches input language.";
+"behavior.switchKey.title" = "Switch Keys";
+"behavior.switchKey.Caps_Lock" = "Caps Lock";
+"behavior.switchKey.Shift_L" = "Left Shift";
+"behavior.switchKey.Shift_R" = "Right Shift";
+"behavior.switchKey.Control_L" = "Left Control";
+"behavior.switchKey.Control_R" = "Right Control";
+"behavior.keyboardLayout" = "Keyboard Layout";
+"behavior.layout.last" = "Last used";
+"behavior.layout.US" = "US";
+"behavior.layout.ABC" = "US Keyboard (ABC)";
+"behavior.layout.USExtended" = "US Extended";
+"behavior.notifications" = "Show Notifications";
+"behavior.notifications.appropriate" = "Appropriate";
+"behavior.notifications.always" = "Always";
+"behavior.notifications.never" = "Never";
+"behavior.quickActions" = "Quick Actions";
+"button.asciiMode" = "ASCII Mode";
+"button.chineseMode" = "Chinese Mode";
+"button.restartSquirrel" = "Restart Squirrel";
+
+/* AppOptionsPage */
+"appOptions.title" = "Per-App Options";
+"appOptions.add" = "Add App";
+"appOptions.selectApp" = "Select Application";
+"appOptions.asciiMode" = "ASCII mode on focus";
+"appOptions.noInline" = "Disable inline preedit";
+"appOptions.inline" = "Force inline preedit";
+"appOptions.vimMode" = "Vim mode";
+"appOptions.empty" = "No per-app rules yet. Common use: default to English in Terminal and code editors.";
+"appOptions.explain.title" = "Option Reference";
+"appOptions.hint" = "Select an app to configure input method behavior per application.";
+
+/* DictionaryPage */
+"dictionary.title" = "User Dictionary";
+"dictionary.location" = "Dictionaries are located at ~/Library/Rime";
+"dictionary.scannedFrom" = "Scanned from ~/Library/Rime and Squirrel.app SharedSupport";
+"dictionary.sync.title" = "Sync Settings";
+"dictionary.sync.id" = "Installation ID";
+"dictionary.sync.id.hint" = "Must be unique across devices, otherwise sync will conflict.";
+"dictionary.sync.dir" = "Sync Directory";
+"dictionary.sync.dir.hint" = "Can point to an iCloud Drive or other sync folder for multi-device sync.";
+"button.syncNow" = "Sync Now";
+"button.redeploy" = "Redeploy";
+
+/* AboutPage */
+"about.title" = "About";
+"about.header.developer" = "Developer";
+"about.header.moreWorks" = "More Works";
+"about.header.status" = "Status";
+"about.header.paths" = "Paths";
+"about.header.maintenance" = "Maintenance";
+"about.header.project" = "Project";
+"about.panel.version" = "Panel Version";
+"about.squirrel.installed" = "Squirrel Installed";
+"about.squirrel.version" = "v%@";
+"about.squirrel.notInstalled" = "Not detected";
+"about.squirrel.process" = "Input Method Process";
+"about.squirrel.running" = "Running";
+"about.squirrel.notRunning" = "Not running";
+"about.userDir" = "User Directory";
+"about.userDir.ready" = "Ready";
+"about.userDir.notReady" = "Not created";
+"about.reload.title" = "Reload Configuration";
+"about.reload.subtitle" = "Refresh the panel after editing YAML externally.";
+"about.reload.button" = "Reload";
+"about.reset.title" = "Reset to Defaults";
+"about.reset.subtitle" = "Remove all settings written by this panel, preserving your manual patches.";
+"about.reset.button" = "Reset";
+"about.description" = "Squirrel Panel is an independent third-party tool for graphically configuring the Rime input method engine's macOS frontend, Squirrel.";
+"about.disclaimer" = "This project is not affiliated with the RIME project and does not modify Squirrel itself. All changes are written as standard Rime patch files in the user directory and can be manually edited or removed at any time.";
+"about.license" = "Licensed under GPL-3.0.";
+"about.link.home" = "Project Home";
+"about.link.issues" = "Issues";
+"about.link.rime" = "RIME";
+"about.link.squirrel" = "Squirrel Source";
+
+/* Developer & Promotion */
+"about.developer.name" = "Winter Zheng";
+"about.developer.title" = "Director / Producer";
+"about.developer.company" = "Yunheng (Beijing) Culture Media Co., Ltd.";
+"about.developer.bio" = "Over 20 years in film, TV, and live events; now building AI-powered creative tools.";
+"promo.yaozhi.title" = "爻知云AI";
+"promo.yaozhi.subtitle" = "WeChat Service Account";
+"promo.yaozhi.description" = "Follow for AI-powered creative assistant and workflow tips.";
+"promo.yaozhi.action" = "Open WeChat";
+"promo.yaozhi.copied" = "Public account name copied: %@. Search and follow it in WeChat.";
+"promo.dealv.title" = "DealV";
+"promo.dealv.subtitle" = "AI Contract Management";
+"promo.dealv.description" = "Intelligent contract review and management platform for professionals.";
+"promo.dealv.action" = "Visit DealV";
+
+/* YAML Inspector */
+"yaml.title" = "Pending Configuration";
+"yaml.subtitle" = "This is what will be written to disk after clicking Apply & Deploy. Review before saving.";
+"yaml.squirrel" = "squirrel.custom.yaml";
+"yaml.defaults" = "default.custom.yaml";
+"yaml.squirrel.note" = "Appearance, candidate window, app options";
+"yaml.defaults.note" = "Schemas, key behavior, page size";
+"yaml.empty" = "(This file is currently empty)";
+"yaml.unavailable" = "(Unable to generate preview)";
+"yaml.showInFinder" = "Show in Finder";
+"yaml.copy" = "Copy";
+"yaml.copied" = "Copied";
+"yaml.close" = "Close";
+
+/* Generic */
+"generic.open" = "Open";
+"generic.select" = "Select";
+"generic.remove" = "Remove";
+"generic.enable" = "Enable";
+"generic.version" = "Version";
+"generic.unknown" = "Unknown";
+"generic.dev" = "Development";
+
+/* Added keys for view localization */
+"appearance.scheme.followSystem" = "Follow system appearance; use a different color scheme in dark mode";
+"appearance.scheme.dark" = "Dark mode color scheme";
+"appearance.layout.arrangement" = "Candidate Arrangement";
+"appearance.font.candidateSize" = "Candidate Font Size";
+"appearance.font.labelSize" = "Label Font Size";
+"appearance.font.commentSize" = "Comment Font Size";
+"appearance.layout.cornerRadius" = "Candidate Window Corner Radius";
+"appearance.layout.hilitedCornerRadius" = "Highlight Corner Radius";
+"appearance.layout.lineSpacing" = "Candidate Spacing";
+"appearance.layout.preeditSpacing" = "Preedit Spacing";
+"appearance.layout.borderWidth" = "Border Width";
+"appearance.layout.borderHeight" = "Border Height";
+"appearance.layout.alpha" = "Opacity";
+"appearance.behavior.title" = "Behavior";
+"appearance.behavior.inlineCode" = "Inline code (pinyin shown at input position)";
+"appearance.behavior.inlineCandidate" = "Inline candidate (first candidate written to input position)";
+"appearance.behavior.translucency" = "Frosted glass background (needs transparent color scheme)";
+"appearance.behavior.showPaging" = "Show paging arrows";
+"appearance.behavior.memorizeSize" = "Remember candidate window size";
+"appearance.behavior.mutualExclusive" = "Mutually exclusive highlight in horizontal layout";
+"appearance.scheme.author" = "Author: %@";
+"appearance.font.system" = "Follow System";
+
+"schema.available.allEnabled" = "All schemas on this device are already enabled";
+"schema.available.rescan" = "Rescan";
+"schema.switch.title" = "Schema Switching";
+"schema.installMore" = "Install More Schemas";
+"schema.installMore.hint" = "Get from the official repository via plum";
+"schema.notFound" = "Schema file not found, possibly not installed yet";
+
+"behavior.switch.commit_code" = "Commit code";
+"behavior.switch.commit_code.detail" = "Commit the typed pinyin as-is, then switch";
+"behavior.switch.commit_text" = "Commit candidate";
+"behavior.switch.commit_text.detail" = "Commit the current candidate, then switch";
+"behavior.switch.clear" = "Clear input";
+"behavior.switch.clear.detail" = "Discard typed input, then switch";
+"behavior.switch.inline_ascii" = "Temporary English";
+"behavior.switch.inline_ascii.detail" = "Enter inline Western editing mode";
+"behavior.switch.noop" = "No action";
+"behavior.switch.noop.detail" = "This key is not used for Chinese/English switching";
+"behavior.candidates.title" = "Candidates";
+"behavior.switching.title" = "Chinese/English Switching";
+"behavior.system.title" = "System Integration";
+"behavior.quickActions.hint" = "These actions take effect immediately; no need to click Apply.";
+
+"appOptions.addFromApps" = "Add from Applications";
+"appOptions.addCommon" = "Add Common Apps";
+"appOptions.header.app" = "App";
+"appOptions.column.ascii" = "ASCII";
+"appOptions.column.noInline" = "No Inline";
+"appOptions.column.inline" = "Inline";
+"appOptions.asciiMode.detail" = "Auto switch to English (ASCII) mode when this app gains focus, corresponds to ascii_mode.";
+"appOptions.noInline.detail" = "Do not write pinyin at input position in this app; show it in the candidate window instead, corresponds to no_inline. For apps with broken inline display.";
+"appOptions.inline.detail" = "Force inline code in this app, corresponds to inline.";
+"appOptions.vimMode.detail" = "Auto switch back to English when this app loses focus, corresponds to vim_mode. For modal editors like Vim and Emacs.";
+"appOptions.panel.message" = "Select the apps to configure input state for";
+"generic.add" = "Add";
+
+"dictionary.empty" = "No user dictionaries generated yet. After using Squirrel for a while, each schema's learning records will appear here.";
+"dictionary.neverUsed" = "Never used";
+"dictionary.lastUpdated" = "Last updated %@";
+"dictionary.openInFinder" = "Open in Finder";
+"dictionary.sync.idPlaceholder" = "This device's identifier";
+"dictionary.sync.dirPlaceholder" = "Leave empty to use ~/Library/Rime/sync";
+"dictionary.save" = "Save Sync Settings";
+"dictionary.syncNowData" = "Sync User Data Now";
+"dictionary.message.syncStarted" = "Sync initiated";
+"dictionary.maintenance.title" = "Maintenance";
+"dictionary.redeploy.title" = "Recompile All Schemas";
+"dictionary.message.deployStarted" = "Deploy initiated";
+"generic.choose" = "Choose…";
