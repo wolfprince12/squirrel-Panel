@@ -1,6 +1,6 @@
 {
   "title": "Squirrel Panel",
-  "icon": "../../Sources/SquirrelPanel/Resources/AppIcon.icns",
+  "icon": "../../Resources/AppIcon.icns",
   "background": "../DMG-Cover.png",
   "contents": [
     { "x": 160, "y": 180, "type": "file", "path": "Squirrel Panel.app" },

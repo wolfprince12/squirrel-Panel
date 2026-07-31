@@ -3,7 +3,6 @@ import PackageDescription
 
 let package = Package(
   name: "SquirrelPanel",
-  defaultLocalization: "zh-Hans",
   platforms: [.macOS(.v13)],
   dependencies: [
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.6")
@@ -12,10 +11,7 @@ let package = Package(
     .executableTarget(
       name: "SquirrelPanel",
       dependencies: ["Yams"],
-      path: "Sources/SquirrelPanel",
-      resources: [
-        .process("Resources")
-      ]
+      path: "Sources/SquirrelPanel"
     ),
     .testTarget(
       name: "SquirrelPanelTests",

@@ -9,7 +9,7 @@ import AppKit
 import Foundation
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let logoURL = root.appending(path: "Sources/SquirrelPanel/Resources/AppLogo.png")
+let logoURL = root.appending(path: "Resources/AppLogo.png")
 let output = root.appending(path: "dist/DMG-Cover.png")
 
 let size = CGSize(width: 820, height: 380)

@@ -169,8 +169,9 @@
 "promo.yaozhi.title" = "爻知云AI";
 "promo.yaozhi.subtitle" = "WeChat Service Account";
 "promo.yaozhi.description" = "Follow for AI-powered creative assistant and workflow tips.";
-"promo.yaozhi.action" = "Open WeChat";
-"promo.yaozhi.copied" = "Public account name copied: %@. Search and follow it in WeChat.";
+"promo.yaozhi.saveQR" = "Save QR Code";
+"promo.yaozhi.saved" = "QR code saved to Downloads.";
+"promo.yaozhi.saveFailed" = "Failed to save QR code.";
 "promo.dealv.title" = "DealV";
 "promo.dealv.subtitle" = "AI Contract Management";
 "promo.dealv.description" = "Intelligent contract review and management platform for professionals.";

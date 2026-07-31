@@ -9,7 +9,7 @@ import AppKit
 import Foundation
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let logoURL = root.appending(path: "Sources/SquirrelPanel/Resources/AppLogo.png")
+let logoURL = root.appending(path: "Resources/AppLogo.png")
 let iconset = root.appending(path: "build-icon/AppIcon.iconset")
 
 let fm = FileManager.default
@@ -28,21 +28,20 @@ func drawIcon(size: CGFloat) -> NSImage {
     return image
   }
 
-  // macOS 图标标准圆角：约为边长的 22%
-  let cornerRadius = size * 0.22
   let bounds = CGRect(origin: .zero, size: CGSize(width: size, height: size))
 
-  // 图标背景：用 logo 主色调深蓝
-  let background = NSBezierPath(roundedRect: bounds, xRadius: cornerRadius, yRadius: cornerRadius)
-  NSColor(srgbRed: 0.10, green: 0.22, blue: 0.38, alpha: 1).setFill()
-  background.fill()
-
-  // 裁剪到圆角内，避免 logo 超出
-  background.addClip()
-
-  // logo 居中，留 8% 边距
-  let padding = size * 0.08
-  let logoRect = bounds.insetBy(dx: padding, dy: padding)
+  // logo 居中，按长边等比缩放，留 6% 边距
+  let padding = size * 0.06
+  let canvas = bounds.insetBy(dx: padding, dy: padding)
+  let logoSize = logo.size
+  let scale = min(canvas.width / logoSize.width, canvas.height / logoSize.height)
+  let drawSize = CGSize(width: logoSize.width * scale, height: logoSize.height * scale)
+  let logoRect = CGRect(
+    x: bounds.midX - drawSize.width / 2,
+    y: bounds.midY - drawSize.height / 2,
+    width: drawSize.width,
+    height: drawSize.height
+  )
   logo.draw(in: logoRect, from: .zero, operation: .sourceOver, fraction: 1)
 
   image.unlockFocus()

@@ -169,8 +169,9 @@
 "promo.yaozhi.title" = "爻知云AI";
 "promo.yaozhi.subtitle" = "微信服务号";
 "promo.yaozhi.description" = "关注获取 AI 创作助手、工作流技巧与项目动态。";
-"promo.yaozhi.action" = "打开微信";
-"promo.yaozhi.copied" = "已复制公众号名称：%@，请在微信中搜索关注。";
+"promo.yaozhi.saveQR" = "保存二维码";
+"promo.yaozhi.saved" = "二维码已保存到下载文件夹。";
+"promo.yaozhi.saveFailed" = "保存二维码失败。";
 "promo.dealv.title" = "DealV";
 "promo.dealv.subtitle" = "AI 智能合同管理";
 "promo.dealv.description" = "面向专业人群的合同智能审查与管理平台。";

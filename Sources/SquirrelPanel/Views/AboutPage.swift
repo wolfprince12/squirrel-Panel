@@ -97,9 +97,17 @@ struct AboutPage: View {
           title: "promo.yaozhi.title",
           subtitle: "promo.yaozhi.subtitle",
           description: "promo.yaozhi.description",
-          actionTitle: "promo.yaozhi.action",
-          action: { openWeChatSearch(account: "爻知云AI") }
+          actionTitle: "promo.yaozhi.saveQR",
+          action: { saveQRCodeToDownloads() }
         )
+        if let qr = qrCodeImage {
+          Image(nsImage: qr)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(maxWidth: 240)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
+        }
         Divider()
         PromotionRow(
           icon: "doc.text.fill",
@@ -108,10 +116,15 @@ struct AboutPage: View {
           subtitle: "promo.dealv.subtitle",
           description: "promo.dealv.description",
           actionTitle: "promo.dealv.action",
-          action: { openURL("https://dealv.io") }
+          action: { openURL("https://www.dealv.cn") }
         )
       }
     }
+  }
+
+  private var qrCodeImage: NSImage? {
+    guard let url = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "jpg") else { return nil }
+    return NSImage(contentsOf: url)
   }
 
   // MARK: - 运行状态
@@ -212,11 +225,23 @@ struct AboutPage: View {
     NSWorkspace.shared.open(url)
   }
 
-  private func openWeChatSearch(account: String) {
-    // 微信没有直接打开公众号的公开 URL 协议；这里复制账号名到剪贴板并提示用户搜索。
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(account, forType: .string)
-    store.statusMessage = String(format: String(localized: "promo.yaozhi.copied"), account)
+  private func saveQRCodeToDownloads() {
+    guard let source = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "jpg"),
+          let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
+      store.statusMessage = String(localized: "promo.yaozhi.saveFailed")
+      return
+    }
+    let destination = downloads.appendingPathComponent("爻知云AI_公众号二维码.jpg")
+    do {
+      if FileManager.default.fileExists(atPath: destination.path) {
+        try FileManager.default.removeItem(at: destination)
+      }
+      try FileManager.default.copyItem(at: source, to: destination)
+      store.statusMessage = String(localized: "promo.yaozhi.saved")
+      NSWorkspace.shared.activateFileViewerSelecting([destination])
+    } catch {
+      store.statusMessage = String(localized: "promo.yaozhi.saveFailed")
+    }
   }
 }
 
