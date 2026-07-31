@@ -73,12 +73,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## 关于作者
 
-**Mr 大狼** —— 导演 / 制作人 / AI 产品创作者。
-
-20 余年影视传媒与演出制作经验，现用 AI 把经验激烈跨界重构成产品。
-
-- 公众号：**爻知云AI**
-- 智能合同管理：[DealV](https://www.dealv.cn)
+**Mr大狼** —— 二十年影视传媒老兵，做过音乐节、纪录片、综艺导演，作品上过央视春晚、北影节音乐节。八年前独立运营「大狼导演工作室」，近年转型用 AI 把跨界底子焊成产品：爻知云 微信服务号、DealV智能合同平台、鼠须管输入法图形控制台等
 
 ---
 
@@ -104,12 +99,7 @@ This project is independent of the Squirrel input method itself. After installin
 
 ## About the Author
 
-**Mr. Dawolf** — Director / Producer / AI Product Creator.
-
-20+ years in film, television, and live production. Reconstructing cross-domain experience into AI-powered products.
-
-- WeChat Official Account: **爻知云AI**
-- Smart contract management: [DealV](https://www.dealv.cn)
+**Mr. Dawolf** — 20+ years in film, TV and live production; runs "Big Wolf Director Studio" independently; now rebuilding cross-domain experience into AI products: 爻知云 WeChat Official Account, DealV smart contract platform, Squirrel Panel (input-method GUI), and more.
 
 ## Sponsor · Buy Me a Coffee
 
