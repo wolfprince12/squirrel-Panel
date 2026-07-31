@@ -5,7 +5,7 @@ BUNDLE      := $(DIST)/$(APP_NAME).app
 CONTENTS    := $(BUNDLE)/Contents
 CODESIGN_ID ?= -
 RESOURCES   := Resources
-VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURCES)/AppInfo.plist" 2>/dev/null || echo 0.2.1)
+VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURCES)/AppInfo.plist" 2>/dev/null || echo 0.2.2)
 # 某些沙箱化的终端环境下 SwiftPM 无法执行清单编译，可用
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
 SWIFT_BUILD ?= swift build

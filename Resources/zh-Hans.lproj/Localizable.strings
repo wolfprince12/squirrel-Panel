@@ -162,10 +162,9 @@
 "about.link.squirrel" = "鼠须管源码";
 
 /* Developer & Promotion */
-"about.developer.name" = "Winter Zheng / 大狼";
+"about.developer.name" = "Mr大狼";
 "about.developer.title" = "导演 / 制作人 / AI 产品创作者";
-"about.developer.company" = "云珩（北京）文化传媒有限公司";
-"about.developer.bio" = "20 余年影视传媒与演出制作经验，现用 AI 把跨界积累重构成产品。";
+"about.developer.bio" = "20余年影视传媒与演出制作经验，现用AI把经验激烈跨界重构成产品。";
 "promo.yaozhi.title" = "爻知云AI";
 "promo.yaozhi.subtitle" = "微信服务号";
 "promo.yaozhi.description" = "关注获取 AI 创作助手、工作流技巧与项目动态。";

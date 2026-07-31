@@ -162,10 +162,9 @@
 "about.link.squirrel" = "Squirrel Source";
 
 /* Developer & Promotion */
-"about.developer.name" = "Winter Zheng";
-"about.developer.title" = "Director / Producer";
-"about.developer.company" = "Yunheng (Beijing) Culture Media Co., Ltd.";
-"about.developer.bio" = "Over 20 years in film, TV, and live events; now building AI-powered creative tools.";
+"about.developer.name" = "Mr. Dawolf";
+"about.developer.title" = "Director / Producer / AI Product Creator";
+"about.developer.bio" = "20+ years in film, TV, and live production. Reconstructing cross-domain experience into AI-powered products.";
 "promo.yaozhi.title" = "爻知云AI";
 "promo.yaozhi.subtitle" = "WeChat Service Account";
 "promo.yaozhi.description" = "Follow for AI-powered creative assistant and workflow tips.";
