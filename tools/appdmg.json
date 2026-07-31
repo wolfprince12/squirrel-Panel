@@ -3,12 +3,13 @@
   "icon": "../../Resources/AppIcon.icns",
   "background": "../DMG-Cover.png",
   "contents": [
-    { "x": 230, "y": 200, "type": "file", "path": "Squirrel Panel.app" },
-    { "x": 410, "y": 200, "type": "link", "path": "/Applications" },
-    { "x": 590, "y": 200, "type": "file", "path": "Fix.app" }
+    { "x": 230, "y": 300, "type": "file", "path": "Squirrel Panel.app" },
+    { "x": 410, "y": 300, "type": "link", "path": "/Applications" },
+    { "x": 590, "y": 300, "type": "file", "path": "Fix.app" }
   ],
   "window": {
-    "size": { "width": 820, "height": 480 }
+    "size": { "width": 820, "height": 480 },
+    "icon-size": 96
   },
   "format": "UDZO"
 }

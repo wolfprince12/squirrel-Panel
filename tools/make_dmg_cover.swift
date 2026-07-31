@@ -50,11 +50,13 @@ let darkBlue = NSColor(srgbRed: 0.10, green: 0.22, blue: 0.38, alpha: 1)
 let midBlue = NSColor(srgbRed: 0.30, green: 0.40, blue: 0.52, alpha: 1)
 let gray = NSColor(srgbRed: 0.40, green: 0.45, blue: 0.52, alpha: 1)
 
-// 标题与说明文字放在上方；三个图标（App / Applications / Fix）排在说明文字下方
-// appdmg 坐标系 y=0 在窗口顶部，cover 生成器（NSImage lockFocus）y=0 在底部，因此文字 y 越大越靠上
-drawCenteredText("鼠须管控制面板", atY: 400, size: 42, weight: .bold, color: darkBlue)
-drawCenteredText("Squirrel Panel", atY: 360, size: 24, weight: .regular, color: midBlue)
-drawCenteredText("拖拽 App 到右侧 Applications 文件夹即可安装", atY: 315, size: 15, weight: .regular, color: gray)
+// 标题与说明文字放在窗口上方；三个图标（App / Applications / Fix）整体排在说明文字下方
+// appdmg 坐标系 y=0 在窗口顶部，cover 生成器（NSImage lockFocus）y=0 在底部，
+// 因此 PNG 顶距 = 480 - cover_y。文字顶距分别约为 48 / 90 / 132，图标中心在顶距 300，
+// 图标（96px）顶距约 252，明显低于说明文字底部（约 140），间隔约 110px。
+drawCenteredText("鼠须管控制面板", atY: 432, size: 42, weight: .bold, color: darkBlue)
+drawCenteredText("Squirrel Panel", atY: 390, size: 24, weight: .regular, color: midBlue)
+drawCenteredText("拖拽 App 到右侧 Applications 文件夹即可安装", atY: 348, size: 15, weight: .regular, color: gray)
 
 // 不额外绘制图标标签，由 Finder 在图标下方自动显示真实文件名
 
