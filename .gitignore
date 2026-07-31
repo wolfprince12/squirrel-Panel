@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+build/
+dist/
+*.xcworkspace
+xcuserdata/
+.swiftpm/
+Packages/
+*.dmg
+*.zip
