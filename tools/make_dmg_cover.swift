@@ -50,14 +50,13 @@ let darkBlue = NSColor(srgbRed: 0.10, green: 0.22, blue: 0.38, alpha: 1)
 let midBlue = NSColor(srgbRed: 0.30, green: 0.40, blue: 0.52, alpha: 1)
 let gray = NSColor(srgbRed: 0.40, green: 0.45, blue: 0.52, alpha: 1)
 
-drawCenteredText("鼠须管控制面板", atY: 370, size: 42, weight: .bold, color: darkBlue)
-drawCenteredText("Squirrel Panel", atY: 325, size: 24, weight: .regular, color: midBlue)
-drawCenteredText("拖拽 App 到右侧 Applications 文件夹即可安装", atY: 280, size: 15, weight: .regular, color: gray)
+// 标题与说明文字放在上方；三个图标（App / Applications / Fix）排在说明文字下方
+// appdmg 坐标系 y=0 在窗口顶部，cover 生成器（NSImage lockFocus）y=0 在底部，因此文字 y 越大越靠上
+drawCenteredText("鼠须管控制面板", atY: 400, size: 42, weight: .bold, color: darkBlue)
+drawCenteredText("Squirrel Panel", atY: 360, size: 24, weight: .regular, color: midBlue)
+drawCenteredText("拖拽 App 到右侧 Applications 文件夹即可安装", atY: 315, size: 15, weight: .regular, color: gray)
 
-// 下方两个 faint label，分别对应 App 与 Applications 位置
-// appdmg 中 App 位于 x=270, Applications 位于 x=550，图标底部 y≈120
-drawCenteredText("Squirrel Panel.app", atY: 80, size: 13, weight: .medium, color: midBlue)
-drawCenteredText("Applications", atY: 80, size: 13, weight: .medium, color: midBlue)
+// 不额外绘制图标标签，由 Finder 在图标下方自动显示真实文件名
 
 image.unlockFocus()
 
