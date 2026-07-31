@@ -16,6 +16,9 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
 
+      - name: Run tests
+        run: swift test --disable-sandbox
+
       - name: Build release
         run: make release SWIFT_BUILD="swift build --disable-sandbox"
 

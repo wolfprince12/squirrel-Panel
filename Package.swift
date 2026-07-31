@@ -12,6 +12,11 @@ let package = Package(
       name: "SquirrelPanel",
       dependencies: ["Yams"],
       path: "Sources/SquirrelPanel"
+    ),
+    .testTarget(
+      name: "SquirrelPanelTests",
+      dependencies: ["SquirrelPanel", "Yams"],
+      path: "Tests/SquirrelPanelTests"
     )
   ]
 )
