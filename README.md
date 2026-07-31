@@ -73,7 +73,6 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 鼠须管是好用的输入法，但改配置要手写 YAML，对普通人门槛太高。做这个面板，就是想把它变得「看得见、点得到」。
 
-云珩（北京）文化传媒有限公司 出品。
 
 ## 赞助 · 请杯咖啡
 
@@ -138,7 +137,6 @@ So even if this panel has a bug, at worst it only affects the patch files; unins
 
 Squirrel is a great input method, but configuring it means hand-editing YAML — too high a bar for most people. This panel exists to make it visible and clickable.
 
-Produced by 云珩（北京）文化传媒有限公司.
 
 ## Sponsor · Buy Me a Coffee
 
