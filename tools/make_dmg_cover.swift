@@ -1,6 +1,6 @@
 //
 //  make_dmg_cover.swift
-//  生成 DMG 封面背景图（820×380，适配 create-dmg）
+//  生成 DMG 封面背景图（820×480，与 appdmg 窗口尺寸一致）
 //
 //  用法：swift tools/make_dmg_cover.swift
 //
@@ -12,7 +12,7 @@ let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let logoURL = root.appending(path: "Resources/AppLogo.png")
 let output = root.appending(path: "dist/DMG-Cover.png")
 
-let size = CGSize(width: 820, height: 380)
+let size = CGSize(width: 820, height: 480)
 let image = NSImage(size: size)
 image.lockFocus()
 guard let ctx = NSGraphicsContext.current?.cgContext else {
@@ -33,28 +33,31 @@ if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                          options: [])
 }
 
-guard let logo = NSImage(contentsOf: logoURL) else {
-  print("无法读取 logo")
-  exit(1)
-}
-
-// 左侧大 logo
-let logoRect = CGRect(x: 60, y: 60, width: 260, height: 260)
-logo.draw(in: logoRect, from: .zero, operation: .sourceOver, fraction: 1)
-
-// 右侧文字
-func drawText(_ text: String, at point: CGPoint, size fontSize: CGFloat, weight: NSFont.Weight, color: NSColor) {
+// 标题文字（上方居中）
+func drawCenteredText(_ text: String, atY y: CGFloat, size fontSize: CGFloat, weight: NSFont.Weight, color: NSColor) {
   let font = NSFont.systemFont(ofSize: fontSize, weight: weight)
   let attrs: [NSAttributedString.Key: Any] = [
     .font: font,
     .foregroundColor: color,
   ]
-  NSAttributedString(string: text, attributes: attrs).draw(at: point)
+  let str = NSAttributedString(string: text, attributes: attrs)
+  let textSize = str.size()
+  let point = CGPoint(x: (size.width - textSize.width) / 2, y: y)
+  str.draw(at: point)
 }
 
-drawText("鼠须管控制面板", at: CGPoint(x: 360, y: 220), size: 42, weight: .bold, color: NSColor(srgbRed: 0.10, green: 0.22, blue: 0.38, alpha: 1))
-drawText("Squirrel Panel", at: CGPoint(x: 360, y: 180), size: 24, weight: .regular, color: NSColor(srgbRed: 0.30, green: 0.40, blue: 0.52, alpha: 1))
-drawText("拖拽 App 到右侧 Applications 文件夹即可安装", at: CGPoint(x: 360, y: 130), size: 15, weight: .regular, color: NSColor(srgbRed: 0.40, green: 0.45, blue: 0.52, alpha: 1))
+let darkBlue = NSColor(srgbRed: 0.10, green: 0.22, blue: 0.38, alpha: 1)
+let midBlue = NSColor(srgbRed: 0.30, green: 0.40, blue: 0.52, alpha: 1)
+let gray = NSColor(srgbRed: 0.40, green: 0.45, blue: 0.52, alpha: 1)
+
+drawCenteredText("鼠须管控制面板", atY: 370, size: 42, weight: .bold, color: darkBlue)
+drawCenteredText("Squirrel Panel", atY: 325, size: 24, weight: .regular, color: midBlue)
+drawCenteredText("拖拽 App 到右侧 Applications 文件夹即可安装", atY: 280, size: 15, weight: .regular, color: gray)
+
+// 下方两个 faint label，分别对应 App 与 Applications 位置
+// appdmg 中 App 位于 x=270, Applications 位于 x=550，图标底部 y≈120
+drawCenteredText("Squirrel Panel.app", atY: 80, size: 13, weight: .medium, color: midBlue)
+drawCenteredText("Applications", atY: 80, size: 13, weight: .medium, color: midBlue)
 
 image.unlockFocus()
 

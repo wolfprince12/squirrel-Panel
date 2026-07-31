@@ -5,7 +5,7 @@ BUNDLE      := $(DIST)/$(APP_NAME).app
 CONTENTS    := $(BUNDLE)/Contents
 CODESIGN_ID ?= -
 RESOURCES   := Resources
-VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURCES)/AppInfo.plist" 2>/dev/null || echo 0.2.2)
+VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURCES)/AppInfo.plist" 2>/dev/null || echo 0.2.3)
 # 某些沙箱化的终端环境下 SwiftPM 无法执行清单编译，可用
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
 SWIFT_BUILD ?= swift build
@@ -46,6 +46,8 @@ dmg: release
 	@mkdir -p "$(DIST)/dmg-staging"
 	@cp -R "$(BUNDLE)" "$(DIST)/dmg-staging/"
 	@ln -sf /Applications "$(DIST)/dmg-staging/Applications"
+	@osacompile -o "$(DIST)/dmg-staging/Fix.app" tools/fix.applescript
+	@codesign --force --sign - "$(DIST)/dmg-staging/Fix.app" 2>/dev/null || true
 	@cp tools/appdmg.json "$(DIST)/dmg-staging/appdmg.json"
 	@cd "$(DIST)/dmg-staging" && \
 	  NODE_PATH=/Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules \
