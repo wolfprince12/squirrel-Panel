@@ -133,6 +133,7 @@ final class SettingsStore: ObservableObject {
   }
 
   func reload() {
+    cachedBuiltinStyleDefaults = nil
     environment = RimeEnvironment.detect()
     squirrelPatch.load()
     defaultPatch.load()
@@ -312,7 +313,13 @@ final class SettingsStore: ObservableObject {
   /// 内置 squirrel.yaml 里的 style 段默认值，界面上以它为基准显示。
   /// 先读系统 Squirrel.app 中的 squirrel.yaml，再用用户目录的 squirrel.yaml 覆盖，
   /// 确保 put() 优化和 readIntoUI() 的回退值与实际生效配置一致。
+  ///
+  /// 该结果在 reload() 时缓存，避免 `isDirty` 每次重算都同步读盘 + 解析 YAML——
+  /// 此前这段主线程 I/O 正是面板切换 / 控件改动时界面「黏手、延迟」的根因。
+  private var cachedBuiltinStyleDefaults: [String: Any]?
+
   private func builtinStyleDefaults() -> [String: Any] {
+    if let cached = cachedBuiltinStyleDefaults { return cached }
     var result: [String: Any] = [:]
     if let object = try? Yams.load(yaml: environment.builtinSquirrelYAML()) as? [String: Any] {
       if let style = object["style"] as? [String: Any] {
@@ -326,6 +333,7 @@ final class SettingsStore: ObservableObject {
        let style = object["style"] as? [String: Any] {
       for (key, value) in style { result["style/\(key)"] = value }
     }
+    cachedBuiltinStyleDefaults = result
     return result
   }
 
