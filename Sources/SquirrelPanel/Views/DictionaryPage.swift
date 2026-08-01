@@ -108,27 +108,6 @@ struct DictionaryPage: View {
             }
           }
         }
-
-        SettingsGroup("dictionary.maintenance.title") {
-          HStack {
-            VStack(alignment: .leading, spacing: 2) {
-              Text("dictionary.redeploy.title")
-              Text("schema.needDeploy")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("button.redeploy") {
-              do {
-                try SquirrelBridge.deploy(environment: store.environment)
-                message = String(localized: "dictionary.message.deployStarted")
-              } catch {
-                message = error.localizedDescription
-              }
-            }
-            .disabled(!store.environment.isInstalled)
-          }
-        }
       }
       .padding(20)
     }

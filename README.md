@@ -18,7 +18,9 @@
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键、菜单标题。
 - **🖱️ 按键行为**：每页候选数、Caps Lock 行为、各修饰键动作。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
-- **📚 词库与同步**：用户词库概览、同步目录与 ID、一键同步/部署。
+- **📚 词库与同步**：用户词库概览、同步目录与 ID、一键同步。
+- **🚀 部署与排障**：一键重新部署并回显结果、schema_list 可视化勾选、检测「已启用但不可用」的方案（例如雾凇安装后打不出中文的场景）。
+- **📦 词库包**：一键安装/卸载精选词库包，首批支持「雾凇拼音 (rime-ice)」，自动备份被覆盖的文件。
 - **🔧 关于与维护**：运行状态、路径跳转、恢复默认、YAML 预览。
 
 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
@@ -108,7 +110,9 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys, menu title.
 - **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
-- **📚 Dictionary & sync**: user dictionary overview, sync dir & ID, one-click sync/deploy.
+- **📚 Dictionary & sync**: user dictionary overview, sync dir & ID, one-click sync.
+- **🚀 Deploy & diagnose**: one-click redeploy with result log, visual schema_list selection, and detection of enabled-but-unavailable schemas (e.g. rime-ice installed but cannot type Chinese).
+- **📦 Dictionary packages**: one-click install/uninstall curated packages, starting with **Rime Ice (rime-ice)**. Overwritten files are backed up automatically.
 - **🔧 About & maintenance**: running status, path jump, restore defaults, YAML preview.
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.

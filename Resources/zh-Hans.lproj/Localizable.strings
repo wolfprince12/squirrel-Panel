@@ -271,3 +271,46 @@
 "dictionary.redeploy.title" = "重新编译全部方案";
 "dictionary.message.deployStarted" = "已发起部署";
 "generic.choose" = "选择…";
+
+/* Navigation new */
+"nav.deploy" = "部署与排障";
+"nav.packages" = "词库";
+
+/* DeployPage */
+"deploy.title" = "部署与排障";
+"deploy.redeploy.title" = "重新部署";
+"deploy.redeploy.hint" = "让改动生效，并检测部署是否成功、有无不可用的方案。";
+"deploy.button.redeploy" = "一键重新部署";
+"deploy.log.title" = "部署日志";
+"deploy.logClean" = "部署已完成，未捕获到报错文本（本机未生成 rime.log 时属正常）。";
+"deploy.logMissing" = "以下已启用方案未能成功构建：%@";
+"deploy.missing.title" = "无可用方案";
+"deploy.missing.text" = "已启用但无法使用的方案：%@。它们要么文件缺失，要么编译失败。请检查对应的 .schema.yaml 与依赖词库。";
+"deploy.schemas.title" = "启用的输入方案";
+"deploy.schemas.hint" = "勾选以启用，取消以停用。改动会写入 default.custom.yaml 的 schema_list 并重新部署。";
+"deploy.schemas.apply" = "应用方案启用";
+"deploy.schemas.applied" = "方案列表已更新并重新部署";
+"deploy.result.ok" = "部署成功，方案均可用";
+"deploy.result.warn" = "部署完成，但存在不可用方案";
+"deploy.result.duration" = "耗时 %@ 毫秒";
+
+/* PackagePage */
+"package.title" = "词库包";
+"package.intro" = "这里可以一键安装或卸载精选的词库包（如雾凇拼音）。安装会下载官方归档、备份被覆盖的文件，并在完成后自动部署。";
+"package.status.notInstalled" = "未安装";
+"package.status.installed" = "已安装（本面板管理）";
+"package.status.external" = "已存在（外部安装）";
+"package.button.install" = "安装";
+"package.button.manage" = "纳入管理";
+"package.button.uninstall" = "卸载";
+"package.button.homepage" = "项目主页";
+"package.log.install" = "正在安装 %@";
+"package.log.downloading" = "正在下载词库包…";
+"package.log.installed" = "安装完成，共写入 %@ 个文件，并已重新部署。";
+"package.log.uninstall" = "正在卸载 %@";
+"package.log.removing" = "正在移除词库包文件并还原备份…";
+"package.log.removed" = "卸载完成，已还原被覆盖的文件。";
+"package.log.error" = "操作失败：%@";
+"package.error.download" = "下载失败：%@";
+"package.error.extract" = "解压失败：%@";
+"package.error.notManaged" = "该词库包不是由本面板安装的，无法在此卸载。";

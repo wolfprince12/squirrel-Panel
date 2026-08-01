@@ -1,0 +1,13 @@
+[
+  {
+    "id": "rime-ice",
+    "name": "雾凇拼音 (rime-ice)",
+    "name_en": "Rime Ice (rime-ice)",
+    "description": "一套开箱即用的现代 Rime 配置，内置超大词库、中英混输与多种拼音方案，适合直接替换默认配置。",
+    "description_en": "A ready-to-use modern Rime preset with a massive dictionary, mixed Chinese/English input, and many pinyin variants.",
+    "sourceURL": "https://github.com/iDvel/rime-ice/archive/refs/heads/main.zip",
+    "defaultSchema": "rime_ice",
+    "homepage": "https://github.com/iDvel/rime-ice",
+    "author": "iDvel"
+  }
+]
