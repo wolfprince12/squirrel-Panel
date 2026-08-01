@@ -12,12 +12,21 @@ import AppKit
 @main
 struct SquirrelPanelApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-  @StateObject private var store = SettingsStore()
+  @StateObject private var store: SettingsStore
+  @StateObject private var updateCenter: UpdateCenter
+
+  @MainActor
+  init() {
+    let store = SettingsStore()
+    _store = StateObject(wrappedValue: store)
+    _updateCenter = StateObject(wrappedValue: UpdateCenter(store: store))
+  }
 
   var body: some Scene {
     Window("app.name", id: "main") {
       RootView()
         .environmentObject(store)
+        .environmentObject(updateCenter)
         .frame(minWidth: 880, minHeight: 620)
     }
     .windowResizability(.contentMinSize)

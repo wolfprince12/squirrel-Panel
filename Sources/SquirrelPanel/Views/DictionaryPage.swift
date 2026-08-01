@@ -43,6 +43,7 @@ enum PackageUpdateState: Equatable {
 
 struct DictionaryPage: View {
   @EnvironmentObject private var store: SettingsStore
+  @EnvironmentObject private var updateCenter: UpdateCenter
   @State private var dictionaries: [UserDictInfo] = []
   @State private var installationID = ""
   @State private var syncDirectory = ""
@@ -51,9 +52,7 @@ struct DictionaryPage: View {
   // 词库包管理
   @State private var packages: [DictionaryPackage] = []
   @State private var statuses: [String: PackageStatus] = [:]
-  @State private var updateStates: [String: PackageUpdateState] = [:]
   @State private var busyID: String? = nil
-  @State private var checkingAll = false
   @State private var logText: String = ""
   @State private var logTitle: String = ""
 
@@ -68,9 +67,9 @@ struct DictionaryPage: View {
               .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
             Spacer()
-            Button(checkingAll ? "package.checkingAll" : "package.button.checkAll") { checkForUpdates() }
+            Button(updateCenter.dictionaryCheckingAll ? "package.checkingAll" : "package.button.checkAll") { updateCenter.checkDictionaryUpdates() }
               .controlSize(.small)
-              .disabled(checkingAll)
+              .disabled(updateCenter.dictionaryCheckingAll)
           }
         }
 
@@ -78,12 +77,12 @@ struct DictionaryPage: View {
           PackageCard(
             pkg: pkg,
             status: statuses[pkg.id] ?? .notInstalled,
-            updateState: updateStates[pkg.id] ?? .notApplicable,
+            updateState: updateCenter.dictionaryUpdateStates[pkg.id] ?? .notApplicable,
             busy: busyID == pkg.id,
             onInstall: { install(pkg) },
             onUninstall: { uninstall(pkg) },
             onUpdate: { update(pkg) },
-            onCheck: { checkOne(pkg) }
+            onCheck: { updateCenter.checkDictionaryOne(pkg) }
           )
         }
 
@@ -178,7 +177,7 @@ struct DictionaryPage: View {
       }
       .padding(20)
     }
-    .onAppear(perform: { load(); reloadPackages(); checkForUpdates() })
+    .onAppear(perform: { load(); reloadPackages() })
   }
 
   // MARK: - 载入与保存
@@ -281,51 +280,6 @@ struct DictionaryPage: View {
     statuses = st
   }
 
-  private func checkForUpdates() {
-    guard !checkingAll else { return }
-    checkingAll = true
-    var draft = updateStates
-    for p in packages where (statuses[p.id] ?? .notInstalled).isInstalled {
-      draft[p.id] = .checking
-    }
-    updateStates = draft
-
-    let pkgs = packages
-    Task {
-      await withThrowingTaskGroup(of: (String, PackageUpdateState).self) { group in
-        for p in pkgs where (statuses[p.id] ?? .notInstalled).isInstalled {
-          group.addTask { (p.id, await computeUpdateState(for: p)) }
-        }
-        while let result = try? await group.next() {
-          let (id, st) = result
-          await MainActor.run { self.updateStates[id] = st }
-        }
-      }
-      await MainActor.run { checkingAll = false }
-    }
-  }
-
-  private func checkOne(_ pkg: DictionaryPackage) {
-    Task {
-      let st = await computeUpdateState(for: pkg)
-      await MainActor.run { self.updateStates[pkg.id] = st }
-    }
-  }
-
-  private func computeUpdateState(for pkg: DictionaryPackage) async -> PackageUpdateState {
-    let status = statuses[pkg.id] ?? .notInstalled
-    guard case .installed(let manifest) = status else { return .notApplicable }
-    do {
-      let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
-      if let installed = manifest.installedCommit {
-        return installed == remote.sha ? .upToDate : .available
-      }
-      return .unknown
-    } catch {
-      return .failed(error.localizedDescription)
-    }
-  }
-
   private func install(_ pkg: DictionaryPackage) {
     busyID = pkg.id
     logTitle = String(format: String(localized: "package.log.install"), pkg.name)
@@ -383,7 +337,7 @@ struct DictionaryPage: View {
           busyID = nil
           store.reload()
           reloadPackages()
-          self.updateStates[pkg.id] = .upToDate
+          updateCenter.dictionaryUpdateStates[pkg.id] = .upToDate
         }
       } catch {
         await MainActor.run {

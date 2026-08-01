@@ -8,19 +8,8 @@ import AppKit
 
 struct AboutPage: View {
   @EnvironmentObject private var store: SettingsStore
+  @EnvironmentObject private var updateCenter: UpdateCenter
   @Binding var showingResetAlert: Bool
-
-  // 软件更新检查
-  @State private var updateState: UpdateCheckState = .idle
-  @State private var latestVersion: String?
-  @State private var releaseURL: String?
-  @State private var updateUsedMirror: Bool = false
-
-  // 鼠须管输入法更新检查
-  @State private var squirrelUpdateState: UpdateCheckState = .idle
-  @State private var squirrelLatestVersion: String?
-  @State private var squirrelReleaseURL: String?
-  @State private var squirrelUpdateUsedMirror: Bool = false
 
   // 恢复鼠须管默认设置
   @State private var showingSquirrelResetAlert = false
@@ -44,10 +33,6 @@ struct AboutPage: View {
         projectCard
       }
       .padding(20)
-    }
-    .onAppear {
-      checkForUpdates()
-      checkForSquirrelUpdates()
     }
     .alert("alert.squirrelResetTitle", isPresented: $showingSquirrelResetAlert) {
       Button("alert.cancel", role: .cancel) {}
@@ -93,7 +78,7 @@ struct AboutPage: View {
   private var updateCard: some View {
     SettingsGroup("about.header.update") {
       HStack(spacing: 12) {
-        switch updateState {
+        switch updateCenter.appUpdateState {
         case .idle:
           Image(systemName: "arrow.up.circle")
             .foregroundStyle(.secondary)
@@ -117,12 +102,12 @@ struct AboutPage: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(updateStatusText)
             .font(.callout)
-          if let latestVersion, updateState == .available {
-            Text(String(format: String(localized: "about.update.latest"), latestVersion))
+          if let appLatestVersion = updateCenter.appLatestVersion, updateCenter.appUpdateState == .available {
+            Text(String(format: String(localized: "about.update.latest"), appLatestVersion))
               .font(.caption)
               .foregroundStyle(.secondary)
           }
-          if updateUsedMirror && updateState != .failed {
+          if updateCenter.appUpdateUsedMirror && updateCenter.appUpdateState != .failed {
             Text(String(localized: "about.update.viaMirror"))
               .font(.caption2)
               .foregroundStyle(.secondary)
@@ -131,18 +116,18 @@ struct AboutPage: View {
 
         Spacer()
 
-        switch updateState {
+        switch updateCenter.appUpdateState {
         case .available:
-          if let url = releaseURL, let dest = URL(string: url) {
+          if let url = updateCenter.appReleaseURL, let dest = URL(string: url) {
             Link("about.update.download", destination: dest)
               .controlSize(.small)
               .buttonStyle(.borderedProminent)
           }
         case .failed:
-          Button("about.update.retry") { checkForUpdates() }
+          Button("about.update.retry") { updateCenter.checkAppUpdate() }
             .controlSize(.small)
         default:
-          Button("about.update.check") { checkForUpdates() }
+          Button("about.update.check") { updateCenter.checkAppUpdate() }
             .controlSize(.small)
         }
       }
@@ -150,7 +135,7 @@ struct AboutPage: View {
   }
 
   private var updateStatusText: LocalizedStringKey {
-    switch updateState {
+    switch updateCenter.appUpdateState {
     case .idle: return "about.update.idle"
     case .checking: return "about.update.checking"
     case .upToDate: return "about.update.upToDate"
@@ -164,7 +149,7 @@ struct AboutPage: View {
   private var squirrelUpdateCard: some View {
     SettingsGroup("about.header.squirrelUpdate") {
       HStack(spacing: 12) {
-        switch squirrelUpdateState {
+        switch updateCenter.squirrelUpdateState {
         case .idle:
           Image(systemName: "arrow.up.circle")
             .foregroundStyle(.secondary)
@@ -188,12 +173,12 @@ struct AboutPage: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(squirrelUpdateStatusText)
             .font(.callout)
-          if let squirrelLatestVersion, squirrelUpdateState == .available {
+          if let squirrelLatestVersion = updateCenter.squirrelLatestVersion, updateCenter.squirrelUpdateState == .available {
             Text(String(format: String(localized: "about.squirrelUpdate.latest"), squirrelLatestVersion))
               .font(.caption)
               .foregroundStyle(.secondary)
           }
-          if squirrelUpdateUsedMirror && squirrelUpdateState != .failed {
+          if updateCenter.squirrelUpdateUsedMirror && updateCenter.squirrelUpdateState != .failed {
             Text(String(localized: "about.update.viaMirror"))
               .font(.caption2)
               .foregroundStyle(.secondary)
@@ -202,18 +187,18 @@ struct AboutPage: View {
 
         Spacer()
 
-        switch squirrelUpdateState {
+        switch updateCenter.squirrelUpdateState {
         case .available:
-          if let url = squirrelReleaseURL, let dest = URL(string: url) {
+          if let url = updateCenter.squirrelReleaseURL, let dest = URL(string: url) {
             Link("about.squirrelUpdate.download", destination: dest)
               .controlSize(.small)
               .buttonStyle(.borderedProminent)
           }
         case .failed:
-          Button("about.squirrelUpdate.retry") { checkForSquirrelUpdates() }
+          Button("about.squirrelUpdate.retry") { updateCenter.checkSquirrelUpdate() }
             .controlSize(.small)
         default:
-          Button("about.squirrelUpdate.check") { checkForSquirrelUpdates() }
+          Button("about.squirrelUpdate.check") { updateCenter.checkSquirrelUpdate() }
             .controlSize(.small)
             .disabled(!store.environment.isInstalled)
         }
@@ -225,7 +210,7 @@ struct AboutPage: View {
     if !store.environment.isInstalled {
       return "about.squirrelUpdate.notInstalled"
     }
-    switch squirrelUpdateState {
+    switch updateCenter.squirrelUpdateState {
     case .idle: return "about.squirrelUpdate.idle"
     case .checking: return "about.squirrelUpdate.checking"
     case .upToDate: return "about.squirrelUpdate.upToDate"
@@ -408,79 +393,6 @@ struct AboutPage: View {
         .font(.caption)
         .foregroundStyle(.secondary)
     }
-  }
-
-  // MARK: - 更新检查逻辑
-
-  enum UpdateCheckState {
-    case idle
-    case checking
-    case upToDate
-    case available
-    case failed
-  }
-
-  private func checkForUpdates() {
-    guard updateState != .checking else { return }
-    updateState = .checking
-    updateUsedMirror = false
-    let currentVersion = panelVersion
-    Task {
-      do {
-        let result = try await GitHubMirrorFetch.fetchLatestRelease(repo: "wolfprince12/squirrel-Panel")
-        let remote = result.tag.hasPrefix("v") ? String(result.tag.dropFirst()) : result.tag
-        let usedMirror = result.usedURL != "https://api.github.com/repos/wolfprince12/squirrel-Panel/releases/latest"
-        await MainActor.run {
-          latestVersion = remote
-          releaseURL = result.htmlURL
-          updateUsedMirror = usedMirror
-          updateState = Self.compareVersion(current: currentVersion, remote: remote) ? .available : .upToDate
-        }
-      } catch {
-        await MainActor.run { updateState = .failed }
-      }
-    }
-  }
-
-  private func checkForSquirrelUpdates() {
-    guard store.environment.isInstalled else {
-      squirrelUpdateState = .idle
-      return
-    }
-    guard squirrelUpdateState != .checking else { return }
-    squirrelUpdateState = .checking
-    squirrelUpdateUsedMirror = false
-    let currentVersion = store.environment.version ?? ""
-    Task {
-      do {
-        let result = try await GitHubMirrorFetch.fetchLatestRelease(repo: "rime/squirrel")
-        let remote = result.tag.hasPrefix("v") ? String(result.tag.dropFirst()) : result.tag
-        let usedMirror = result.usedURL != "https://api.github.com/repos/rime/squirrel/releases/latest"
-        await MainActor.run {
-          squirrelLatestVersion = remote
-          squirrelReleaseURL = result.htmlURL
-          squirrelUpdateUsedMirror = usedMirror
-          let isNewer = !currentVersion.isEmpty && Self.compareVersion(current: currentVersion, remote: remote)
-          squirrelUpdateState = isNewer ? .available : .upToDate
-        }
-      } catch {
-        await MainActor.run { squirrelUpdateState = .failed }
-      }
-    }
-  }
-
-  /// 简单版本比较：remote > current 时返回 true
-  private static func compareVersion(current: String, remote: String) -> Bool {
-    let curParts = current.split(separator: ".").compactMap { Int($0) }
-    let remParts = remote.split(separator: ".").compactMap { Int($0) }
-    let maxLen = max(curParts.count, remParts.count)
-    for i in 0..<maxLen {
-      let c = i < curParts.count ? curParts[i] : 0
-      let r = i < remParts.count ? remParts[i] : 0
-      if r > c { return true }
-      if r < c { return false }
-    }
-    return false
   }
 
   // MARK: - Helpers

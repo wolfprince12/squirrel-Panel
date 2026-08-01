@@ -46,6 +46,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
 struct RootView: View {
   @EnvironmentObject private var store: SettingsStore
+  @EnvironmentObject private var updateCenter: UpdateCenter
   @State private var selection: PanelSection = .appearance
   @State private var showingYAML = false
   @State private var showingResetAlert = false
@@ -88,6 +89,7 @@ struct RootView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) { footer }
     }
     .navigationTitle("app.name")
+    .onAppear { updateCenter.checkAllOnLaunch() }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
     .alert("alert.resetTitle", isPresented: $showingResetAlert) {
       Button("alert.cancel", role: .cancel) {}
