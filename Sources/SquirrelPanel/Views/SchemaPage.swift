@@ -20,6 +20,24 @@ struct SchemaPage: View {
     store.availableSchemas.filter { !store.enabledSchemaIDs.contains($0.id) }
   }
 
+  /// 当前切换快捷键的告警（格式非法 / 被 macOS 系统占用）。无问题返回 nil。
+  private var hotkeyWarning: String? {
+    let value = store.switcherHotkeys.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !value.isEmpty else { return nil }
+    // 支持逗号分隔的多个组合，逐个检查
+    for raw in value.split(separator: ",") {
+      let combo = raw.trimmingCharacters(in: .whitespaces)
+      guard !combo.isEmpty else { continue }
+      if HotkeyFormatter.validate(combo) != nil {
+        return String(localized: "schema.hotkeys.invalid")
+      }
+      if HotkeyFormatter.macOSReservedCombo(combo) != nil {
+        return String(localized: "schema.hotkeys.reserved")
+      }
+    }
+    return nil
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -99,8 +117,20 @@ struct SchemaPage: View {
 
         SettingsGroup("schema.switch.title") {
           LabeledContent("schema.hotkeys") {
-            HotkeyRecorder(hotkey: $store.switcherHotkeys)
-              .frame(width: 240)
+            HStack(spacing: 8) {
+              HotkeyRecorder(hotkey: $store.switcherHotkeys)
+                .frame(width: 200)
+              Button("schema.hotkeys.restore") {
+                store.switcherHotkeys = ""
+              }
+              .controlSize(.small)
+            }
+          }
+          if let warning = hotkeyWarning {
+            Text(warning)
+              .font(.caption)
+              .foregroundStyle(.orange)
+              .fixedSize(horizontal: false, vertical: true)
           }
           Text("schema.hotkeys.hint")
             .font(.caption)

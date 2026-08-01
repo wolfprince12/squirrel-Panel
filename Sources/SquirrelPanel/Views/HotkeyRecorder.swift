@@ -114,7 +114,8 @@ enum HotkeyFormatter {
     if flags.contains(.option) { mods.append("Alt") }
     if flags.contains(.command) { mods.append("Super") }
     if flags.contains(.shift) { mods.append("Shift") }
-    if flags.contains(.capsLock) { mods.append("Caps_Lock") }
+    // 注意：Rime 的修饰键名是 Lock（不是 Caps_Lock），写错会导致整条热键被静默丢弃。
+    if flags.contains(.capsLock) { mods.append("Lock") }
 
     guard let key = keyName(event: event), !key.isEmpty else { return nil }
     return (mods + [key]).joined(separator: "+")
@@ -150,5 +151,55 @@ enum HotkeyFormatter {
     case "/": return "slash"
     default: return lower
     }
+  }
+
+  // MARK: - 校验（与 Rime / librime key_table 保持一致）
+
+  /// Rime 认可的修饰键名（见 librime src/rime/key_table.cc 的 modifier_name 表）
+  static let validModifiers: Set<String> = [
+    "Shift", "Lock", "Control", "Alt", "Mod2", "Mod3", "Mod4", "Mod5",
+    "Super", "Hyper", "Meta", "Release"
+  ]
+
+  /// Rime 认可的多字符键名（单字符键如 a/1/` 由 Rime 按 ASCII 直接解析，无需列出）
+  static let validKeyNames: Set<String> = [
+    "Return", "Tab", "Space", "BackSpace", "Escape", "Delete",
+    "Up", "Down", "Left", "Right", "Home", "End", "Page_Up", "Page_Down",
+    "Insert", "Prior", "Next", "Scroll_Lock", "Pause", "Sys_Req", "Menu", "Help",
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+    "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20",
+    "grave", "minus", "equal", "bracketleft", "bracketright", "backslash",
+    "semicolon", "apostrophe", "comma", "period", "slash"
+  ]
+
+  /// 校验单个组合键字符串是否为 Rime 可识别格式。
+  /// - 返回 nil 表示合法；否则返回错误描述（含非法片段，便于调试）。
+  static func validate(_ combo: String) -> String? {
+    let tokens = combo.split(separator: "+").map(String.init)
+    guard !tokens.isEmpty else { return "empty" }
+    let key = tokens.last!
+    let mods = tokens.dropLast()
+    for m in mods {
+      if !validModifiers.contains(m) { return "unknown modifier: \(m)" }
+    }
+    // 单字符键（字母/数字/标点）Rime 直接按 ASCII 解析，合法
+    if key.count == 1 { return nil }
+    if validKeyNames.contains(key) { return nil }
+    return "unknown key: \(key)"
+  }
+
+  /// 该组合是否被 macOS 系统级占用（鼠须管作为输入法在绝大多数情况下收不到，
+  /// 因此即使写入成功也无法调出方案切换菜单）。
+  /// 返回该组合的小写形式（命中时），否则返回 nil。
+  static func macOSReservedCombo(_ combo: String) -> String? {
+    let c = combo.lowercased()
+    let reserved: Set<String> = [
+      "super+space", "super+shift+space",            // 切换输入法
+      "super+tab", "super+shift+tab",               // 切换 App
+      "control+space",                              // 通常也是切换输入法
+      "super+grave", "super+shift+grave",           // 循环窗口
+      "super+escape", "super+option+escape"         // 强制退出等
+    ]
+    return reserved.contains(c) ? c : nil
   }
 }

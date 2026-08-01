@@ -78,9 +78,12 @@
 "schema.available.empty" = "No *.schema.yaml files were found. Make sure Squirrel is installed and has been deployed at least once.";
 "schema.userProvided" = "User Directory";
 "schema.hotkeys" = "Switcher Hotkeys";
-"schema.hotkeys.hint" = "Click the box, then press a shortcut to record it (click again to re-record). Leave empty to use Squirrel defaults.";
+"schema.hotkeys.hint" = "Click the box, then press a shortcut to record it (click again to re-record). Leave empty to use Squirrel's built-in default (usually F4, Control+Shift+Tab).";
 "schema.hotkeys.recordHint" = "Click to record";
 "schema.hotkeys.listening" = "Press a shortcut…";
+"schema.hotkeys.restore" = "Restore Default";
+"schema.hotkeys.invalid" = "This key combination is not recognized by Squirrel. Please re-record it (you may use Control / Shift / Option(Alt) / Command(Super) / Caps Lock and function keys F1–F12).";
+"schema.hotkeys.reserved" = "Warning: this shortcut may be reserved by macOS (e.g. input-source or window switching), so Squirrel usually won't receive it. Prefer F4 or a Control+letter combination.";
 "schema.caption" = "Menu Caption";
 "schema.openPlum" = "Open Schema Library (plum)";
 "schema.needDeploy" = "Schema changes require redeploy to take effect.";

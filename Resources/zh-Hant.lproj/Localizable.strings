@@ -78,9 +78,12 @@
 "schema.available.empty" = "未掃描到任何 *.schema.yaml。請確認鼠須管已安裝並至少部署過一次。";
 "schema.userProvided" = "使用者目錄";
 "schema.hotkeys" = "切換快捷鍵";
-"schema.hotkeys.hint" = "點擊輸入框後按下快捷鍵即可自動錄入（再次點擊可重新錄入）。留空則沿用鼠須管預設值。";
+"schema.hotkeys.hint" = "點擊輸入框後按下快捷鍵即可自動錄入（再次點擊可重新錄入）。留空則沿用鼠須管內置預設（通常為 F4、Control+Shift+Tab）。";
 "schema.hotkeys.recordHint" = "點擊錄入快捷鍵";
 "schema.hotkeys.listening" = "請按下快捷鍵…";
+"schema.hotkeys.restore" = "恢復預設";
+"schema.hotkeys.invalid" = "該組合鍵格式鼠須管無法識別，請重新錄入（可含 Control / Shift / Option(Alt) / Command(Super) / Caps Lock 與功能鍵 F1–F12）。";
+"schema.hotkeys.reserved" = "警告：該快捷鍵可能被 macOS 系統佔用（如切換輸入法、切換視窗），鼠須管通常收不到。建議改用 F4 或 Control+字母 這類組合。";
 "schema.caption" = "選單標題";
 "schema.openPlum" = "開啟方案庫（plum）";
 "schema.needDeploy" = "方案檔案變更後需要重新部署才會生效。";
