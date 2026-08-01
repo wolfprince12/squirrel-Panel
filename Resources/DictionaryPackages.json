@@ -12,19 +12,5 @@
     "defaultSchema": "rime_ice",
     "homepage": "https://github.com/iDvel/rime-ice",
     "author": "iDvel"
-  },
-  {
-    "id": "wongdean-rime-settings",
-    "name": "Rime 设置集 (wongdean/rime-settings)",
-    "name_en": "Rime Settings (wongdean/rime-settings)",
-    "description": "一份完整的 Rime 配置预设，包含全拼、小鹤双拼、英语方案与大量词库，适合想要一套开箱即用配置的用户。",
-    "description_en": "A complete Rime preset with full pinyin, flypy double pinyin, an English schema and many dictionaries.",
-    "sourceURL": "https://github.com/wongdean/rime-settings/archive/refs/heads/master.zip",
-    "repoOwner": "wongdean",
-    "repoName": "rime-settings",
-    "branch": "master",
-    "defaultSchema": "luna_pinyin",
-    "homepage": "https://github.com/wongdean/rime-settings",
-    "author": "wongdean"
   }
 ]

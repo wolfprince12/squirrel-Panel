@@ -26,6 +26,7 @@
 "status.writeFailed" = "Write failed";
 "status.reverted" = "Unsaved changes discarded";
 "status.reset" = "Settings reset";
+"status.squirrelReset" = "Squirrel has been reset to defaults";
 
 /* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml parsing failed: %@";
@@ -327,3 +328,22 @@
 "package.error.extract" = "Extraction failed: %@";
 "package.error.notManaged" = "This package was not installed by the panel and cannot be uninstalled here.";
 "package.error.updateCheck" = "Update check failed: %@";
+
+/* v0.3.3 additions */
+"dictionary.message.saved" = "Sync settings saved";
+"about.header.update" = "Software Update";
+"about.update.idle" = "Click to check for updates";
+"about.update.checking" = "Checking for updates…";
+"about.update.upToDate" = "You're up to date";
+"about.update.available" = "A new version is available!";
+"about.update.failed" = "Update check failed";
+"about.update.latest" = "Latest version v%@";
+"about.update.download" = "Download";
+"about.update.check" = "Check for Updates";
+"about.update.retry" = "Retry";
+"about.squirrelReset.title" = "Reset Squirrel to Defaults";
+"about.squirrelReset.subtitle" = "Delete all custom.yaml patch files to completely restore Squirrel to its initial state. .bak backups are created automatically.";
+"about.squirrelReset.button" = "Reset Squirrel";
+"alert.squirrelResetTitle" = "Reset Squirrel to Defaults?";
+"alert.squirrelResetMessage" = "This will delete all *.custom.yaml files (including squirrel.custom.yaml and default.custom.yaml). Squirrel will be completely restored to its initial state. .bak backups are created automatically.";
+"alert.squirrelReset" = "Reset";

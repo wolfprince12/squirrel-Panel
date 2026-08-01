@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, behavior, appOptions, dictionary, deploy, packages, about
+  case appearance, schemas, behavior, appOptions, dictionary, about
 
   var id: String { rawValue }
 
@@ -17,8 +17,6 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return "nav.behavior"
     case .appOptions: return "nav.appOptions"
     case .dictionary: return "nav.dictionary"
-    case .deploy: return "nav.deploy"
-    case .packages: return "nav.packages"
     case .about: return "nav.about"
     }
   }
@@ -30,8 +28,6 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return "keyboard"
     case .appOptions: return "square.grid.2x2"
     case .dictionary: return "externaldrive"
-    case .deploy: return "wrench.and.screwdriver"
-    case .packages: return "shippingbox"
     case .about: return "info.circle"
     }
   }
@@ -43,8 +39,6 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return .indigo
     case .appOptions: return .blue
     case .dictionary: return .pink
-    case .deploy: return .teal
-    case .packages: return .brown
     case .about: return .gray
     }
   }
@@ -85,8 +79,6 @@ struct RootView: View {
         case .behavior: BehaviorPage()
         case .appOptions: AppOptionsPage()
         case .dictionary: DictionaryPage()
-        case .deploy: DeployPage()
-        case .packages: PackagePage()
         case .about: AboutPage(showingResetAlert: $showingResetAlert)
         }
       }

@@ -10,6 +10,14 @@ struct AboutPage: View {
   @EnvironmentObject private var store: SettingsStore
   @Binding var showingResetAlert: Bool
 
+  // 软件更新检查
+  @State private var updateState: UpdateCheckState = .idle
+  @State private var latestVersion: String?
+  @State private var releaseURL: String?
+
+  // 恢复鼠须管默认设置
+  @State private var showingSquirrelResetAlert = false
+
   private var panelVersion: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
       ?? String(localized: "generic.dev")
@@ -19,6 +27,7 @@ struct AboutPage: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         headerCard
+        updateCard
         developerCard
         promotionSection
         statusCard
@@ -27,6 +36,13 @@ struct AboutPage: View {
         projectCard
       }
       .padding(20)
+    }
+    .onAppear(perform: checkForUpdates)
+    .alert("alert.squirrelResetTitle", isPresented: $showingSquirrelResetAlert) {
+      Button("alert.cancel", role: .cancel) {}
+      Button("alert.squirrelReset", role: .destructive) { store.resetSquirrelDefaults() }
+    } message: {
+      Text("alert.squirrelResetMessage")
     }
   }
 
@@ -59,6 +75,72 @@ struct AboutPage: View {
   private var logoImage: NSImage? {
     guard let url = Bundle.main.url(forResource: "AppLogo", withExtension: "png") else { return nil }
     return NSImage(contentsOf: url)
+  }
+
+  // MARK: - 软件更新检查
+
+  private var updateCard: some View {
+    SettingsGroup("about.header.update") {
+      HStack(spacing: 12) {
+        switch updateState {
+        case .idle:
+          Image(systemName: "arrow.up.circle")
+            .foregroundStyle(.secondary)
+            .font(.title3)
+        case .checking:
+          ProgressView().controlSize(.small)
+        case .upToDate:
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+            .font(.title3)
+        case .available:
+          Image(systemName: "arrow.up.circle.fill")
+            .foregroundStyle(.orange)
+            .font(.title3)
+        case .failed:
+          Image(systemName: "exclamationmark.circle")
+            .foregroundStyle(.secondary)
+            .font(.title3)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(updateStatusText)
+            .font(.callout)
+          if let latestVersion, updateState == .available {
+            Text(String(format: String(localized: "about.update.latest"), latestVersion))
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer()
+
+        switch updateState {
+        case .available:
+          if let url = releaseURL, let dest = URL(string: url) {
+            Link("about.update.download", destination: dest)
+              .controlSize(.small)
+              .buttonStyle(.borderedProminent)
+          }
+        case .failed:
+          Button("about.update.retry") { checkForUpdates() }
+            .controlSize(.small)
+        default:
+          Button("about.update.check") { checkForUpdates() }
+            .controlSize(.small)
+        }
+      }
+    }
+  }
+
+  private var updateStatusText: LocalizedStringKey {
+    switch updateState {
+    case .idle: return "about.update.idle"
+    case .checking: return "about.update.checking"
+    case .upToDate: return "about.update.upToDate"
+    case .available: return "about.update.available"
+    case .failed: return "about.update.failed"
+    }
   }
 
   // MARK: - 开发者信息
@@ -187,6 +269,18 @@ struct AboutPage: View {
         Button("about.reset.button", role: .destructive) { showingResetAlert = true }
           .disabled(!store.canWrite)
       }
+      Divider()
+      HStack {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("about.squirrelReset.title")
+          Text("about.squirrelReset.subtitle")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        Spacer()
+        Button("about.squirrelReset.button", role: .destructive) { showingSquirrelResetAlert = true }
+          .disabled(!store.environment.isInstalled)
+      }
     }
   }
 
@@ -213,6 +307,67 @@ struct AboutPage: View {
         .font(.caption)
         .foregroundStyle(.secondary)
     }
+  }
+
+  // MARK: - 更新检查逻辑
+
+  enum UpdateCheckState {
+    case idle
+    case checking
+    case upToDate
+    case available
+    case failed
+  }
+
+  private func checkForUpdates() {
+    guard updateState != .checking else { return }
+    updateState = .checking
+    let currentVersion = panelVersion
+    let repoAPI = "https://api.github.com/repos/wolfprince12/squirrel-Panel/releases/latest"
+    guard let url = URL(string: repoAPI) else {
+      updateState = .failed
+      return
+    }
+    var req = URLRequest(url: url, timeoutInterval: 20)
+    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    Task {
+      do {
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+          await MainActor.run { updateState = .failed }
+          return
+        }
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tagName = obj["tag_name"] as? String else {
+          await MainActor.run { updateState = .failed }
+          return
+        }
+        // tag_name 形如 "v0.3.2"，去掉前缀 v 再比较
+        let remote = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+        let htmlURL = obj["html_url"] as? String
+        await MainActor.run {
+          latestVersion = remote
+          releaseURL = htmlURL
+          updateState = Self.compareVersion(current: currentVersion, remote: remote) ? .available : .upToDate
+        }
+      } catch {
+        await MainActor.run { updateState = .failed }
+      }
+    }
+  }
+
+  /// 简单版本比较：remote > current 时返回 true
+  private static func compareVersion(current: String, remote: String) -> Bool {
+    let curParts = current.split(separator: ".").compactMap { Int($0) }
+    let remParts = remote.split(separator: ".").compactMap { Int($0) }
+    let maxLen = max(curParts.count, remParts.count)
+    for i in 0..<maxLen {
+      let c = i < curParts.count ? curParts[i] : 0
+      let r = i < remParts.count ? remParts[i] : 0
+      if r > c { return true }
+      if r < c { return false }
+    }
+    return false
   }
 
   // MARK: - Helpers

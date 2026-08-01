@@ -1,0 +1,330 @@
+/* RootView & Navigation */
+"app.name" = "鼠須管配置";
+"nav.appearance" = "外觀";
+"nav.schemas" = "輸入方案";
+"nav.behavior" = "按鍵與行為";
+"nav.appOptions" = "應用適配";
+"nav.dictionary" = "詞庫與同步";
+"nav.about" = "關於";
+"footer.dirty" = "有未套用的變更";
+"footer.saved" = "設定已儲存";
+"footer.reloaded" = "設定已重新讀取";
+"footer.reset" = "已還原預設設定";
+"button.revert" = "放棄變更";
+"button.viewYAML" = "檢視 YAML";
+"button.applyDeploy" = "套用並重新部署";
+"footer.hint" = "所有變更寫入 custom.yaml 補丁，不會覆蓋你手寫的設定。";
+"menu.openUserDir" = "在 Finder 中開啟使用者目錄";
+
+/* Status Messages */
+"status.loaded" = "已讀取目前設定";
+"status.notInstalled" = "未偵測到鼠須管";
+"status.saving" = "正在寫入設定…";
+"status.deploying" = "正在重新部署…";
+"status.deployed" = "已套用，鼠須管正在重新部署";
+"status.savedWithoutSquirrel" = "設定已儲存（未偵測到鼠須管，安裝後自動生效）";
+"status.writeFailed" = "寫入失敗";
+"status.reverted" = "已放棄未儲存的變更";
+"status.reset" = "已還原預設設定";
+"status.squirrelReset" = "鼠須管已還原到初始狀態";
+
+/* Error Messages */
+"error.parse.squirrel" = "squirrel.custom.yaml 解析失敗：%@";
+"error.parse.default" = "default.custom.yaml 解析失敗：%@";
+"error.yaml.notMapping" = "檔案頂層不是鍵值對應。";
+"error.refusedToOverwrite" = "%@ 無法解析，為避免損壞你的設定，控制面板拒絕寫入。請手動檢查該檔案的 YAML 語法。";
+"error.squirrelNotInstalled" = "未偵測到鼠須管，請先安裝 Squirrel 輸入法。";
+"error.commandFailed" = "指令執行失敗（%@，結束碼 %d）。";
+
+/* Banners */
+"banner.squirrelNotInstalled" = "未偵測到鼠須管。設定仍可儲存，安裝後會自動生效。";
+"banner.userDirNotReady" = "鼠須管尚未初始化使用者目錄。首次儲存時會自動建立 ~/Library/Rime。";
+"banner.unparsable" = "%@ YAML 解析失敗。為避免損壞設定，寫入已停用。";
+"banner.openUserDir" = "開啟使用者目錄";
+"banner.download" = "前往下載";
+
+/* Alert */
+"alert.resetTitle" = "還原預設設定？";
+"alert.resetMessage" = "將移除控制面板寫入的全部設定項。你手寫的其他補丁項目會保留，操作前會自動產生 .bak 備份。";
+"alert.cancel" = "取消";
+"alert.reset" = "還原預設";
+
+/* AppearancePage */
+"appearance.preview.title" = "候選窗預覽";
+"appearance.scheme.title" = "配色方案";
+"appearance.scheme.custom" = "自訂";
+"appearance.font.title" = "字型";
+"appearance.font.candidate" = "候選字型";
+"appearance.font.comment" = "註釋字型";
+"appearance.font.label" = "編號字型";
+"appearance.layout.title" = "佈局";
+"appearance.layout.horizontal" = "橫排";
+"appearance.layout.vertical" = "直排";
+"appearance.layout.textOrientation" = "文字方向";
+"appearance.layout.horizontalText" = "橫向";
+"appearance.layout.verticalText" = "直向";
+"appearance.layout.candidateFormat" = "候選格式";
+"appearance.layout.candidateFormat.hint" = "可用佔位符：[label] 編號 · [candidate] 候選詞 · [comment] 註釋";
+"appearance.layout.inlinePreedit" = "內嵌編輯";
+"appearance.layout.pageSizeSync" = "同步每頁候選數";
+
+/* SchemaPage */
+"schema.enabled.title" = "已啟用方案";
+"schema.enabled.empty" = "尚未啟用任何方案。從下方列表勾選，或先在鼠須管中完成一次部署。";
+"schema.enabled.hint" = "按住拖動可調整順序，第一項為預設方案。";
+"schema.available.title" = "可用方案";
+"schema.available.empty" = "未掃描到任何 *.schema.yaml。請確認鼠須管已安裝並至少部署過一次。";
+"schema.userProvided" = "使用者目錄";
+"schema.hotkeys" = "切換快捷鍵";
+"schema.hotkeys.hint" = "多個快捷鍵用英文逗號分隔。留空則沿用鼠須管預設值。";
+"schema.caption" = "選單標題";
+"schema.openPlum" = "開啟方案庫（plum）";
+"schema.needDeploy" = "方案檔案變更後需要重新部署才會生效。";
+
+/* BehaviorPage */
+"behavior.pageSize" = "每頁候選數";
+"behavior.pageSize.hint" = "寫入 default.custom.yaml 的 menu/page_size。部分輸入方案會自行覆寫此項。";
+"behavior.capsLock" = "經典 Caps Lock";
+"behavior.capsLock.hint" = "開啟後 Caps Lock 只切換大小寫；關閉後它會被用作中英文切換鍵。";
+"behavior.switchKey.title" = "切換鍵";
+"behavior.switchKey.Caps_Lock" = "Caps Lock";
+"behavior.switchKey.Shift_L" = "左 Shift";
+"behavior.switchKey.Shift_R" = "右 Shift";
+"behavior.switchKey.Control_L" = "左 Control";
+"behavior.switchKey.Control_R" = "右 Control";
+"behavior.keyboardLayout" = "鍵盤佈局";
+"behavior.layout.last" = "沿用上次";
+"behavior.layout.US" = "US";
+"behavior.layout.ABC" = "美式鍵盤 ABC";
+"behavior.layout.USExtended" = "US Extended";
+"behavior.notifications" = "通知時機";
+"behavior.notifications.appropriate" = "適當時";
+"behavior.notifications.always" = "總是";
+"behavior.notifications.never" = "從不";
+"behavior.quickActions" = "快速操作";
+"behavior.pagingKeys.title" = "翻頁按鍵";
+"behavior.pagingKeys.tab" = "Tab 翻頁";
+"behavior.pagingKeys.hint" = "Tab 向後翻頁（等同 = 鍵），Shift+Tab 向前翻頁（等同 − 鍵）。變更以追加方式寫入 default.custom.yaml 的 key_binder/bindings/+，不覆蓋現有鍵位。";
+"button.asciiMode" = "切換英文";
+"button.chineseMode" = "切換中文";
+"button.restartSquirrel" = "重啟鼠須管";
+
+/* AppOptionsPage */
+"appOptions.title" = "依應用配置";
+"appOptions.add" = "新增應用";
+"appOptions.selectApp" = "選擇應用程式";
+"appOptions.asciiMode" = "聚焦時啟用 ASCII 模式";
+"appOptions.noInline" = "停用內嵌編輯";
+"appOptions.inline" = "強制內嵌編輯";
+"appOptions.vimMode" = "Vim 模式";
+"appOptions.empty" = "尚未有任何應用規則。常見用法：在終端機、程式碼編輯器中預設切換到英文。";
+"appOptions.explain.title" = "選項說明";
+"appOptions.hint" = "選擇應用，為每個應用單獨設定輸入法行為。";
+
+/* DictionaryPage */
+"dictionary.title" = "使用者詞庫";
+"dictionary.location" = "詞庫位於 ~/Library/Rime";
+"dictionary.scannedFrom" = "掃描自 ~/Library/Rime 與 Squirrel.app 的 SharedSupport";
+"dictionary.sync.title" = "同步設定";
+"dictionary.sync.id" = "安裝識別碼";
+"dictionary.sync.id.hint" = "多台裝置之間必須各不相同，否則同步會互相覆蓋。";
+"dictionary.sync.dir" = "同步目錄";
+"dictionary.sync.dir.hint" = "可以指向 iCloud 雲端或其他同步盤中的資料夾，實現多機同步。";
+"button.syncNow" = "立即同步";
+"button.redeploy" = "重新部署";
+
+/* AboutPage */
+"about.title" = "關於";
+"about.header.update" = "軟體更新";
+"about.header.developer" = "開發者";
+"about.header.moreWorks" = "更多作品";
+"about.header.status" = "執行狀態";
+"about.header.paths" = "路徑";
+"about.header.maintenance" = "維護";
+"about.header.project" = "關於專案";
+"about.panel.version" = "控制面板";
+"about.squirrel.installed" = "鼠須管";
+"about.squirrel.version" = "已安裝 v%@";
+"about.squirrel.notInstalled" = "未偵測到";
+"about.squirrel.process" = "輸入法程序";
+"about.squirrel.running" = "執行中";
+"about.squirrel.notRunning" = "未執行";
+"about.userDir" = "使用者目錄";
+"about.userDir.ready" = "已就緒";
+"about.userDir.notReady" = "尚未建立";
+"about.reload.title" = "重新讀取設定";
+"about.reload.subtitle" = "如果你在外部編輯過 YAML，用它重新整理介面。";
+"about.reload.button" = "重新讀取";
+"about.reset.title" = "還原預設設定";
+"about.reset.subtitle" = "移除控制面板寫入的全部設定項，保留你手寫的項目。";
+"about.reset.button" = "還原預設";
+"about.squirrelReset.title" = "恢復鼠須管預設設定";
+"about.squirrelReset.subtitle" = "刪除所有 custom.yaml 補丁檔案，讓鼠須管完全回到初始狀態。操作前會自動產生 .bak 備份。";
+"about.squirrelReset.button" = "恢復鼠須管預設";
+"about.description" = "鼠須管配置是一個獨立的第三方工具，用於圖形化設定 Rime 輸入法引擎的 macOS 前端「鼠須管」(Squirrel)。";
+"about.disclaimer" = "本專案不隸屬於 RIME 官方，也不會修改鼠須管本體。所有變更都以標準的 Rime 補丁檔案形式寫入使用者目錄，隨時可以手動編輯或刪除。";
+"about.license" = "以 GPL-3.0 協議開源。";
+"about.link.home" = "專案首頁";
+"about.link.issues" = "回報問題";
+"about.link.rime" = "RIME 官網";
+"about.link.squirrel" = "鼠須管原始碼";
+
+/* Update check */
+"about.update.idle" = "點擊檢查是否有新版本";
+"about.update.checking" = "正在檢查更新…";
+"about.update.upToDate" = "目前已是最新版本";
+"about.update.available" = "發現新版本！";
+"about.update.failed" = "檢查更新失敗";
+"about.update.latest" = "最新版本 v%@";
+"about.update.download" = "前往下載";
+"about.update.check" = "檢查更新";
+"about.update.retry" = "重試";
+
+/* Developer & Promotion */
+"about.developer.name" = "Mr大狼";
+"about.developer.title" = "導演 / 製作人 / AI 產品創作者";
+"about.developer.bio" = "20餘年影視傳媒與演出製作經驗，現用AI把經驗激烈跨界重構成產品。";
+"promo.yaozhi.title" = "爻知雲AI";
+"promo.yaozhi.subtitle" = "微信服務號";
+"promo.yaozhi.description" = "關注取得 AI 創作助手、工作流技巧與專案動態。";
+"promo.yaozhi.saveQR" = "儲存 QR Code";
+"promo.yaozhi.saved" = "QR Code 已儲存到下載資料夾。";
+"promo.yaozhi.saveFailed" = "儲存 QR Code 失敗。";
+"promo.dealv.title" = "DealV";
+"promo.dealv.subtitle" = "AI 智慧合約管理";
+"promo.dealv.description" = "面向專業人士的合約智慧審查與管理平台。";
+"promo.dealv.action" = "造訪 DealV";
+
+/* YAML Inspector */
+"yaml.title" = "即將寫入的設定";
+"yaml.subtitle" = "這是點擊「套用並重新部署」後磁碟上的內容，可先核對再落盤。";
+"yaml.squirrel" = "squirrel.custom.yaml";
+"yaml.defaults" = "default.custom.yaml";
+"yaml.squirrel.note" = "外觀、候選窗、應用適配";
+"yaml.defaults.note" = "輸入方案、按鍵行為、每頁候選數";
+"yaml.empty" = "（這份檔案目前沒有任何內容）";
+"yaml.unavailable" = "（無法產生預覽）";
+"yaml.showInFinder" = "在 Finder 中顯示";
+"yaml.copy" = "複製內容";
+"yaml.copied" = "已複製";
+"yaml.close" = "關閉";
+
+/* Generic */
+"generic.open" = "開啟";
+"generic.select" = "選擇";
+"generic.remove" = "移除";
+"generic.enable" = "啟用";
+"generic.version" = "版本";
+"generic.unknown" = "未知";
+"generic.dev" = "開發版";
+
+/* Added keys for view localization */
+"appearance.scheme.followSystem" = "跟隨系統深淺色，深色模式使用另一套配色";
+"appearance.scheme.dark" = "深色模式配色";
+"appearance.layout.arrangement" = "候選排列";
+"appearance.font.candidateSize" = "候選字號";
+"appearance.font.labelSize" = "編號字號";
+"appearance.font.commentSize" = "註釋字號";
+"appearance.layout.cornerRadius" = "候選窗圓角";
+"appearance.layout.hilitedCornerRadius" = "高亮圓角";
+"appearance.layout.lineSpacing" = "候選間距";
+"appearance.layout.preeditSpacing" = "編碼區間距";
+"appearance.layout.borderWidth" = "邊框寬度";
+"appearance.layout.borderHeight" = "邊框高度";
+"appearance.layout.alpha" = "整體不透明度";
+"appearance.behavior.title" = "行為";
+"appearance.behavior.inlineCode" = "內嵌編碼：拼音直接顯示在輸入位置";
+"appearance.behavior.inlineCandidate" = "內嵌候選：把第一候選也寫進輸入位置";
+"appearance.behavior.translucency" = "毛玻璃背景（需配色帶透明度）";
+"appearance.behavior.showPaging" = "顯示翻頁箭頭";
+"appearance.behavior.memorizeSize" = "記住候選窗尺寸";
+"appearance.behavior.mutualExclusive" = "橫排時高亮互斥";
+"appearance.scheme.author" = "作者：%@";
+"appearance.font.system" = "跟隨系統";
+
+"schema.available.allEnabled" = "本機所有方案都已啟用。";
+"schema.available.rescan" = "重新掃描";
+"schema.switch.title" = "方案切換";
+"schema.installMore" = "安裝更多方案";
+"schema.installMore.hint" = "透過東風破 plum 從官方倉庫取得";
+"schema.notFound" = "方案檔案未找到，可能尚未安裝";
+
+"behavior.switch.commit_code" = "上屏編碼";
+"behavior.switch.commit_code.detail" = "把已輸入的拼音原樣上屏後切換";
+"behavior.switch.commit_text" = "上屏候選";
+"behavior.switch.commit_text.detail" = "把目前候選詞上屏後切換";
+"behavior.switch.clear" = "清空輸入";
+"behavior.switch.clear.detail" = "丟棄已輸入內容後切換";
+"behavior.switch.inline_ascii" = "臨時英文";
+"behavior.switch.inline_ascii.detail" = "進入內嵌西文編輯模式";
+"behavior.switch.noop" = "不處理";
+"behavior.switch.noop.detail" = "該鍵不參與中英切換";
+"behavior.candidates.title" = "候選";
+"behavior.switching.title" = "中英文切換";
+"behavior.system.title" = "系統整合";
+"behavior.quickActions.hint" = "這些操作立即生效，不需要點「套用」。";
+
+"appOptions.addFromApps" = "從「應用程式」新增";
+"appOptions.addCommon" = "新增常用應用";
+"appOptions.header.app" = "應用";
+"appOptions.column.ascii" = "預設英文";
+"appOptions.column.noInline" = "停用內嵌";
+"appOptions.column.inline" = "強制內嵌";
+"appOptions.asciiMode.detail" = "切換到該應用時自動進入英文（ASCII）模式，對應 ascii_mode。";
+"appOptions.noInline.detail" = "該應用中不把拼音寫進輸入位置，改用候選窗頂部顯示，對應 no_inline。適合內嵌顯示異常的應用。";
+"appOptions.inline.detail" = "該應用中強制使用內嵌編碼，對應 inline。";
+"appOptions.vimMode.detail" = "該應用失去輸入焦點時自動切回英文，對應 vim_mode。適合 Vim、Emacs 一類的模式編輯器。";
+"appOptions.panel.message" = "選擇要單獨設定輸入狀態的應用";
+"generic.add" = "新增";
+
+"dictionary.empty" = "尚未產生任何使用者詞庫。正常使用鼠須管輸入一段時間後，這裡會列出各方案的學習記錄。";
+"dictionary.neverUsed" = "從未使用";
+"dictionary.lastUpdated" = "最近更新 %@";
+"dictionary.openInFinder" = "在 Finder 中開啟";
+"dictionary.sync.idPlaceholder" = "這台裝置的識別碼";
+"dictionary.sync.dirPlaceholder" = "留空則使用 ~/Library/Rime/sync";
+"dictionary.save" = "儲存同步設定";
+"dictionary.syncNowData" = "立即同步使用者資料";
+"dictionary.message.syncStarted" = "已發起同步";
+"dictionary.message.saved" = "同步設定已儲存";
+"dictionary.maintenance.title" = "維護";
+"dictionary.redeploy.title" = "重新編譯全部方案";
+"dictionary.message.deployStarted" = "已發起部署";
+"dictionary.syncDir.message" = "選擇同步目錄";
+"generic.choose" = "選擇…";
+
+/* Alert - Squirrel Reset */
+"alert.squirrelResetTitle" = "恢復鼠須管預設設定？";
+"alert.squirrelResetMessage" = "將刪除所有 *.custom.yaml 檔案（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠須管會完全回到安裝後的初始狀態。操作前會自動產生 .bak 備份。";
+"alert.squirrelReset" = "恢復初始狀態";
+
+/* PackagePage */
+"package.title" = "第三方詞庫";
+"package.intro" = "這裡列出所有可安裝到鼠須管的第三方詞庫。每次開啟本面板會自動檢查更新；已安裝的包可手動點擊「更新」升級到最新版本。安裝會下載官方封存檔、備份被覆蓋的檔案，並在完成後自動部署。";
+"package.status.notInstalled" = "未安裝";
+"package.status.installed" = "已安裝（本面板管理）";
+"package.status.external" = "已存在（外部安裝）";
+"package.status.upToDate" = "已是最新";
+"package.status.updateAvailable" = "有新版本";
+"package.status.checking" = "檢查更新中…";
+"package.button.install" = "安裝";
+"package.button.manage" = "納入管理";
+"package.button.uninstall" = "解除安裝";
+"package.button.update" = "更新";
+"package.button.checkAll" = "檢查更新";
+"package.button.checkUpdate" = "重試檢查";
+"package.checkingAll" = "檢查更新中…";
+"package.button.homepage" = "專案首頁";
+"package.log.install" = "正在安裝 %@";
+"package.log.downloading" = "正在下載詞庫包…";
+"package.log.installed" = "安裝完成，共寫入 %@ 個檔案，並已重新部署。";
+"package.log.uninstall" = "正在解除安裝 %@";
+"package.log.removing" = "正在移除詞庫包檔案並還原備份…";
+"package.log.removed" = "解除安裝完成，已還原被覆蓋的檔案。";
+"package.log.update" = "正在更新 %@";
+"package.log.updated" = "已更新到最新版本（commit %@），並完成重新部署。";
+"package.log.error" = "操作失敗：%@";
+"package.error.download" = "下載失敗：%@";
+"package.error.extract" = "解壓失敗：%@";
+"package.error.notManaged" = "該詞庫包不是由本面板安裝的，無法在此解除安裝。";
+"package.error.updateCheck" = "檢查更新失敗：%@";

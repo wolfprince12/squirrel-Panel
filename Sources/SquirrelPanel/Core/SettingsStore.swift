@@ -497,6 +497,9 @@ final class SettingsStore: ObservableObject {
       if environment.isInstalled {
         statusMessage = "status.deploying"
         try SquirrelBridge.deploy(environment: environment)
+        // 配色方案等前端外观设置需要重启进程才能可靠生效，
+        // deploy 通知仅触发引擎重载，不一定刷新 squirrel.yaml 前端配置。
+        try? SquirrelBridge.restart(environment: environment)
         statusMessage = "status.deployed"
       } else {
         statusMessage = "status.savedWithoutSquirrel"
@@ -526,11 +529,40 @@ final class SettingsStore: ObservableObject {
       try squirrelPatch.save()
       try defaultPatch.save()
       reload()
-      if environment.isInstalled { try SquirrelBridge.deploy(environment: environment) }
+      if environment.isInstalled {
+        try SquirrelBridge.deploy(environment: environment)
+        try? SquirrelBridge.restart(environment: environment)
+      }
       statusMessage = "status.reset"
     } catch {
       lastError = error.localizedDescription
     }
+  }
+
+  /// 恢复鼠须管默认设置：删除所有 *.custom.yaml 文件，让鼠须管完全回到初始状态。
+  /// 与 resetManagedSettings 不同，这会移除所有补丁（包括用户手写的），是彻底重置。
+  func resetSquirrelDefaults() {
+    let fm = FileManager.default
+    let dir = RimeEnvironment.userDirectory
+    // 列出所有 .custom.yaml 文件
+    guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else {
+      lastError = String(localized: "error.squirrelNotInstalled")
+      return
+    }
+    let customFiles = items.filter { $0.pathExtension == "yaml" && $0.lastPathComponent.hasSuffix(".custom.yaml") }
+    // 先备份再删除
+    for file in customFiles {
+      let backup = file.appendingPathExtension("bak")
+      try? fm.removeItem(at: backup)
+      try? fm.copyItem(at: file, to: backup)
+      try? fm.removeItem(at: file)
+    }
+    reload()
+    if environment.isInstalled {
+      try? SquirrelBridge.deploy(environment: environment)
+      try? SquirrelBridge.restart(environment: environment)
+    }
+    statusMessage = "status.squirrelReset"
   }
 
   // MARK: - 预览

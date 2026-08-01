@@ -1,5 +1,5 @@
 /* RootView & Navigation */
-"app.name" = "鼠须管控制面板";
+"app.name" = "鼠须管配置";
 "nav.appearance" = "外观";
 "nav.schemas" = "输入方案";
 "nav.behavior" = "按键与行为";
@@ -26,6 +26,7 @@
 "status.writeFailed" = "写入失败";
 "status.reverted" = "已放弃未保存的改动";
 "status.reset" = "已恢复默认设置";
+"status.squirrelReset" = "鼠须管已恢复到初始状态";
 
 /* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml 解析失败：%@";
@@ -156,7 +157,7 @@
 "about.reset.title" = "恢复默认设置";
 "about.reset.subtitle" = "移除控制面板写入的全部配置项，保留你手写的条目。";
 "about.reset.button" = "恢复默认";
-"about.description" = "鼠须管控制面板是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
+"about.description" = "鼠须管配置是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
 "about.disclaimer" = "本项目不隶属于 RIME 官方，也不会修改鼠须管本体。所有改动都以标准的 Rime 补丁文件形式写入用户目录，随时可以手动编辑或删除。";
 "about.license" = "以 GPL-3.0 协议开源。";
 "about.link.home" = "项目主页";
@@ -327,3 +328,22 @@
 "package.error.extract" = "解压失败：%@";
 "package.error.notManaged" = "该词库包不是由本面板安装的，无法在此卸载。";
 "package.error.updateCheck" = "检查更新失败：%@";
+
+/* v0.3.3 新增 */
+"dictionary.message.saved" = "同步设置已保存";
+"about.header.update" = "软件更新";
+"about.update.idle" = "点击检查是否有新版本";
+"about.update.checking" = "正在检查更新…";
+"about.update.upToDate" = "当前已是最新版本";
+"about.update.available" = "发现新版本！";
+"about.update.failed" = "检查更新失败";
+"about.update.latest" = "最新版本 v%@";
+"about.update.download" = "前往下载";
+"about.update.check" = "检查更新";
+"about.update.retry" = "重试";
+"about.squirrelReset.title" = "恢复鼠须管默认设置";
+"about.squirrelReset.subtitle" = "删除所有 custom.yaml 补丁文件，让鼠须管完全回到初始状态。操作前会自动生成 .bak 备份。";
+"about.squirrelReset.button" = "恢复鼠须管默认";
+"alert.squirrelResetTitle" = "恢复鼠须管默认设置？";
+"alert.squirrelResetMessage" = "将删除所有 *.custom.yaml 文件（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠须管会完全回到安装后的初始状态。操作前会自动生成 .bak 备份。";
+"alert.squirrelReset" = "恢复初始状态";
