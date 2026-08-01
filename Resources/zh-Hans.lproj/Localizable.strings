@@ -181,7 +181,7 @@
 "promo.dealv.action" = "访问 DealV";
 "promo.dsondt.title" = "DSonDT";
 "promo.dsondt.subtitle" = "开源项目";
-"promo.dsondt.description" = "大狼的 AI 与数据实验项目，探索新工具与新可能。";
+"promo.dsondt.description" = "带有长效记忆库的 Mac 系统 DeepSeek 桌面端";
 "promo.dsondt.action" = "查看 DSonDT";
 
 /* YAML Inspector */
@@ -345,6 +345,17 @@
 "about.update.download" = "前往下载";
 "about.update.check" = "检查更新";
 "about.update.retry" = "重试";
+"about.header.squirrelUpdate" = "鼠须管更新";
+"about.squirrelUpdate.idle" = "点击检查鼠须管是否有新版本";
+"about.squirrelUpdate.checking" = "正在检查鼠须管更新…";
+"about.squirrelUpdate.upToDate" = "鼠须管已是最新版本";
+"about.squirrelUpdate.available" = "发现鼠须管新版本！";
+"about.squirrelUpdate.failed" = "检查鼠须管更新失败";
+"about.squirrelUpdate.notInstalled" = "未检测到鼠须管，无法检查更新";
+"about.squirrelUpdate.latest" = "鼠须管最新版本 v%@";
+"about.squirrelUpdate.download" = "前往下载";
+"about.squirrelUpdate.check" = "检查更新";
+"about.squirrelUpdate.retry" = "重试";
 "about.squirrelReset.title" = "恢复鼠须管默认设置";
 "about.squirrelReset.subtitle" = "删除所有 custom.yaml 补丁文件，让鼠须管完全回到初始状态。操作前会自动生成 .bak 备份。";
 "about.squirrelReset.button" = "恢复鼠须管默认";

@@ -179,6 +179,17 @@
 "about.update.download" = "前往下載";
 "about.update.check" = "檢查更新";
 "about.update.retry" = "重試";
+"about.header.squirrelUpdate" = "鼠鬚管更新";
+"about.squirrelUpdate.idle" = "點擊檢查鼠鬚管是否有新版本";
+"about.squirrelUpdate.checking" = "正在檢查鼠鬚管更新…";
+"about.squirrelUpdate.upToDate" = "鼠鬚管已是最新版本";
+"about.squirrelUpdate.available" = "發現鼠鬚管新版本！";
+"about.squirrelUpdate.failed" = "檢查鼠鬚管更新失敗";
+"about.squirrelUpdate.notInstalled" = "未檢測到鼠鬚管，無法檢查更新";
+"about.squirrelUpdate.latest" = "鼠鬚管最新版本 v%@";
+"about.squirrelUpdate.download" = "前往下載";
+"about.squirrelUpdate.check" = "檢查更新";
+"about.squirrelUpdate.retry" = "重試";
 
 /* Developer & Promotion */
 "about.developer.name" = "Mr大狼";
@@ -196,7 +207,7 @@
 "promo.dealv.action" = "造訪 DealV";
 "promo.dsondt.title" = "DSonDT";
 "promo.dsondt.subtitle" = "開源專案";
-"promo.dsondt.description" = "大狼的 AI 與數據實驗專案，探索新工具與新可能。";
+"promo.dsondt.description" = "帶有長效記憶庫的 Mac 系統 DeepSeek 桌面端";
 "promo.dsondt.action" = "查看 DSonDT";
 
 /* YAML Inspector */

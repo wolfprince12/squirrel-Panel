@@ -35,7 +35,7 @@
 
 ## 语言
 
-界面跟随系统语言，目前支持简体中文与英文。
+界面跟随系统语言，目前支持简体中文、繁体中文与英文。App 名称也会随系统语言切换：英文系统显示 **Squirrel Panel**，简体中文显示**鼠须管控制面板**，繁体中文显示**鼠鬚管控制面板**。
 
 ## 自行构建
 
@@ -46,6 +46,12 @@ git clone https://github.com/wolfprince12/squirrel-Panel.git
 cd squirrel-Panel
 make release
 # 产物：dist/Squirrel Panel.app
+```
+
+如果修改过 `Resources/AppLogo.png`，需要先重新生成图标：
+
+```bash
+make icons
 ```
 
 如果终端启用了沙箱导致 SwiftPM 无法执行清单编译：
@@ -71,7 +77,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## 关于作者
 
-**Mr大狼** —— 二十年影视传媒老兵，做过音乐节、纪录片、综艺导演，作品上过央视春晚、北影节音乐节。八年前独立运营「大狼导演工作室」，近年转型用 AI 把跨界底子焊成产品：爻知云 微信服务号、DealV智能合同平台、鼠须管输入法图形控制台等
+**Mr大狼（Winter Zheng）** —— 二十年影视传媒老兵，做过音乐节、纪录片、综艺导演，作品上过央视春晚、北影节音乐节。八年前独立运营「大狼导演工作室」，近年转型用 AI 把跨界底子焊成产品：爻知云AI 微信服务号、DealV 智能合同平台、鼠须管输入法图形控制台等。
 
 鼠须管是好用的输入法，但改配置要手写 YAML，对普通人门槛太高。做这个面板，就是想把它变得「看得见、点得到」。
 
@@ -91,6 +97,8 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 ---
 
 # Squirrel Panel (English)
+
+> This English section is a translation of the Chinese section above. In case of conflict, the Chinese version prevails.
 
 <div align="center">
 
@@ -112,7 +120,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
 - **📚 Dictionary & sync**: user dictionary overview, sync dir & ID, one-click sync.
 - **🚀 Deploy & diagnose**: one-click redeploy with result log, visual schema_list selection, and detection of enabled-but-unavailable schemas (e.g. rime-ice installed but cannot type Chinese).
-- **📦 Dictionary packages**: one-click install/uninstall curated packages, starting with **Rime Ice (rime-ice)**. Overwritten files are backed up automatically.
+- **📦 Dictionary packages**: curated third-party packages including **Rime Ice (rime-ice)** and **Rime Settings Set**, with automatic update checks, one-click install/update/uninstall, and automatic backup/restore of overwritten files.
 - **🔧 About & maintenance**: running status, path jump, restore defaults, YAML preview.
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.
@@ -120,7 +128,7 @@ All changes are written as Rime-standard `*.custom.yaml` patches — they never 
 ## Install
 
 1. Download the latest `Squirrel-Panel.dmg` from [Releases](https://github.com/wolfprince12/squirrel-Panel/releases).
-2. Open the DMG and drag `Squirrel Panel.app` into **Applications**.
+2. Open the DMG and drag `Squirrel Panel.app` into **Applications**. The app name follows your system language: **Squirrel Panel** (English), **鼠须管控制面板** (Simplified Chinese), or **鼠鬚管控制面板** (Traditional Chinese).
 3. If the first launch says "cannot be opened", go to **System Settings → Privacy & Security** and click "Open Anyway".
 
 > Make sure the Squirrel input method is installed on your Mac ([official download](https://rime.im/download/)).
@@ -137,7 +145,7 @@ So even if this panel has a bug, at worst it only affects the patch files; unins
 
 ## About the Author
 
-**Mr. Dawolf** — 20+ years in film, TV and live production; runs "Big Wolf Director Studio" independently; now rebuilding cross-domain experience into AI products: 爻知云 WeChat Official Account, DealV smart contract platform, Squirrel Panel (input-method GUI), and more.
+**Mr大狼 (Winter Zheng)** — 20+ years in film, TV and live production; runs "Big Wolf Director Studio" independently; now rebuilding cross-domain experience into AI products: 爻知云AI WeChat Official Account, DealV smart contract platform, Squirrel Panel (input-method GUI), and more.
 
 Squirrel is a great input method, but configuring it means hand-editing YAML — too high a bar for most people. This panel exists to make it visible and clickable.
 

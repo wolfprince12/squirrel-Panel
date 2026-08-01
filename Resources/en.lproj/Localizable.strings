@@ -181,7 +181,7 @@
 "promo.dealv.action" = "Visit DealV";
 "promo.dsondt.title" = "DSonDT";
 "promo.dsondt.subtitle" = "Open Source Project";
-"promo.dsondt.description" = "An AI and data experiment project by Winter, exploring new tools and possibilities.";
+"promo.dsondt.description" = "A macOS DeepSeek desktop client with persistent memory library.";
 "promo.dsondt.action" = "View DSonDT";
 
 /* YAML Inspector */
@@ -345,6 +345,17 @@
 "about.update.download" = "Download";
 "about.update.check" = "Check for Updates";
 "about.update.retry" = "Retry";
+"about.header.squirrelUpdate" = "Squirrel Update";
+"about.squirrelUpdate.idle" = "Check for Squirrel updates";
+"about.squirrelUpdate.checking" = "Checking for Squirrel updates…";
+"about.squirrelUpdate.upToDate" = "Squirrel is up to date";
+"about.squirrelUpdate.available" = "New Squirrel version available!";
+"about.squirrelUpdate.failed" = "Failed to check Squirrel updates";
+"about.squirrelUpdate.notInstalled" = "Squirrel not detected";
+"about.squirrelUpdate.latest" = "Latest Squirrel version v%@";
+"about.squirrelUpdate.download" = "Download";
+"about.squirrelUpdate.check" = "Check";
+"about.squirrelUpdate.retry" = "Retry";
 "about.squirrelReset.title" = "Reset Squirrel to Defaults";
 "about.squirrelReset.subtitle" = "Delete all custom.yaml patch files to completely restore Squirrel to its initial state. .bak backups are created automatically.";
 "about.squirrelReset.button" = "Reset Squirrel";

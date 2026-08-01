@@ -10,9 +10,15 @@ VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURC
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
 SWIFT_BUILD ?= swift build
 
-.PHONY: all debug release bundle universal dmg install uninstall run clean
+.PHONY: all debug release bundle universal dmg install uninstall run clean icons
 
 all: release
+
+## 从 Resources/AppLogo.png 重新生成 AppIcon.icns 与 build-icon/AppIcon.iconset
+icons:
+	@swift tools/make_icon_from_logo.swift
+	@iconutil -c icns build-icon/AppIcon.iconset -o Resources/AppIcon.icns
+	@echo "✅ 已生成 Resources/AppIcon.icns"
 
 ## 本机架构构建（开发用，最快）
 debug:

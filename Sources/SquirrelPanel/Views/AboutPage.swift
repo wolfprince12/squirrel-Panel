@@ -15,6 +15,11 @@ struct AboutPage: View {
   @State private var latestVersion: String?
   @State private var releaseURL: String?
 
+  // 鼠须管输入法更新检查
+  @State private var squirrelUpdateState: UpdateCheckState = .idle
+  @State private var squirrelLatestVersion: String?
+  @State private var squirrelReleaseURL: String?
+
   // 恢复鼠须管默认设置
   @State private var showingSquirrelResetAlert = false
 
@@ -28,6 +33,7 @@ struct AboutPage: View {
       VStack(alignment: .leading, spacing: 20) {
         headerCard
         updateCard
+        squirrelUpdateCard
         developerCard
         promotionSection
         statusCard
@@ -37,7 +43,10 @@ struct AboutPage: View {
       }
       .padding(20)
     }
-    .onAppear(perform: checkForUpdates)
+    .onAppear {
+      checkForUpdates()
+      checkForSquirrelUpdates()
+    }
     .alert("alert.squirrelResetTitle", isPresented: $showingSquirrelResetAlert) {
       Button("alert.cancel", role: .cancel) {}
       Button("alert.squirrelReset", role: .destructive) { store.resetSquirrelDefaults() }
@@ -140,6 +149,76 @@ struct AboutPage: View {
     case .upToDate: return "about.update.upToDate"
     case .available: return "about.update.available"
     case .failed: return "about.update.failed"
+    }
+  }
+
+  // MARK: - 鼠须管输入法更新检查
+
+  private var squirrelUpdateCard: some View {
+    SettingsGroup("about.header.squirrelUpdate") {
+      HStack(spacing: 12) {
+        switch squirrelUpdateState {
+        case .idle:
+          Image(systemName: "arrow.up.circle")
+            .foregroundStyle(.secondary)
+            .font(.title3)
+        case .checking:
+          ProgressView().controlSize(.small)
+        case .upToDate:
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+            .font(.title3)
+        case .available:
+          Image(systemName: "arrow.up.circle.fill")
+            .foregroundStyle(.orange)
+            .font(.title3)
+        case .failed:
+          Image(systemName: "exclamationmark.circle")
+            .foregroundStyle(.secondary)
+            .font(.title3)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(squirrelUpdateStatusText)
+            .font(.callout)
+          if let squirrelLatestVersion, squirrelUpdateState == .available {
+            Text(String(format: String(localized: "about.squirrelUpdate.latest"), squirrelLatestVersion))
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer()
+
+        switch squirrelUpdateState {
+        case .available:
+          if let url = squirrelReleaseURL, let dest = URL(string: url) {
+            Link("about.squirrelUpdate.download", destination: dest)
+              .controlSize(.small)
+              .buttonStyle(.borderedProminent)
+          }
+        case .failed:
+          Button("about.squirrelUpdate.retry") { checkForSquirrelUpdates() }
+            .controlSize(.small)
+        default:
+          Button("about.squirrelUpdate.check") { checkForSquirrelUpdates() }
+            .controlSize(.small)
+            .disabled(!store.environment.isInstalled)
+        }
+      }
+    }
+  }
+
+  private var squirrelUpdateStatusText: LocalizedStringKey {
+    if !store.environment.isInstalled {
+      return "about.squirrelUpdate.notInstalled"
+    }
+    switch squirrelUpdateState {
+    case .idle: return "about.squirrelUpdate.idle"
+    case .checking: return "about.squirrelUpdate.checking"
+    case .upToDate: return "about.squirrelUpdate.upToDate"
+    case .available: return "about.squirrelUpdate.available"
+    case .failed: return "about.squirrelUpdate.failed"
     }
   }
 
@@ -363,6 +442,49 @@ struct AboutPage: View {
         }
       } catch {
         await MainActor.run { updateState = .failed }
+      }
+    }
+  }
+
+  private func checkForSquirrelUpdates() {
+    guard store.environment.isInstalled else {
+      squirrelUpdateState = .idle
+      return
+    }
+    guard squirrelUpdateState != .checking else { return }
+    squirrelUpdateState = .checking
+    let currentVersion = store.environment.version ?? ""
+    let repoAPI = "https://api.github.com/repos/rime/squirrel/releases/latest"
+    guard let url = URL(string: repoAPI) else {
+      squirrelUpdateState = .failed
+      return
+    }
+    var req = URLRequest(url: url, timeoutInterval: 20)
+    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    req.setValue("SquirrelPanel/\(panelVersion)", forHTTPHeaderField: "User-Agent")
+    Task {
+      do {
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+          await MainActor.run { squirrelUpdateState = .failed }
+          return
+        }
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tagName = obj["tag_name"] as? String else {
+          await MainActor.run { squirrelUpdateState = .failed }
+          return
+        }
+        // rime/squirrel 的 tag 有时带 v 前缀（如 "1.0.2" 或 "v1.0.2"），统一去掉 v 再比较
+        let remote = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+        let htmlURL = obj["html_url"] as? String
+        await MainActor.run {
+          squirrelLatestVersion = remote
+          squirrelReleaseURL = htmlURL
+          let isNewer = !currentVersion.isEmpty && Self.compareVersion(current: currentVersion, remote: remote)
+          squirrelUpdateState = isNewer ? .available : .upToDate
+        }
+      } catch {
+        await MainActor.run { squirrelUpdateState = .failed }
       }
     }
   }

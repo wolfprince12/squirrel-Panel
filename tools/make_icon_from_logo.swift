@@ -21,14 +21,32 @@ guard let logo = NSImage(contentsOf: logoURL) else {
 }
 
 func drawIcon(size: CGFloat) -> NSImage {
-  let image = NSImage(size: NSSize(width: size, height: size))
-  image.lockFocus()
-  guard NSGraphicsContext.current != nil else {
-    image.unlockFocus()
-    return image
+  let pixelSize = Int(size)
+  let bitmap = NSBitmapImageRep(
+    bitmapDataPlanes: nil,
+    pixelsWide: pixelSize,
+    pixelsHigh: pixelSize,
+    bitsPerSample: 8,
+    samplesPerPixel: 4,
+    hasAlpha: true,
+    isPlanar: false,
+    colorSpaceName: .deviceRGB,
+    bytesPerRow: 0,
+    bitsPerPixel: 0
+  )!
+  bitmap.size = NSSize(width: size, height: size)
+
+  guard let ctx = NSGraphicsContext(bitmapImageRep: bitmap) else {
+    print("无法创建图形上下文")
+    exit(1)
   }
 
+  NSGraphicsContext.saveGraphicsState()
+  NSGraphicsContext.current = ctx
+
   let bounds = CGRect(origin: .zero, size: CGSize(width: size, height: size))
+
+  // 透明背景已隐含，无需填充
 
   // logo 居中，按长边等比缩放，留 6% 边距
   let padding = size * 0.06
@@ -44,7 +62,10 @@ func drawIcon(size: CGFloat) -> NSImage {
   )
   logo.draw(in: logoRect, from: .zero, operation: .sourceOver, fraction: 1)
 
-  image.unlockFocus()
+  NSGraphicsContext.restoreGraphicsState()
+
+  let image = NSImage(size: NSSize(width: size, height: size))
+  image.addRepresentation(bitmap)
   return image
 }
 
@@ -58,8 +79,7 @@ let variants: [(String, CGFloat)] = [
 
 for (name, size) in variants {
   let image = drawIcon(size: size)
-  guard let tiff = image.tiffRepresentation,
-        let rep = NSBitmapImageRep(data: tiff),
+  guard let rep = image.representations.first as? NSBitmapImageRep,
         let png = rep.representation(using: .png, properties: [:]) else {
     print("生成失败：\(name)")
     exit(1)
