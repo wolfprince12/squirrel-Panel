@@ -345,6 +345,7 @@
 "about.update.download" = "前往下载";
 "about.update.check" = "检查更新";
 "about.update.retry" = "重试";
+"about.update.viaMirror" = "已通过镜像检查";
 "about.header.squirrelUpdate" = "鼠须管更新";
 "about.squirrelUpdate.idle" = "点击检查鼠须管是否有新版本";
 "about.squirrelUpdate.checking" = "正在检查鼠须管更新…";

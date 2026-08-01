@@ -179,6 +179,7 @@
 "about.update.download" = "前往下載";
 "about.update.check" = "檢查更新";
 "about.update.retry" = "重試";
+"about.update.viaMirror" = "已透過鏡像檢查";
 "about.header.squirrelUpdate" = "鼠鬚管更新";
 "about.squirrelUpdate.idle" = "點擊檢查鼠鬚管是否有新版本";
 "about.squirrelUpdate.checking" = "正在檢查鼠鬚管更新…";

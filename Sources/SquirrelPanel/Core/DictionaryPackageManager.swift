@@ -264,30 +264,14 @@ enum DictionaryPackageManager {
     return written
   }
 
-  /// 拉取上游仓库指定分支的最新 commit（用于更新比对）
+  /// 拉取上游仓库指定分支的最新 commit（用于更新比对），自动 fallback 到 GitHub 镜像
   static func fetchLatestCommit(pkg: DictionaryPackage) async throws -> (sha: String, date: Date?) {
-    guard let url = pkg.updateCheckAPIURL else {
+    guard let owner = pkg.repoOwner, let repo = pkg.repoName, let branch = pkg.branch,
+          !owner.isEmpty, !repo.isEmpty, !branch.isEmpty else {
       throw PackageManagerError.updateCheckFailed("no repo info")
     }
-    var req = URLRequest(url: url, timeoutInterval: 20)
-    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-    req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
-    let (data, resp) = try await URLSession.shared.data(for: req)
-    if let http = resp as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-      throw PackageManagerError.updateCheckFailed("HTTP \(http.statusCode)")
-    }
-    guard let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-          let first = arr.first,
-          let sha = first["sha"] as? String else {
-      throw PackageManagerError.updateCheckFailed("unexpected response")
-    }
-    var date: Date? = nil
-    if let commit = first["commit"] as? [String: Any],
-       let author = commit["author"] as? [String: Any],
-       let dateStr = author["date"] as? String {
-      date = ISO8601DateFormatter().date(from: dateStr)
-    }
-    return (sha, date)
+    let result = try await GitHubMirrorFetch.fetchLatestCommit(owner: owner, repo: repo, branch: branch)
+    return (result.sha, result.date)
   }
 
   /// 更新已安装的包到上游最新版本。保留首次安装时生成的原始备份（卸载时还原用）。
@@ -441,13 +425,10 @@ enum DictionaryPackageManager {
   // MARK: - 下载
 
   private static func download(from urlString: String) async throws -> URL {
-    guard let url = URL(string: urlString) else { throw PackageManagerError.downloadFailed(urlString) }
     let dest = FileManager.default.temporaryDirectory
       .appending(path: "squirrel-panel-\(UUID().uuidString).zip")
     do {
-      let (data, _) = try await URLSession.shared.data(from: url)
-      guard !data.isEmpty else { throw PackageManagerError.downloadFailed(urlString) }
-      try data.write(to: dest, options: .atomic)
+      try await GitHubMirrorFetch.download(from: urlString, to: dest, timeout: 60)
     } catch {
       throw PackageManagerError.downloadFailed(urlString)
     }

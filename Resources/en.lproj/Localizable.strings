@@ -345,6 +345,7 @@
 "about.update.download" = "Download";
 "about.update.check" = "Check for Updates";
 "about.update.retry" = "Retry";
+"about.update.viaMirror" = "Checked via mirror";
 "about.header.squirrelUpdate" = "Squirrel Update";
 "about.squirrelUpdate.idle" = "Check for Squirrel updates";
 "about.squirrelUpdate.checking" = "Checking for Squirrel updates…";

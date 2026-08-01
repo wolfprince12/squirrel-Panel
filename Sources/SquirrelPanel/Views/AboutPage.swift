@@ -14,11 +14,13 @@ struct AboutPage: View {
   @State private var updateState: UpdateCheckState = .idle
   @State private var latestVersion: String?
   @State private var releaseURL: String?
+  @State private var updateUsedMirror: Bool = false
 
   // 鼠须管输入法更新检查
   @State private var squirrelUpdateState: UpdateCheckState = .idle
   @State private var squirrelLatestVersion: String?
   @State private var squirrelReleaseURL: String?
+  @State private var squirrelUpdateUsedMirror: Bool = false
 
   // 恢复鼠须管默认设置
   @State private var showingSquirrelResetAlert = false
@@ -120,6 +122,11 @@ struct AboutPage: View {
               .font(.caption)
               .foregroundStyle(.secondary)
           }
+          if updateUsedMirror && updateState != .failed {
+            Text(String(localized: "about.update.viaMirror"))
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
         }
 
         Spacer()
@@ -184,6 +191,11 @@ struct AboutPage: View {
           if let squirrelLatestVersion, squirrelUpdateState == .available {
             Text(String(format: String(localized: "about.squirrelUpdate.latest"), squirrelLatestVersion))
               .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          if squirrelUpdateUsedMirror && squirrelUpdateState != .failed {
+            Text(String(localized: "about.update.viaMirror"))
+              .font(.caption2)
               .foregroundStyle(.secondary)
           }
         }
@@ -411,33 +423,17 @@ struct AboutPage: View {
   private func checkForUpdates() {
     guard updateState != .checking else { return }
     updateState = .checking
+    updateUsedMirror = false
     let currentVersion = panelVersion
-    let repoAPI = "https://api.github.com/repos/wolfprince12/squirrel-Panel/releases/latest"
-    guard let url = URL(string: repoAPI) else {
-      updateState = .failed
-      return
-    }
-    var req = URLRequest(url: url, timeoutInterval: 20)
-    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-    req.setValue("SquirrelPanel/\(panelVersion)", forHTTPHeaderField: "User-Agent")
     Task {
       do {
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-          await MainActor.run { updateState = .failed }
-          return
-        }
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tagName = obj["tag_name"] as? String else {
-          await MainActor.run { updateState = .failed }
-          return
-        }
-        // tag_name 形如 "v0.3.2"，去掉前缀 v 再比较
-        let remote = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-        let htmlURL = obj["html_url"] as? String
+        let result = try await GitHubMirrorFetch.fetchLatestRelease(repo: "wolfprince12/squirrel-Panel")
+        let remote = result.tag.hasPrefix("v") ? String(result.tag.dropFirst()) : result.tag
+        let usedMirror = result.usedURL != "https://api.github.com/repos/wolfprince12/squirrel-Panel/releases/latest"
         await MainActor.run {
           latestVersion = remote
-          releaseURL = htmlURL
+          releaseURL = result.htmlURL
+          updateUsedMirror = usedMirror
           updateState = Self.compareVersion(current: currentVersion, remote: remote) ? .available : .upToDate
         }
       } catch {
@@ -453,33 +449,17 @@ struct AboutPage: View {
     }
     guard squirrelUpdateState != .checking else { return }
     squirrelUpdateState = .checking
+    squirrelUpdateUsedMirror = false
     let currentVersion = store.environment.version ?? ""
-    let repoAPI = "https://api.github.com/repos/rime/squirrel/releases/latest"
-    guard let url = URL(string: repoAPI) else {
-      squirrelUpdateState = .failed
-      return
-    }
-    var req = URLRequest(url: url, timeoutInterval: 20)
-    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-    req.setValue("SquirrelPanel/\(panelVersion)", forHTTPHeaderField: "User-Agent")
     Task {
       do {
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-          await MainActor.run { squirrelUpdateState = .failed }
-          return
-        }
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tagName = obj["tag_name"] as? String else {
-          await MainActor.run { squirrelUpdateState = .failed }
-          return
-        }
-        // rime/squirrel 的 tag 有时带 v 前缀（如 "1.0.2" 或 "v1.0.2"），统一去掉 v 再比较
-        let remote = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-        let htmlURL = obj["html_url"] as? String
+        let result = try await GitHubMirrorFetch.fetchLatestRelease(repo: "rime/squirrel")
+        let remote = result.tag.hasPrefix("v") ? String(result.tag.dropFirst()) : result.tag
+        let usedMirror = result.usedURL != "https://api.github.com/repos/rime/squirrel/releases/latest"
         await MainActor.run {
           squirrelLatestVersion = remote
-          squirrelReleaseURL = htmlURL
+          squirrelReleaseURL = result.htmlURL
+          squirrelUpdateUsedMirror = usedMirror
           let isNewer = !currentVersion.isEmpty && Self.compareVersion(current: currentVersion, remote: remote)
           squirrelUpdateState = isNewer ? .available : .upToDate
         }

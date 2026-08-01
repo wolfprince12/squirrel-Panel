@@ -1,0 +1,217 @@
+//
+//  GitHubMirrorFetch.swift
+//  Squirrel Panel
+//
+//  GitHub 网络请求镜像 fallback。中国大陆用户直连 GitHub 常被 403/超时/SSL 错误拦截，
+//  本工具先尝试直连，失败后再逐个尝试公共镜像，任一成功即返回。
+//
+//  策略：
+//    1. 普通 GET / 下载：原始 URL → 镜像 URL
+//    2. Release 最新版本：API 直连 → 镜像 API → 镜像 release 页面（从 final URL 解析 tag）
+//    3. Commit 最新 SHA：API 直连 → 镜像 API
+//
+
+import Foundation
+
+enum GitHubMirrorFetch {
+  /// 内置的 GitHub 镜像前缀列表（按优先级）。把原始 URL 直接拼到前缀后即可访问。
+  static let mirrorPrefixes: [String] = [
+    "https://ghproxy.com/",
+    "https://mirror.ghproxy.com/",
+    "https://github.moeyy.xyz/",
+    "https://ghp.ci/",
+    "https://gh.api.99988866.xyz/"
+  ]
+
+  /// 判断某个 URL 是否指向 GitHub 域名（含 api.github.com / github.com / raw.githubusercontent.com）
+  static func isGitHubURL(_ urlString: String) -> Bool {
+    guard let url = URL(string: urlString), let host = url.host?.lowercased() else { return false }
+    return host.hasSuffix("github.com") || host.hasSuffix("githubusercontent.com")
+  }
+
+  /// 把原始 GitHub URL 用指定镜像前缀包裹，生成镜像 URL 字符串
+  static func mirroredURL(_ original: String, prefix: String) -> String {
+    let trimmed = original.trimmingCharacters(in: .whitespacesAndNewlines)
+    if prefix.hasSuffix("/") {
+      return prefix + trimmed
+    }
+    return prefix + "/" + trimmed
+  }
+
+  /// 生成候选 URL 列表：原始 URL + 各个镜像 URL
+  static func candidateURLs(for original: String) -> [String] {
+    guard isGitHubURL(original) else { return [original] }
+    var result = [original]
+    for prefix in mirrorPrefixes {
+      result.append(mirroredURL(original, prefix: prefix))
+    }
+    return result
+  }
+
+  /// 使用 GET 请求获取数据，自动按候选 URL fallback。
+  /// - Returns: (原始数据, 最终响应, 实际使用的 URL)
+  /// - Throws: 所有候选 URL 都失败时，抛出最后一个错误；没有任何候选时抛出 invalidURL。
+  static func fetch(
+    from originalURL: String,
+    headers: [String: String] = [:],
+    timeout: TimeInterval = 20
+  ) async throws -> (Data, HTTPURLResponse, String) {
+    let candidates = candidateURLs(for: originalURL)
+    guard !candidates.isEmpty else {
+      throw URLError(.badURL)
+    }
+
+    var lastError: Error?
+    for urlString in candidates {
+      guard let url = URL(string: urlString) else {
+        lastError = URLError(.badURL)
+        continue
+      }
+      var req = URLRequest(url: url, timeoutInterval: timeout)
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      for (key, value) in headers {
+        req.setValue(value, forHTTPHeaderField: key)
+      }
+
+      do {
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+          lastError = URLError(.badServerResponse)
+          continue
+        }
+        guard (200...299).contains(http.statusCode) else {
+          // 403/401 等通常意味着该镜像也被限流或不可用，继续下一个候选
+          lastError = GitHubMirrorFetchError.httpStatus(http.statusCode, urlString)
+          continue
+        }
+        return (data, http, urlString)
+      } catch {
+        lastError = error
+        continue
+      }
+    }
+
+    throw lastError ?? URLError(.cannotConnectToHost)
+  }
+
+  /// 专门获取 GitHub Release 最新版本信息。
+  /// 先尝试 GitHub Release API（直连+镜像），再尝试镜像 release 页面并从 final URL 解析 tag。
+  /// - Returns: (tag_name, html_url, 实际请求的 URL)
+  static func fetchLatestRelease(repo: String) async throws -> (tag: String, htmlURL: String?, usedURL: String) {
+    let apiURL = "https://api.github.com/repos/\(repo)/releases/latest"
+
+    // 1) 尝试 API（直连 + 镜像）
+    let apiCandidates = candidateURLs(for: apiURL)
+    var lastError: Error?
+    for urlString in apiCandidates {
+      guard let url = URL(string: urlString) else { continue }
+      var req = URLRequest(url: url, timeoutInterval: 20)
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+      do {
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+          lastError = GitHubMirrorFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0, urlString)
+          continue
+        }
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let tagName = obj["tag_name"] as? String {
+          let htmlURL = obj["html_url"] as? String
+          return (tagName, htmlURL, urlString)
+        }
+      } catch {
+        lastError = error
+        continue
+      }
+    }
+
+    // 2) API 全部失败时，尝试 release 页面（仅镜像，因为直连失败才来这）
+    let releasePage = "https://github.com/\(repo)/releases/latest"
+    let pageCandidates = candidateURLs(for: releasePage)
+    for urlString in pageCandidates {
+      guard let url = URL(string: urlString) else { continue }
+      var req = URLRequest(url: url, timeoutInterval: 20)
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      // 允许跟随重定向
+      do {
+        let (_, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let finalURL = response.url?.absoluteString else {
+          continue
+        }
+        // GitHub release latest 会 302 到 /releases/tag/<tag>；镜像通常保留这个结构
+        if let tag = parseTagFromReleaseURL(finalURL) {
+          return (tag, finalURL, urlString)
+        }
+      } catch {
+        continue
+      }
+    }
+
+    throw lastError ?? GitHubMirrorFetchError.unexpectedResponse
+  }
+
+  /// 从 release 页面 final URL 中解析 tag，例如：
+  /// https://github.com/rime/squirrel/releases/tag/1.0.2  -> 1.0.2
+  /// https://ghproxy.com/https://github.com/rime/squirrel/releases/tag/1.0.2  -> 1.0.2
+  static func parseTagFromReleaseURL(_ urlString: String) -> String? {
+    // 统一用正则匹配 github.com/{owner}/{repo}/releases/tag/{tag}
+    let pattern = #"github\.com/[^/]+/[^/]+/releases/tag/([^/?#]+)"#
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+    guard let match = regex.firstMatch(
+      in: urlString, options: [],
+      range: NSRange(location: 0, length: urlString.utf16.count)) else { return nil }
+    let range = match.range(at: 1)
+    guard let swiftRange = Range(range, in: urlString) else { return nil }
+    let tag = String(urlString[swiftRange])
+    return tag.isEmpty ? nil : tag
+  }
+
+  /// 专门获取 GitHub 仓库某分支的最新 commit。
+  /// - Returns: (sha, commit date, 实际请求的 URL)
+  static func fetchLatestCommit(owner: String, repo: String, branch: String) async throws -> (sha: String, date: Date?, usedURL: String) {
+    let apiURL = "https://api.github.com/repos/\(owner)/\(repo)/commits?sha=\(branch)&per_page=1"
+    let (data, _, used) = try await fetch(
+      from: apiURL,
+      headers: ["Accept": "application/vnd.github+json"]
+    )
+    guard let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+          let first = arr.first,
+          let sha = first["sha"] as? String else {
+      throw GitHubMirrorFetchError.unexpectedResponse
+    }
+    var date: Date? = nil
+    if let commit = first["commit"] as? [String: Any],
+       let author = commit["author"] as? [String: Any],
+       let dateStr = author["date"] as? String {
+      date = ISO8601DateFormatter().date(from: dateStr)
+    }
+    return (sha, date, used)
+  }
+
+  /// 下载文件（zip 等），自动 fallback 镜像。
+  static func download(from originalURL: String, to destination: URL, timeout: TimeInterval = 60) async throws {
+    let (data, _, _) = try await fetch(from: originalURL, timeout: timeout)
+    guard !data.isEmpty else {
+      throw GitHubMirrorFetchError.emptyResponse
+    }
+    try data.write(to: destination, options: .atomic)
+  }
+}
+
+enum GitHubMirrorFetchError: LocalizedError {
+  case httpStatus(Int, String)
+  case unexpectedResponse
+  case emptyResponse
+
+  var errorDescription: String? {
+    switch self {
+    case .httpStatus(let code, let url):
+      return "HTTP \(code): \(url)"
+    case .unexpectedResponse:
+      return String(localized: "mirror.error.unexpected")
+    case .emptyResponse:
+      return String(localized: "mirror.error.empty")
+    }
+  }
+}
