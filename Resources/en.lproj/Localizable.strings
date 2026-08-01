@@ -179,6 +179,10 @@
 "promo.dealv.subtitle" = "AI Contract Management";
 "promo.dealv.description" = "Intelligent contract review and management platform for professionals.";
 "promo.dealv.action" = "Visit DealV";
+"promo.dsondt.title" = "DSonDT";
+"promo.dsondt.subtitle" = "Open Source Project";
+"promo.dsondt.description" = "An AI and data experiment project by Winter, exploring new tools and possibilities.";
+"promo.dsondt.action" = "View DSonDT";
 
 /* YAML Inspector */
 "yaml.title" = "Pending Configuration";

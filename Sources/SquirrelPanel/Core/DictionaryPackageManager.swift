@@ -271,6 +271,7 @@ enum DictionaryPackageManager {
     }
     var req = URLRequest(url: url, timeoutInterval: 20)
     req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
     let (data, resp) = try await URLSession.shared.data(for: req)
     if let http = resp as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
       throw PackageManagerError.updateCheckFailed("HTTP \(http.statusCode)")

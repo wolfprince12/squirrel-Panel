@@ -179,6 +179,10 @@
 "promo.dealv.subtitle" = "AI 智能合同管理";
 "promo.dealv.description" = "面向专业人群的合同智能审查与管理平台。";
 "promo.dealv.action" = "访问 DealV";
+"promo.dsondt.title" = "DSonDT";
+"promo.dsondt.subtitle" = "开源项目";
+"promo.dsondt.description" = "大狼的 AI 与数据实验项目，探索新工具与新可能。";
+"promo.dsondt.action" = "查看 DSonDT";
 
 /* YAML Inspector */
 "yaml.title" = "即将写入的配置";

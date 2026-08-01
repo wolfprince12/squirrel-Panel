@@ -197,6 +197,16 @@ struct AboutPage: View {
           actionTitle: "promo.dealv.action",
           action: { openURL("https://www.dealv.cn") }
         )
+        Divider()
+        PromotionRow(
+          icon: "command",
+          iconColor: .cyan,
+          title: "promo.dsondt.title",
+          subtitle: "promo.dsondt.subtitle",
+          description: "promo.dsondt.description",
+          actionTitle: "promo.dsondt.action",
+          action: { openURL("https://github.com/wolfprince12/DSonDT") }
+        )
       }
     }
   }
@@ -330,6 +340,7 @@ struct AboutPage: View {
     }
     var req = URLRequest(url: url, timeoutInterval: 20)
     req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    req.setValue("SquirrelPanel/\(panelVersion)", forHTTPHeaderField: "User-Agent")
     Task {
       do {
         let (data, resp) = try await URLSession.shared.data(for: req)
