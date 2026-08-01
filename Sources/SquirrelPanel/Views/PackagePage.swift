@@ -2,16 +2,33 @@
 //  PackagePage.swift
 //  Squirrel Panel
 //
-//  词库包安装与卸载：基于内置注册表（DictionaryPackages.json）的精选包管理。
+//  第三方词库包：基于内置注册表（DictionaryPackages.json）的精选目录。
+//  - 列出所有可安装的第三方词库；
+//  - 每次打开面板自动检查更新；
+//  - 已安装的包可手动点击「更新」升级到最新版本。
 //
 
 import SwiftUI
+
+/// 单个词库包的更新状态
+enum PackageUpdateState: Equatable {
+  case notApplicable   // 未安装 / 外部安装，无需检查
+  case checking        // 正在检查
+  case upToDate        // 已是最新
+  case available       // 有更新
+  case unknown         // 无法判断（未记录安装版本等），但允许手动更新
+  case failed(String)  // 检查失败（网络/限流等）
+
+  var isChecking: Bool { self == .checking }
+}
 
 struct PackagePage: View {
   @EnvironmentObject private var store: SettingsStore
   @State private var packages: [DictionaryPackage] = []
   @State private var statuses: [String: PackageStatus] = [:]
+  @State private var updateStates: [String: PackageUpdateState] = [:]
   @State private var busyID: String? = nil
+  @State private var checkingAll = false
   @State private var logText: String = ""
   @State private var logTitle: String = ""
 
@@ -19,19 +36,28 @@ struct PackagePage: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         SettingsGroup("package.title") {
-          Text("package.intro")
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+          HStack(alignment: .top, spacing: 12) {
+            Text("package.intro")
+              .font(.callout)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button(checkingAll ? "package.checkingAll" : "package.button.checkAll") { checkForUpdates() }
+              .controlSize(.small)
+              .disabled(checkingAll)
+          }
         }
 
         ForEach(packages) { pkg in
           PackageCard(
             pkg: pkg,
             status: statuses[pkg.id] ?? .notInstalled,
+            updateState: updateStates[pkg.id] ?? .notApplicable,
             busy: busyID == pkg.id,
             onInstall: { install(pkg) },
-            onUninstall: { uninstall(pkg) }
+            onUninstall: { uninstall(pkg) },
+            onUpdate: { update(pkg) },
+            onCheck: { checkOne(pkg) }
           )
         }
 
@@ -52,7 +78,7 @@ struct PackagePage: View {
       }
       .padding(20)
     }
-    .onAppear(perform: reload)
+    .onAppear(perform: { reload(); checkForUpdates() })
   }
 
   private func reload() {
@@ -63,6 +89,56 @@ struct PackagePage: View {
     }
     statuses = st
   }
+
+  // MARK: - 更新检查
+
+  private func checkForUpdates() {
+    guard !checkingAll else { return }
+    checkingAll = true
+    // 先把已安装项标记为 checking
+    var draft = updateStates
+    for p in packages where (statuses[p.id] ?? .notInstalled).isInstalled {
+      draft[p.id] = .checking
+    }
+    updateStates = draft
+
+    let pkgs = packages
+    Task {
+      await withThrowingTaskGroup(of: (String, PackageUpdateState).self) { group in
+        for p in pkgs where (statuses[p.id] ?? .notInstalled).isInstalled {
+          group.addTask { (p.id, await computeUpdateState(for: p)) }
+        }
+        while let result = try? await group.next() {
+          let (id, st) = result
+          await MainActor.run { self.updateStates[id] = st }
+        }
+      }
+      await MainActor.run { checkingAll = false }
+    }
+  }
+
+  private func checkOne(_ pkg: DictionaryPackage) {
+    Task {
+      let st = await computeUpdateState(for: pkg)
+      await MainActor.run { self.updateStates[pkg.id] = st }
+    }
+  }
+
+  private func computeUpdateState(for pkg: DictionaryPackage) async -> PackageUpdateState {
+    let status = statuses[pkg.id] ?? .notInstalled
+    guard case .installed(let manifest) = status else { return .notApplicable }
+    do {
+      let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
+      if let installed = manifest.installedCommit {
+        return installed == remote.sha ? .upToDate : .available
+      }
+      return .unknown
+    } catch {
+      return .failed(error.localizedDescription)
+    }
+  }
+
+  // MARK: - 安装 / 卸载 / 更新
 
   private func install(_ pkg: DictionaryPackage) {
     busyID = pkg.id
@@ -107,14 +183,41 @@ struct PackagePage: View {
       }
     }
   }
+
+  private func update(_ pkg: DictionaryPackage) {
+    busyID = pkg.id
+    logTitle = String(format: String(localized: "package.log.update"), pkg.name)
+    logText = String(localized: "package.log.downloading")
+    Task {
+      do {
+        let manifest = try await DictionaryPackageManager.update(pkg: pkg, environment: store.environment)
+        let newCommit = manifest.installedCommit ?? "?"
+        await MainActor.run {
+          logText = String(format: String(localized: "package.log.updated"), newCommit)
+          busyID = nil
+          store.reload()
+          reload()
+          self.updateStates[pkg.id] = .upToDate
+        }
+      } catch {
+        await MainActor.run {
+          logText = String(format: String(localized: "package.log.error"), error.localizedDescription)
+          busyID = nil
+        }
+      }
+    }
+  }
 }
 
 struct PackageCard: View {
   let pkg: DictionaryPackage
   let status: PackageStatus
+  let updateState: PackageUpdateState
   let busy: Bool
   let onInstall: () -> Void
   let onUninstall: () -> Void
+  let onUpdate: () -> Void
+  let onCheck: () -> Void
 
   private var statusLabel: String {
     switch status {
@@ -130,6 +233,18 @@ struct PackageCard: View {
     case .external: return .orange
     }
   }
+  private var updateBadge: some View {
+    Group {
+      if status.isInstalled, updateState == .available {
+        Text("package.status.updateAvailable")
+          .font(.caption2)
+          .padding(.horizontal, 6).padding(.vertical, 2)
+          .background(Color.orange.opacity(0.15))
+          .foregroundStyle(.orange)
+          .clipShape(RoundedRectangle(cornerRadius: 4))
+      }
+    }
+  }
 
   var body: some View {
     SettingsGroup("") {
@@ -140,9 +255,10 @@ struct PackageCard: View {
             Text(pkg.author).font(.caption).foregroundStyle(.secondary)
           }
           Spacer()
-          HStack(spacing: 4) {
+          HStack(spacing: 6) {
             Circle().fill(statusColor).frame(width: 8, height: 8)
             Text(statusLabel).font(.caption).foregroundStyle(statusColor)
+            updateBadge
           }
         }
         Text(pkg.description)
@@ -153,16 +269,34 @@ struct PackageCard: View {
         HStack(spacing: 10) {
           switch status {
           case .installed:
+            // 更新相关按钮
+            switch updateState {
+            case .available:
+              Button("package.button.update", action: onUpdate)
+                .controlSize(.small).buttonStyle(.borderedProminent)
+            case .unknown:
+              Button("package.button.update", action: onUpdate)
+                .controlSize(.small)
+            case .failed(let msg):
+              Button("package.button.checkUpdate", action: onCheck)
+                .controlSize(.small)
+              Text(msg).font(.caption2).foregroundStyle(.red).lineLimit(1)
+            case .checking:
+              ProgressView().controlSize(.small)
+              Text("package.status.checking").font(.caption2).foregroundStyle(.secondary)
+            case .upToDate:
+              Text("package.status.upToDate").font(.caption).foregroundStyle(.green)
+            case .notApplicable:
+              EmptyView()
+            }
             Button("package.button.uninstall", action: onUninstall)
               .controlSize(.small)
           case .external:
             Button("package.button.manage", action: onInstall)
-              .controlSize(.small)
-              .buttonStyle(.borderedProminent)
+              .controlSize(.small).buttonStyle(.borderedProminent)
           case .notInstalled:
             Button("package.button.install", action: onInstall)
-              .controlSize(.small)
-              .buttonStyle(.borderedProminent)
+              .controlSize(.small).buttonStyle(.borderedProminent)
           }
           if let url = URL(string: pkg.homepage) {
             Link("package.button.homepage", destination: url)
@@ -173,5 +307,12 @@ struct PackageCard: View {
         }
       }
     }
+  }
+}
+
+extension PackageStatus {
+  var isInstalled: Bool {
+    if case .installed = self { return true }
+    return false
   }
 }

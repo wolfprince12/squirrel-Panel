@@ -277,7 +277,7 @@
 
 /* Navigation new */
 "nav.deploy" = "部署与排障";
-"nav.packages" = "词库";
+"nav.packages" = "第三方词库";
 
 /* DeployPage */
 "deploy.title" = "部署与排障";
@@ -298,14 +298,21 @@
 "deploy.result.duration" = "耗时 %@ 毫秒";
 
 /* PackagePage */
-"package.title" = "词库包";
-"package.intro" = "这里可以一键安装或卸载精选的词库包（如雾凇拼音）。安装会下载官方归档、备份被覆盖的文件，并在完成后自动部署。";
+"package.title" = "第三方词库";
+"package.intro" = "这里列出所有可安装到鼠须管的第三方词库。每次打开本面板会自动检查更新；已安装的包可手动点击「更新」升级到最新版本。安装会下载官方归档、备份被覆盖的文件，并在完成后自动部署。";
 "package.status.notInstalled" = "未安装";
 "package.status.installed" = "已安装（本面板管理）";
 "package.status.external" = "已存在（外部安装）";
+"package.status.upToDate" = "已是最新";
+"package.status.updateAvailable" = "有新版本";
+"package.status.checking" = "检查更新中…";
 "package.button.install" = "安装";
 "package.button.manage" = "纳入管理";
 "package.button.uninstall" = "卸载";
+"package.button.update" = "更新";
+"package.button.checkAll" = "检查更新";
+"package.button.checkUpdate" = "重试检查";
+"package.checkingAll" = "检查更新中…";
 "package.button.homepage" = "项目主页";
 "package.log.install" = "正在安装 %@";
 "package.log.downloading" = "正在下载词库包…";
@@ -313,7 +320,10 @@
 "package.log.uninstall" = "正在卸载 %@";
 "package.log.removing" = "正在移除词库包文件并还原备份…";
 "package.log.removed" = "卸载完成，已还原被覆盖的文件。";
+"package.log.update" = "正在更新 %@";
+"package.log.updated" = "已更新到最新版本（commit %@），并完成重新部署。";
 "package.log.error" = "操作失败：%@";
 "package.error.download" = "下载失败：%@";
 "package.error.extract" = "解压失败：%@";
 "package.error.notManaged" = "该词库包不是由本面板安装的，无法在此卸载。";
+"package.error.updateCheck" = "检查更新失败：%@";

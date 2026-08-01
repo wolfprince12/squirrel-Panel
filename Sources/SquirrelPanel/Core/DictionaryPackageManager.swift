@@ -21,9 +21,29 @@ struct DictionaryPackage: Identifiable, Codable {
   let description: String
   let description_en: String
   let sourceURL: String
+  /// 用于更新检查的仓库信息（也可从 sourceURL 推导）
+  let repoOwner: String?
+  let repoName: String?
+  let branch: String?
   let defaultSchema: String
   let homepage: String
   let author: String
+
+  /// 更新检查所用的 GitHub API 地址；缺少仓库信息时为 nil
+  var updateCheckAPIURL: URL? {
+    if let owner = repoOwner, let name = repoName, let branch = branch,
+       !owner.isEmpty, !name.isEmpty, !branch.isEmpty,
+       let url = URL(string: "https://api.github.com/repos/\(owner)/\(name)/commits?sha=\(branch)&per_page=1") {
+      return url
+    }
+    // 兜底：从 sourceURL 解析 github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip
+    guard let comps = URLComponents(string: sourceURL),
+          let host = comps.host, host == "github.com" else { return nil }
+    let pc = comps.path.split(separator: "/").map(String.init)
+    guard pc.count >= 5 else { return nil }
+    let owner = pc[1], name = pc[2], branch = pc[4]
+    return URL(string: "https://api.github.com/repos/\(owner)/\(name)/commits?sha=\(branch)&per_page=1")
+  }
 }
 
 struct PackageManifest: Codable {
@@ -33,6 +53,7 @@ struct PackageManifest: Codable {
   var defaultSchema: String
   var installedAt: Date
   var version: String
+  var installedCommit: String?      // 安装时锁定的上游最新 commit，用于更新比对
 }
 
 enum PackageStatus {
@@ -46,6 +67,7 @@ enum PackageManagerError: LocalizedError {
   case extractFailed(String)
   case notManagedByPanel
   case squirrelNotInstalled
+  case updateCheckFailed(String)
   case commandFailed(String, Int32)
 
   var errorDescription: String? {
@@ -54,6 +76,7 @@ enum PackageManagerError: LocalizedError {
     case .extractFailed(let m): return String(format: String(localized: "package.error.extract"), m)
     case .notManagedByPanel: return String(localized: "package.error.notManaged")
     case .squirrelNotInstalled: return String(localized: "error.squirrelNotInstalled")
+    case .updateCheckFailed(let m): return String(format: String(localized: "package.error.updateCheck"), m)
     case .commandFailed(let c, let code): return String(format: String(localized: "error.commandFailed"), c, code)
     }
   }
@@ -190,14 +213,21 @@ enum DictionaryPackageManager {
     try SquirrelBridge.deploy(environment: environment)
     try? await Task.sleep(nanoseconds: 2_000_000_000)
 
-    // 8. 写清单
+    // 8. 记录上游版本（用于更新比对；失败不影响安装）
+    var installedCommit: String? = nil
+    if let remote = try? await fetchLatestCommit(pkg: pkg) {
+      installedCommit = remote.sha
+    }
+
+    // 9. 写清单
     let manifest = PackageManifest(
       id: pkg.id,
       addedFiles: addedFiles,
       backupDir: backupDir(for: pkg.id).path(percentEncoded: false),
       defaultSchema: pkg.defaultSchema,
       installedAt: Date(),
-      version: "0.3.0")
+      version: "0.3.0",
+      installedCommit: installedCommit)
     let mData = try JSONEncoder().encode(manifest)
     try mData.write(to: manifestURL(for: pkg.id), options: .atomic)
 
@@ -205,6 +235,133 @@ enum DictionaryPackageManager {
     try? fm.removeItem(at: stage)
     try? fm.removeItem(at: zipURL)
     return manifest
+  }
+
+  // MARK: - 更新
+
+  /// 把包内文件复制进 Rime 目录。overwrite=true 时直接覆盖（用于更新，保留首次安装时的原始备份）；
+  /// overwrite=false 时会先备份被覆盖的文件（用于首次安装）。返回实际写入的相对路径列表。
+  private static func applyPackageFiles(
+    packageRoot: URL, files: [String], rime: URL,
+    backupDir: URL, overwrite: Bool
+  ) throws -> [String] {
+    let fm = FileManager.default
+    var written: [String] = []
+    for rel in files {
+      let src = packageRoot.appending(path: rel)
+      let dst = rime.appending(path: rel)
+      if !overwrite, fm.fileExists(atPath: dst.path(percentEncoded: false)) {
+        let backup = backupDir.appending(path: rel)
+        try? fm.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fm.removeItem(at: backup)
+        try? fm.copyItem(at: dst, to: backup)
+      }
+      try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try? fm.removeItem(at: dst)
+      try fm.copyItem(at: src, to: dst)
+      written.append(rel)
+    }
+    return written
+  }
+
+  /// 拉取上游仓库指定分支的最新 commit（用于更新比对）
+  static func fetchLatestCommit(pkg: DictionaryPackage) async throws -> (sha: String, date: Date?) {
+    guard let url = pkg.updateCheckAPIURL else {
+      throw PackageManagerError.updateCheckFailed("no repo info")
+    }
+    var req = URLRequest(url: url, timeoutInterval: 20)
+    req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    let (data, resp) = try await URLSession.shared.data(for: req)
+    if let http = resp as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+      throw PackageManagerError.updateCheckFailed("HTTP \(http.statusCode)")
+    }
+    guard let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+          let first = arr.first,
+          let sha = first["sha"] as? String else {
+      throw PackageManagerError.updateCheckFailed("unexpected response")
+    }
+    var date: Date? = nil
+    if let commit = first["commit"] as? [String: Any],
+       let author = commit["author"] as? [String: Any],
+       let dateStr = author["date"] as? String {
+      date = ISO8601DateFormatter().date(from: dateStr)
+    }
+    return (sha, date)
+  }
+
+  /// 更新已安装的包到上游最新版本。保留首次安装时生成的原始备份（卸载时还原用）。
+  static func update(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
+    let mURL = manifestURL(for: pkg.id)
+    guard let data = try? Data(contentsOf: mURL),
+          let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
+      throw PackageManagerError.notManagedByPanel
+    }
+    guard environment.isInstalled else { throw PackageManagerError.squirrelNotInstalled }
+
+    let fm = FileManager.default
+    let rime = rimeDir()
+    try fm.createDirectory(at: rime, withIntermediateDirectories: true)
+
+    let remote = try? await fetchLatestCommit(pkg: pkg)
+
+    // 1. 下载
+    let zipURL = try await download(from: pkg.sourceURL)
+
+    // 2. 解压
+    let stage = FileManager.default.temporaryDirectory
+      .appending(path: "squirrel-panel-update-\(pkg.id)-\(UUID().uuidString)", directoryHint: .isDirectory)
+    try? fm.removeItem(at: stage)
+    try fm.createDirectory(at: stage, withIntermediateDirectories: true)
+    let ditto = Process()
+    ditto.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+    ditto.arguments = ["-x", "-k", zipURL.path(percentEncoded: false), stage.path(percentEncoded: false)]
+    try ditto.run()
+    ditto.waitUntilExit()
+    guard ditto.terminationStatus == 0 else {
+      throw PackageManagerError.extractFailed("ditto exit \(ditto.terminationStatus)")
+    }
+
+    // 3. 定位包根
+    let packageRoot = locatePackageRoot(in: stage)
+
+    // 4. 枚举要安装的文件（排除非运行时文件）
+    let allFiles = snapshotFiles(in: packageRoot)
+    let filesToInstall = allFiles.filter { rel in
+      let top = rel.split(separator: "/").first.map(String.init) ?? rel
+      return !Self.excludeFromInstall.contains(top)
+    }
+
+    // 5. 删除「旧版本有、新版本没有」的文件（仅动我们追踪的）
+    let oldSet = Set(manifest.addedFiles)
+    let newSet = Set(filesToInstall)
+    for rel in oldSet where !newSet.contains(rel) {
+      let dst = rime.appending(path: rel)
+      try? fm.removeItem(at: dst)
+    }
+
+    // 6. 覆盖写入（保留首次安装时的原始备份）
+    _ = try applyPackageFiles(
+      packageRoot: packageRoot, files: filesToInstall,
+      rime: rime, backupDir: URL(fileURLWithPath: manifest.backupDir), overwrite: true)
+
+    // 7. 启用默认方案 + 重新部署
+    enableSchema(pkg.defaultSchema, environment: environment)
+    try SquirrelBridge.deploy(environment: environment)
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+    // 8. 更新清单
+    var updated = manifest
+    updated.addedFiles = filesToInstall
+    updated.installedCommit = remote?.sha
+    updated.installedAt = Date()
+    updated.version = "0.3.2"
+    let mData = try JSONEncoder().encode(updated)
+    try mData.write(to: mURL, options: .atomic)
+
+    // 清理
+    try? fm.removeItem(at: stage)
+    try? fm.removeItem(at: zipURL)
+    return updated
   }
 
   // MARK: - 卸载
@@ -252,6 +409,9 @@ enum DictionaryPackageManager {
   // MARK: - 方案启用辅助
 
   private static func enableSchema(_ id: String, environment: RimeEnvironment) {
+    // 仅当该方案的 schema 文件确实存在时才加入启用列表，避免写入不存在的方案 id
+    let schemaFile = rimeDir().appending(path: "\(id).schema.yaml")
+    guard FileManager.default.fileExists(atPath: schemaFile.path(percentEncoded: false)) else { return }
     let fileURL = rimeDir().appending(path: "default.custom.yaml")
     let patch = CustomYAMLFile(fileURL: fileURL)
     patch.load()

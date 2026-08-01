@@ -277,7 +277,7 @@
 
 /* Navigation new */
 "nav.deploy" = "Deploy & Diagnose";
-"nav.packages" = "Dictionaries";
+"nav.packages" = "Third-Party Libraries";
 
 /* DeployPage */
 "deploy.title" = "Deploy & Diagnose";
@@ -298,14 +298,21 @@
 "deploy.result.duration" = "took %@ ms";
 
 /* PackagePage */
-"package.title" = "Dictionary Packages";
-"package.intro" = "Install or uninstall curated dictionary packages (such as Rime Ice) in one click. Installation downloads the official archive, backs up overwritten files, and deploys automatically.";
+"package.title" = "Third-Party Libraries";
+"package.intro" = "Lists all third-party libraries that can be installed into Squirrel. Updates are checked automatically each time this panel opens; installed libraries can be updated manually. Installation downloads the official archive, backs up overwritten files, and deploys automatically.";
 "package.status.notInstalled" = "Not installed";
 "package.status.installed" = "Installed (managed by panel)";
 "package.status.external" = "Present (installed externally)";
+"package.status.upToDate" = "Up to date";
+"package.status.updateAvailable" = "Update available";
+"package.status.checking" = "Checking…";
 "package.button.install" = "Install";
 "package.button.manage" = "Take Over";
 "package.button.uninstall" = "Uninstall";
+"package.button.update" = "Update";
+"package.button.checkAll" = "Check for Updates";
+"package.button.checkUpdate" = "Retry";
+"package.checkingAll" = "Checking…";
 "package.button.homepage" = "Homepage";
 "package.log.install" = "Installing %@";
 "package.log.downloading" = "Downloading package…";
@@ -313,7 +320,10 @@
 "package.log.uninstall" = "Uninstalling %@";
 "package.log.removing" = "Removing package files and restoring backups…";
 "package.log.removed" = "Uninstalled; overwritten files restored.";
+"package.log.update" = "Updating %@";
+"package.log.updated" = "Updated to the latest version (commit %@) and redeployed.";
 "package.log.error" = "Operation failed: %@";
 "package.error.download" = "Download failed: %@";
 "package.error.extract" = "Extraction failed: %@";
 "package.error.notManaged" = "This package was not installed by the panel and cannot be uninstalled here.";
+"package.error.updateCheck" = "Update check failed: %@";
