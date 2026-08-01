@@ -1,5 +1,5 @@
 /* RootView & Navigation */
-"app.name" = "鼠须管配置";
+"app.name" = "鼠须管控制面板";
 "nav.appearance" = "外观";
 "nav.schemas" = "输入方案";
 "nav.behavior" = "按键与行为";
@@ -157,7 +157,7 @@
 "about.reset.title" = "恢复默认设置";
 "about.reset.subtitle" = "移除控制面板写入的全部配置项，保留你手写的条目。";
 "about.reset.button" = "恢复默认";
-"about.description" = "鼠须管配置是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
+"about.description" = "鼠须管控制面板是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
 "about.disclaimer" = "本项目不隶属于 RIME 官方，也不会修改鼠须管本体。所有改动都以标准的 Rime 补丁文件形式写入用户目录，随时可以手动编辑或删除。";
 "about.license" = "以 GPL-3.0 协议开源。";
 "about.link.home" = "项目主页";

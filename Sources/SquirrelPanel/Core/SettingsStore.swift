@@ -164,8 +164,14 @@ final class SettingsStore: ObservableObject {
 
     colorSchemeID = str("style/color_scheme", "native")
     if let dark = squirrelPatch.string(forPath: "style/color_scheme_dark") {
-      followSystemAppearance = true
-      colorSchemeDarkID = dark
+      // patch 中有 color_scheme_dark：如果和 color_scheme 相同，说明用户关闭了跟随系统外观
+      if dark == colorSchemeID {
+        followSystemAppearance = false
+        colorSchemeDarkID = colorSchemeID
+      } else {
+        followSystemAppearance = true
+        colorSchemeDarkID = dark
+      }
     } else if let dark = defaults["style/color_scheme_dark"] as? String {
       followSystemAppearance = false
       colorSchemeDarkID = dark
@@ -303,11 +309,21 @@ final class SettingsStore: ObservableObject {
     managingKeyBindings = false
   }
 
-  /// 内置 squirrel.yaml 里的 style 段默认值，界面上以它为基准显示
+  /// 内置 squirrel.yaml 里的 style 段默认值，界面上以它为基准显示。
+  /// 先读系统 Squirrel.app 中的 squirrel.yaml，再用用户目录的 squirrel.yaml 覆盖，
+  /// 确保 put() 优化和 readIntoUI() 的回退值与实际生效配置一致。
   private func builtinStyleDefaults() -> [String: Any] {
-    guard let object = try? Yams.load(yaml: environment.builtinSquirrelYAML()) as? [String: Any] else { return [:] }
     var result: [String: Any] = [:]
-    if let style = object["style"] as? [String: Any] {
+    if let object = try? Yams.load(yaml: environment.builtinSquirrelYAML()) as? [String: Any] {
+      if let style = object["style"] as? [String: Any] {
+        for (key, value) in style { result["style/\(key)"] = value }
+      }
+    }
+    // 用户 squirrel.yaml 覆盖系统默认值
+    let userSquirrelYAML = RimeEnvironment.userDirectory.appending(path: "squirrel.yaml")
+    if let text = try? String(contentsOf: userSquirrelYAML, encoding: .utf8),
+       let object = try? Yams.load(yaml: text) as? [String: Any],
+       let style = object["style"] as? [String: Any] {
       for (key, value) in style { result["style/\(key)"] = value }
     }
     return result
@@ -391,7 +407,9 @@ final class SettingsStore: ObservableObject {
 
     var set: PatchSet = [:]
     put(&set, "style/color_scheme", .string(colorSchemeID), defaultValue: defaults["style/color_scheme"])
-    set["style/color_scheme_dark"] = followSystemAppearance ? .string(colorSchemeDarkID) : PatchValue?.none
+    // followSystemAppearance=false 时，显式将 color_scheme_dark 设为与 color_scheme 相同值，
+    // 覆盖用户 squirrel.yaml 基础配置中可能存在的 color_scheme_dark，确保明暗模式使用同一配色。
+    set["style/color_scheme_dark"] = followSystemAppearance ? .string(colorSchemeDarkID) : .string(colorSchemeID)
     set["style/font_face"] = fontFace.isEmpty ? PatchValue?.none : .string(fontFace)
     put(&set, "style/font_point", .double(fontPoint), defaultValue: defaults["style/font_point"])
     put(&set, "style/label_font_point", .double(labelFontPoint), defaultValue: defaults["style/label_font_point"])
@@ -497,9 +515,9 @@ final class SettingsStore: ObservableObject {
       if environment.isInstalled {
         statusMessage = "status.deploying"
         try SquirrelBridge.deploy(environment: environment)
-        // 配色方案等前端外观设置需要重启进程才能可靠生效，
-        // deploy 通知仅触发引擎重载，不一定刷新 squirrel.yaml 前端配置。
-        try? SquirrelBridge.restart(environment: environment)
+        // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
+        // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
+        // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
         statusMessage = "status.deployed"
       } else {
         statusMessage = "status.savedWithoutSquirrel"
@@ -531,7 +549,6 @@ final class SettingsStore: ObservableObject {
       reload()
       if environment.isInstalled {
         try SquirrelBridge.deploy(environment: environment)
-        try? SquirrelBridge.restart(environment: environment)
       }
       statusMessage = "status.reset"
     } catch {
@@ -560,7 +577,6 @@ final class SettingsStore: ObservableObject {
     reload()
     if environment.isInstalled {
       try? SquirrelBridge.deploy(environment: environment)
-      try? SquirrelBridge.restart(environment: environment)
     }
     statusMessage = "status.squirrelReset"
   }

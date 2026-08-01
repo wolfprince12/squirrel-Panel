@@ -13,11 +13,11 @@
 	<key>CFBundleName</key>
 	<string>Squirrel Panel</string>
 	<key>CFBundleDisplayName</key>
-	<string>鼠须管配置</string>
+	<string>鼠须管控制面板</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>CFBundleIconFile</key>

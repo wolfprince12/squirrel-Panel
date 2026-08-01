@@ -1,5 +1,5 @@
 /* RootView & Navigation */
-"app.name" = "鼠須管配置";
+"app.name" = "鼠鬚管控制面板";
 "nav.appearance" = "外觀";
 "nav.schemas" = "輸入方案";
 "nav.behavior" = "按鍵與行為";
@@ -161,7 +161,7 @@
 "about.squirrelReset.title" = "恢復鼠須管預設設定";
 "about.squirrelReset.subtitle" = "刪除所有 custom.yaml 補丁檔案，讓鼠須管完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "about.squirrelReset.button" = "恢復鼠須管預設";
-"about.description" = "鼠須管配置是一個獨立的第三方工具，用於圖形化設定 Rime 輸入法引擎的 macOS 前端「鼠須管」(Squirrel)。";
+"about.description" = "鼠鬚管控制面板是一個獨立的第三方工具，用於圖形化設定 Rime 輸入法引擎的 macOS 前端「鼠鬚管」(Squirrel)。";
 "about.disclaimer" = "本專案不隸屬於 RIME 官方，也不會修改鼠須管本體。所有變更都以標準的 Rime 補丁檔案形式寫入使用者目錄，隨時可以手動編輯或刪除。";
 "about.license" = "以 GPL-3.0 協議開源。";
 "about.link.home" = "專案首頁";
