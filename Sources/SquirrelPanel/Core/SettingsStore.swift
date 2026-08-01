@@ -90,6 +90,11 @@ final class SettingsStore: ObservableObject {
   @Published var keyboardLayout = "last"
   @Published var showNotificationsWhen = "appropriate"
 
+  /// Tab 翻页开关：Tab 向后翻页（同 =），Shift+Tab 向前翻页（同 -）
+  @Published var tabPagingEnabled = false
+  /// 我们是否在托管 key_bindings（载入时已含我们的 Tab 条目，或用户历史上启用过）
+  private var managingKeyBindings = false
+
   // MARK: - 分应用适配
 
   @Published var appOptions: [AppOptionEntry] = []
@@ -204,6 +209,10 @@ final class SettingsStore: ObservableObject {
     controlLeftAction = defaultPatch.string(forPath: "ascii_composer/switch_key/Control_L") ?? "noop"
     controlRightAction = defaultPatch.string(forPath: "ascii_composer/switch_key/Control_R") ?? "noop"
 
+    let existing = existingTabBindings()
+    managingKeyBindings = !existing.isEmpty
+    tabPagingEnabled = managingKeyBindings
+
     readAppOptions()
   }
 
@@ -228,6 +237,70 @@ final class SettingsStore: ObservableObject {
       if let v = node as? Int { return v }
     }
     return nil
+  }
+
+  // MARK: - 键位（key_binder/bindings）
+
+  /// 追加到 key_binder/bindings 的两条 Tab 翻页绑定
+  /// 使用 has_menu 以匹配用户当前 rime-ice default.yaml 中 minus/equal 的语义
+  private static let tabBindings: [[String: Any]] = [
+    ["when": "has_menu", "accept": "Tab", "send": "Page_Down"],
+    ["when": "has_menu", "accept": "Shift+Tab", "send": "Page_Up"]
+  ]
+  private static let tabBindingAppendPath = "key_binder/bindings/+"
+
+  /// 判断一条 binding 是否属于我们管理的 Tab 翻页
+  private static func isOurTabBinding(_ entry: [String: Any]) -> Bool {
+    guard let accept = entry["accept"] as? String,
+          let send = entry["send"] as? String else { return false }
+    return (accept == "Tab" && send == "Page_Down")
+        || (accept == "Shift+Tab" && send == "Page_Up")
+  }
+
+  /// 读取 default.custom.yaml 里 key_binder/bindings 与 key_binder/bindings/+ 中的条目
+  private func existingTabBindings() -> [[String: Any]] {
+    var result: [[String: Any]] = []
+    for key in ["key_binder/bindings", "key_binder/bindings/+"] {
+      if let list = defaultPatch.value(forPath: key) as? [[String: Any]] {
+        result.append(contentsOf: list)
+      } else if let list = defaultPatch.value(forPath: key) as? [Any] {
+        result.append(contentsOf: list.compactMap { $0 as? [String: Any] })
+      }
+    }
+    return result.filter { Self.isOurTabBinding($0) }
+  }
+
+  /// 组装要写入 `key_binder/bindings/+` 的列表：保留用户其它追加条目，去重后加入/移除我们的 Tab 绑定
+  private func mergedTabBindingAppendList() -> [[String: Any]] {
+    var result: [[String: Any]] = []
+    var seen = Set<String>()
+    if let plus = defaultPatch.value(forPath: Self.tabBindingAppendPath) as? [[String: Any]] {
+      for entry in plus where !Self.isOurTabBinding(entry) {
+        if let accept = entry["accept"] as? String { seen.insert(accept) }
+        result.append(entry)
+      }
+    } else if let plus = defaultPatch.value(forPath: Self.tabBindingAppendPath) as? [Any] {
+      for entry in plus.compactMap({ $0 as? [String: Any] }) where !Self.isOurTabBinding(entry) {
+        if let accept = entry["accept"] as? String { seen.insert(accept) }
+        result.append(entry)
+      }
+    }
+    if tabPagingEnabled {
+      for entry in Self.tabBindings {
+        guard let accept = entry["accept"] as? String else { continue }
+        if seen.contains(accept) { continue }
+        seen.insert(accept)
+        result.append(entry)
+      }
+    }
+    return result
+  }
+
+  /// 卸载 / 恢复默认时，仅移除我们的 Tab 条目，保留用户其它追加键位
+  private func stripTabBindings() {
+    let remaining = mergedTabBindingAppendList().filter { !Self.isOurTabBinding($0) }
+    defaultPatch.set(remaining.isEmpty ? nil : remaining, forPath: Self.tabBindingAppendPath)
+    managingKeyBindings = false
   }
 
   /// 内置 squirrel.yaml 里的 style 段默认值，界面上以它为基准显示
@@ -374,6 +447,15 @@ final class SettingsStore: ObservableObject {
       .filter { !$0.isEmpty }
     set["switcher/hotkeys"] = hotkeys.isEmpty ? PatchValue?.none : .stringList(hotkeys)
     set["switcher/caption"] = switcherCaption.isEmpty ? PatchValue?.none : .string(switcherCaption)
+    // Tab 翻页通过 key_binder/bindings/+ 追加到现有键位列表；启用时追加，关闭时移除我们的条目
+    if managingKeyBindings || tabPagingEnabled {
+      let appendList = mergedTabBindingAppendList()
+      if appendList.isEmpty {
+        set[Self.tabBindingAppendPath] = PatchValue?.none
+      } else {
+        set[Self.tabBindingAppendPath] = .keyBindings(appendList)
+      }
+    }
     return set
   }
 
@@ -409,6 +491,8 @@ final class SettingsStore: ObservableObject {
       try defaultPatch.save()
       baselineSquirrel = squirrelSet
       baselineDefault = defaultSet
+      // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
+      managingKeyBindings = tabPagingEnabled
 
       if environment.isInstalled {
         statusMessage = "status.deploying"
@@ -437,6 +521,7 @@ final class SettingsStore: ObservableObject {
       squirrelPatch.removeAll(withPrefix: "app_options/\(bundleID)")
     }
     defaultPatch.removeManaged(keys: Self.managedDefaultKeys)
+    stripTabBindings()
     do {
       try squirrelPatch.save()
       try defaultPatch.save()

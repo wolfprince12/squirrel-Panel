@@ -54,6 +54,13 @@ struct BehaviorPage: View {
           SwitchKeyRow(title: "behavior.switchKey.Control_R", selection: $store.controlRightAction)
         }
 
+        SettingsGroup("behavior.pagingKeys.title") {
+          Toggle("behavior.pagingKeys.tab", isOn: $store.tabPagingEnabled)
+          Text("behavior.pagingKeys.hint")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+
         SettingsGroup("behavior.system.title") {
           Picker("behavior.keyboardLayout", selection: $store.keyboardLayout) {
             Text("behavior.layout.last").tag("last")

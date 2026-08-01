@@ -101,6 +101,9 @@
 "behavior.notifications.always" = "总是";
 "behavior.notifications.never" = "从不";
 "behavior.quickActions" = "快速操作";
+"behavior.pagingKeys.title" = "翻页按键";
+"behavior.pagingKeys.tab" = "Tab 翻页";
+"behavior.pagingKeys.hint" = "Tab 向后翻页（等同 = 键），Shift+Tab 向前翻页（等同 − 键）。改动以追加方式写入 default.custom.yaml 的 key_binder/bindings/+，不覆盖现有键位。";
 "button.asciiMode" = "切换英文";
 "button.chineseMode" = "切换中文";
 "button.restartSquirrel" = "重启鼠须管";

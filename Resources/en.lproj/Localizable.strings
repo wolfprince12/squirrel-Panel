@@ -101,6 +101,9 @@
 "behavior.notifications.always" = "Always";
 "behavior.notifications.never" = "Never";
 "behavior.quickActions" = "Quick Actions";
+"behavior.pagingKeys.title" = "Paging Keys";
+"behavior.pagingKeys.tab" = "Tab paging";
+"behavior.pagingKeys.hint" = "Tab pages forward (same as =), Shift+Tab pages backward (same as -). Appended to key_binder/bindings/+ in default.custom.yaml without overwriting existing keys.";
 "button.asciiMode" = "ASCII Mode";
 "button.chineseMode" = "Chinese Mode";
 "button.restartSquirrel" = "Restart Squirrel";

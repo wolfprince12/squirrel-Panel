@@ -16,7 +16,7 @@
 
 - **🎨 外观**：配色方案、字体、候选窗布局、实时预览。
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键、菜单标题。
-- **🖱️ 按键行为**：每页候选数、Caps Lock 行为、各修饰键动作。
+- **🖱️ 按键行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
 - **📚 词库与同步**：用户词库概览、同步目录与 ID、一键同步。
 - **🚀 部署与排障**：一键重新部署并回显结果、schema_list 可视化勾选、检测「已启用但不可用」的方案（例如雾凇安装后打不出中文的场景）。
@@ -108,7 +108,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 - **🎨 Appearance**: color schemes, fonts, candidate window layout, live preview.
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys, menu title.
-- **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions.
+- **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
 - **📚 Dictionary & sync**: user dictionary overview, sync dir & ID, one-click sync.
 - **🚀 Deploy & diagnose**: one-click redeploy with result log, visual schema_list selection, and detection of enabled-but-unavailable schemas (e.g. rime-ice installed but cannot type Chinese).
