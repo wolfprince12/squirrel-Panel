@@ -99,8 +99,7 @@ struct SchemaPage: View {
 
         SettingsGroup("schema.switch.title") {
           LabeledContent("schema.hotkeys") {
-            TextField("Control+grave, F4", text: $store.switcherHotkeys)
-              .textFieldStyle(.roundedBorder)
+            HotkeyRecorder(hotkey: $store.switcherHotkeys)
               .frame(width: 240)
           }
           Text("schema.hotkeys.hint")

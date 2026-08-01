@@ -76,7 +76,9 @@
 "schema.available.empty" = "未扫描到任何 *.schema.yaml。请确认鼠须管已安装并至少部署过一次。";
 "schema.userProvided" = "用户目录";
 "schema.hotkeys" = "切换快捷键";
-"schema.hotkeys.hint" = "多个快捷键用英文逗号分隔。留空则沿用鼠须管默认值。";
+"schema.hotkeys.hint" = "点击输入框后按下快捷键即可自动录入（再次点击可重新录入）。留空则沿用鼠须管默认值。";
+"schema.hotkeys.recordHint" = "点击录入快捷键";
+"schema.hotkeys.listening" = "请按下快捷键…";
 "schema.caption" = "菜单标题";
 "schema.openPlum" = "打开方案库（plum）";
 "schema.needDeploy" = "方案文件改动后需要重新部署才会生效。";

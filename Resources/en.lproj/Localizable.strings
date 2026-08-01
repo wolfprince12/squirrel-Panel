@@ -76,7 +76,9 @@
 "schema.available.empty" = "No *.schema.yaml files were found. Make sure Squirrel is installed and has been deployed at least once.";
 "schema.userProvided" = "User Directory";
 "schema.hotkeys" = "Switcher Hotkeys";
-"schema.hotkeys.hint" = "Separate multiple hotkeys with commas. Leave empty to use Squirrel defaults.";
+"schema.hotkeys.hint" = "Click the box, then press a shortcut to record it (click again to re-record). Leave empty to use Squirrel defaults.";
+"schema.hotkeys.recordHint" = "Click to record";
+"schema.hotkeys.listening" = "Press a shortcut…";
 "schema.caption" = "Menu Caption";
 "schema.openPlum" = "Open Schema Library (plum)";
 "schema.needDeploy" = "Schema changes require redeploy to take effect.";

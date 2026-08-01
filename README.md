@@ -15,13 +15,11 @@
 ## 功能
 
 - **🎨 外观**：配色方案、字体、候选窗布局、实时预览。
-- **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键、菜单标题。
-- **🖱️ 按键行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
+- **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键（点击输入框即自动录制）、菜单标题。
+- **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
-- **📚 词库与同步**：用户词库概览、同步目录与 ID、一键同步。
-- **🚀 部署与排障**：一键重新部署并回显结果、schema_list 可视化勾选、检测「已启用但不可用」的方案（例如雾凇安装后打不出中文的场景）。
-- **📦 第三方词库**：列出所有可安装到鼠须管的第三方词库（首批含「雾凇拼音」「Rime 设置集」）。每次打开面板自动检查更新；已安装的包可手动点击「更新」升级到最新版本，安装/更新都会自动备份被覆盖的文件。
-- **🔧 关于与维护**：运行状态、路径跳转、恢复默认、YAML 预览。
+- **📚 词库与同步**：第三方词库包（如「雾凇拼音」「Rime 设置集」）一键安装/更新/卸载并自动备份；用户词库概览；同步目录与 ID、一键同步。
+- **🔧 关于**：运行状态、路径跳转、恢复默认、YAML 预览、版本更新提醒（含鼠须管本体更新检查）。
 
 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
 
@@ -73,6 +71,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 ## 项目关系
 
 - [rime/squirrel](https://github.com/rime/squirrel) —— 鼠须管输入法本体。
+- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) —— 雾凇拼音（常用的 Rime 配置集，可在本面板「词库与同步」中一键安装）。
 - [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) —— 本控制面板（第三方独立项目）。
 
 ## 关于作者
@@ -115,13 +114,11 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 ## Features
 
 - **🎨 Appearance**: color schemes, fonts, candidate window layout, live preview.
-- **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys, menu title.
+- **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys (click the box to capture), menu title.
 - **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
-- **📚 Dictionary & sync**: user dictionary overview, sync dir & ID, one-click sync.
-- **🚀 Deploy & diagnose**: one-click redeploy with result log, visual schema_list selection, and detection of enabled-but-unavailable schemas (e.g. rime-ice installed but cannot type Chinese).
-- **📦 Dictionary packages**: curated third-party packages including **Rime Ice (rime-ice)** and **Rime Settings Set**, with automatic update checks, one-click install/update/uninstall, and automatic backup/restore of overwritten files.
-- **🔧 About & maintenance**: running status, path jump, restore defaults, YAML preview.
+- **📚 Dictionary & sync**: third-party packages (e.g. **Rime Ice**, **Rime Settings Set**) with one-click install/update/uninstall and automatic backup; user dictionary overview; sync dir & ID and one-click sync.
+- **🔧 About**: running status, path jump, restore defaults, YAML preview, and update checks (including Squirrel itself).
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.
 
@@ -142,6 +139,12 @@ This app does not link `librime` nor directly manipulate the input method proces
 3. Sending distributed notifications such as `SquirrelReloadNotification` to trigger redeploy.
 
 So even if this panel has a bug, at worst it only affects the patch files; uninstalling it won't affect the Squirrel input method itself.
+
+## Related Projects
+
+- [rime/squirrel](https://github.com/rime/squirrel) — the Squirrel input method itself.
+- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) — Rime Ice (a popular Rime configuration set, installable in one click from this panel's "Dictionary & sync").
+- [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) — this control panel (a third-party, independent project).
 
 ## About the Author
 

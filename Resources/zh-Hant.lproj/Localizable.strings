@@ -76,7 +76,9 @@
 "schema.available.empty" = "未掃描到任何 *.schema.yaml。請確認鼠須管已安裝並至少部署過一次。";
 "schema.userProvided" = "使用者目錄";
 "schema.hotkeys" = "切換快捷鍵";
-"schema.hotkeys.hint" = "多個快捷鍵用英文逗號分隔。留空則沿用鼠須管預設值。";
+"schema.hotkeys.hint" = "點擊輸入框後按下快捷鍵即可自動錄入（再次點擊可重新錄入）。留空則沿用鼠須管預設值。";
+"schema.hotkeys.recordHint" = "點擊錄入快捷鍵";
+"schema.hotkeys.listening" = "請按下快捷鍵…";
 "schema.caption" = "選單標題";
 "schema.openPlum" = "開啟方案庫（plum）";
 "schema.needDeploy" = "方案檔案變更後需要重新部署才會生效。";
