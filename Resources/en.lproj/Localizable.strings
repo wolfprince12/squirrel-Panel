@@ -35,6 +35,8 @@
 "error.refusedToOverwrite" = "%@ could not be parsed. To avoid corrupting your configuration, the panel refused to write. Please check the YAML syntax manually.";
 "error.squirrelNotInstalled" = "Squirrel not detected. Please install the Squirrel input method first.";
 "error.commandFailed" = "Command failed (%@, exit code %d).";
+"mirror.error.unexpected" = "Mirror returned an unrecognized response. Please check your network or try again later.";
+"mirror.error.empty" = "Mirror returned an empty response.";
 
 /* Banners */
 "banner.squirrelNotInstalled" = "Squirrel not detected. Settings can still be saved and will take effect after installation.";

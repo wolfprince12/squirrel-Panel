@@ -35,6 +35,8 @@
 "error.refusedToOverwrite" = "%@ 無法解析，為避免損壞你的設定，控制面板拒絕寫入。請手動檢查該檔案的 YAML 語法。";
 "error.squirrelNotInstalled" = "未偵測到鼠須管，請先安裝 Squirrel 輸入法。";
 "error.commandFailed" = "指令執行失敗（%@，結束碼 %d）。";
+"mirror.error.unexpected" = "鏡像返回了無法識別的內容，請檢查網路或稍後重試。";
+"mirror.error.empty" = "鏡像返回了空回應。";
 
 /* Banners */
 "banner.squirrelNotInstalled" = "未偵測到鼠須管。設定仍可儲存，安裝後會自動生效。";

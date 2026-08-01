@@ -168,25 +168,81 @@ enum GitHubMirrorFetch {
   }
 
   /// 专门获取 GitHub 仓库某分支的最新 commit。
+  /// 先尝试 API（直连+镜像），失败后再尝试 `/commit/{branch}` 页面重定向解析 SHA。
   /// - Returns: (sha, commit date, 实际请求的 URL)
   static func fetchLatestCommit(owner: String, repo: String, branch: String) async throws -> (sha: String, date: Date?, usedURL: String) {
     let apiURL = "https://api.github.com/repos/\(owner)/\(repo)/commits?sha=\(branch)&per_page=1"
-    let (data, _, used) = try await fetch(
-      from: apiURL,
-      headers: ["Accept": "application/vnd.github+json"]
-    )
-    guard let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-          let first = arr.first,
-          let sha = first["sha"] as? String else {
-      throw GitHubMirrorFetchError.unexpectedResponse
+
+    // 1) 尝试 API（直连 + 镜像）
+    var apiLastError: Error?
+    let apiCandidates = candidateURLs(for: apiURL)
+    for urlString in apiCandidates {
+      guard let url = URL(string: urlString) else { continue }
+      var req = URLRequest(url: url, timeoutInterval: 20)
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+      do {
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+          apiLastError = GitHubMirrorFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0, urlString)
+          continue
+        }
+        if let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+           let first = arr.first,
+           let sha = first["sha"] as? String {
+          var date: Date? = nil
+          if let commit = first["commit"] as? [String: Any],
+             let author = commit["author"] as? [String: Any],
+             let dateStr = author["date"] as? String {
+            date = ISO8601DateFormatter().date(from: dateStr)
+          }
+          return (sha, date, urlString)
+        }
+      } catch {
+        apiLastError = error
+        continue
+      }
     }
-    var date: Date? = nil
-    if let commit = first["commit"] as? [String: Any],
-       let author = commit["author"] as? [String: Any],
-       let dateStr = author["date"] as? String {
-      date = ISO8601DateFormatter().date(from: dateStr)
+
+    // 2) API 全部失败时，尝试 commit 页面 HTML：最新 commit SHA 会出现在页面链接中
+    let commitPage = "https://github.com/\(owner)/\(repo)/commit/\(branch)"
+    let pageCandidates = candidateURLs(for: commitPage)
+    for urlString in pageCandidates {
+      guard let url = URL(string: urlString) else { continue }
+      var req = URLRequest(url: url, timeoutInterval: 20)
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      do {
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let html = String(data: data, encoding: .utf8) else {
+          continue
+        }
+        if let sha = parseSHAFromCommitPage(html, owner: owner, repo: repo) {
+          return (sha, nil, urlString)
+        }
+      } catch {
+        continue
+      }
     }
-    return (sha, date, used)
+
+    throw apiLastError ?? GitHubMirrorFetchError.unexpectedResponse
+  }
+
+  /// 从 GitHub commit 页面 HTML 中解析最新 commit SHA。
+  /// 匹配形如 href="/{owner}/{repo}/commit/abcdef123456..." 的链接。
+  static func parseSHAFromCommitPage(_ html: String, owner: String, repo: String) -> String? {
+    let pattern = #"href=\"/?\#(NSRegularExpression.escapedPattern(for: owner))/\#(NSRegularExpression.escapedPattern(for: repo))/commit/([a-fA-F0-9]{7,40})\""#
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+    let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: html.utf16.count))
+    for match in matches {
+      let range = match.range(at: 3)
+      guard let swiftRange = Range(range, in: html) else { continue }
+      let sha = String(html[swiftRange])
+      if sha.count == 40 {
+        return sha
+      }
+    }
+    return nil
   }
 
   /// 下载文件（zip 等），自动 fallback 镜像。
