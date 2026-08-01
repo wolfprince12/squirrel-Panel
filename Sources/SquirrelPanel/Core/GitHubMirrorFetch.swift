@@ -233,16 +233,16 @@ enum GitHubMirrorFetch {
   static func parseSHAFromCommitPage(_ html: String, owner: String, repo: String) -> String? {
     let pattern = #"href=\"/?\#(NSRegularExpression.escapedPattern(for: owner))/\#(NSRegularExpression.escapedPattern(for: repo))/commit/([a-fA-F0-9]{7,40})\""#
     guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
-    let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: html.utf16.count))
-    for match in matches {
-      let range = match.range(at: 3)
-      guard let swiftRange = Range(range, in: html) else { continue }
-      let sha = String(html[swiftRange])
-      if sha.count == 40 {
-        return sha
-      }
-    }
-    return nil
+    let nsrange = NSRange(html.startIndex..., in: html)
+    // 正则只有 1 个捕获组（SHA），索引为 1。
+    // 前置检查 numberOfRanges，避免 range(at:) 索引越界抛 ObjC 异常导致进程崩溃。
+    guard let match = regex.firstMatch(in: html, options: [], range: nsrange),
+          match.numberOfRanges > 1 else { return nil }
+    let shaRange = match.range(at: 1)
+    guard shaRange.location != NSNotFound,
+          let swiftRange = Range(shaRange, in: html) else { return nil }
+    let sha = String(html[swiftRange])
+    return sha.count == 40 ? sha : nil
   }
 
   /// 下载文件（zip 等），自动 fallback 镜像。
