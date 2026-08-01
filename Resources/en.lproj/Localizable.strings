@@ -271,3 +271,46 @@
 "dictionary.redeploy.title" = "Recompile All Schemas";
 "dictionary.message.deployStarted" = "Deploy initiated";
 "generic.choose" = "Choose…";
+
+/* Navigation new */
+"nav.deploy" = "Deploy & Diagnose";
+"nav.packages" = "Dictionaries";
+
+/* DeployPage */
+"deploy.title" = "Deploy & Diagnose";
+"deploy.redeploy.title" = "Redeploy";
+"deploy.redeploy.hint" = "Applies changes and checks whether deployment succeeded and no schema is broken.";
+"deploy.button.redeploy" = "Redeploy Now";
+"deploy.log.title" = "Deploy Log";
+"deploy.logClean" = "Deployment finished with no captured error text (normal when rime.log is not generated on this machine).";
+"deploy.logMissing" = "The following enabled schemas failed to build: %@";
+"deploy.missing.title" = "No Available Schema";
+"deploy.missing.text" = "Enabled but unusable schemas: %@. They are either missing files or failed to compile. Check the corresponding .schema.yaml and its dictionary dependencies.";
+"deploy.schemas.title" = "Enabled Schemas";
+"deploy.schemas.hint" = "Check to enable, uncheck to disable. Changes are written to default.custom.yaml schema_list and deployed.";
+"deploy.schemas.apply" = "Apply Schema Selection";
+"deploy.schemas.applied" = "Schema list updated and deployed";
+"deploy.result.ok" = "Deployment succeeded; all schemas available";
+"deploy.result.warn" = "Deployment finished, but some schemas are unavailable";
+"deploy.result.duration" = "took %@ ms";
+
+/* PackagePage */
+"package.title" = "Dictionary Packages";
+"package.intro" = "Install or uninstall curated dictionary packages (such as Rime Ice) in one click. Installation downloads the official archive, backs up overwritten files, and deploys automatically.";
+"package.status.notInstalled" = "Not installed";
+"package.status.installed" = "Installed (managed by panel)";
+"package.status.external" = "Present (installed externally)";
+"package.button.install" = "Install";
+"package.button.manage" = "Take Over";
+"package.button.uninstall" = "Uninstall";
+"package.button.homepage" = "Homepage";
+"package.log.install" = "Installing %@";
+"package.log.downloading" = "Downloading package…";
+"package.log.installed" = "Installed; wrote %@ files and deployed.";
+"package.log.uninstall" = "Uninstalling %@";
+"package.log.removing" = "Removing package files and restoring backups…";
+"package.log.removed" = "Uninstalled; overwritten files restored.";
+"package.log.error" = "Operation failed: %@";
+"package.error.download" = "Download failed: %@";
+"package.error.extract" = "Extraction failed: %@";
+"package.error.notManaged" = "This package was not installed by the panel and cannot be uninstalled here.";
