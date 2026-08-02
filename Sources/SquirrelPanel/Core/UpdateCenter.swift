@@ -146,15 +146,28 @@ final class UpdateCenter: ObservableObject {
   private static func computeUpdateState(for pkg: DictionaryPackage, status: PackageStatus) async -> PackageUpdateState {
     guard case .installed(let manifest) = status else { return .notApplicable }
     do {
-      let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
-      guard let installedNorm = normalizedSHA(manifest.installedCommit),
-            let remoteNorm = normalizedSHA(remote.sha) else {
-        return .unknown
+      if isReleaseAssetPackage(pkg) {
+        // release asset 包：按 release tag 比对
+        let remote = try await DictionaryPackageManager.fetchLatestRelease(pkg: pkg)
+        let installed = manifest.installedTag?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let installed = installed, !installed.isEmpty else { return .unknown }
+        return installed == remote.tag ? .upToDate : .available
+      } else {
+        // commit-based 包：按 commit SHA 比对
+        let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
+        guard let installedNorm = normalizedSHA(manifest.installedCommit),
+              let remoteNorm = normalizedSHA(remote.sha) else {
+          return .unknown
+        }
+        return installedNorm == remoteNorm ? .upToDate : .available
       }
-      return installedNorm == remoteNorm ? .upToDate : .available
     } catch {
       return .failed(error.localizedDescription)
     }
+  }
+
+  private static func isReleaseAssetPackage(_ pkg: DictionaryPackage) -> Bool {
+    return pkg.releaseAsset?.isEmpty == false
   }
 
   /// 归一化 SHA：去空白、转小写，便于跨来源（API / HTML / 清单）比对。

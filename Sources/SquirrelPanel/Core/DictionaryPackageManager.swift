@@ -21,6 +21,9 @@ struct DictionaryPackage: Identifiable, Codable {
   let description: String
   let description_en: String
   let sourceURL: String
+  /// 若使用 GitHub Release asset 分发（如雾凇的 full.zip），填写 asset 文件名。
+  /// 此时 sourceURL 应为原始 release asset URL，下载时会自动构造南大镜像等候选地址。
+  let releaseAsset: String?
   /// 用于更新检查的仓库信息（也可从 sourceURL 推导）
   let repoOwner: String?
   let repoName: String?
@@ -54,6 +57,7 @@ struct PackageManifest: Codable {
   var installedAt: Date
   var version: String
   var installedCommit: String?      // 安装时锁定的上游最新 commit，用于更新比对
+  var installedTag: String?         // release asset 包记录 release tag，用于更新比对
 }
 
 enum PackageStatus {
@@ -162,11 +166,20 @@ enum DictionaryPackageManager {
     try fm.createDirectory(at: manifestsDir(), withIntermediateDirectories: true)
     try fm.createDirectory(at: backupDir(for: pkg.id), withIntermediateDirectories: true)
 
-    // 1. 先取上游最新 commit，用于锁定下载版本和后续比对（失败不影响安装）
-    let remote = try? await fetchLatestCommit(pkg: pkg)
+    // 1. 先取上游最新版本信息，用于锁定下载版本和后续比对
+    //    release asset 包用 release tag；commit-based 包用 commit SHA。
+    let releaseTag: String?
+    let commitSHA: String?
+    if usesReleaseAsset(pkg) {
+      releaseTag = try? await fetchLatestRelease(pkg: pkg).tag
+      commitSHA = nil
+    } else {
+      releaseTag = nil
+      commitSHA = try? await fetchLatestCommit(pkg: pkg).sha
+    }
 
-    // 2. 下载精确到 commit 的归档，避免分支归档被镜像缓存导致装到旧版
-    let zipURL = try await download(from: archiveURL(for: pkg, commitSHA: remote?.sha))
+    // 2. 下载：release asset 包使用 release asset 候选 URL；commit-based 包使用精确 commit 归档
+    let zipURL = try await download(from: installDownloadURLs(for: pkg, releaseTag: releaseTag, commitSHA: commitSHA))
 
     // 3. 解压到临时目录（ditto 非交互，可正确处理非常规文件名）
     let stage = FileManager.default.temporaryDirectory
@@ -216,10 +229,7 @@ enum DictionaryPackageManager {
     try SquirrelBridge.deploy(environment: environment)
     try? await Task.sleep(nanoseconds: 2_000_000_000)
 
-    // 9. 记录上游版本（remote 在第 1 步已取得；失败不影响安装）
-    let installedCommit = remote?.sha
-
-    // 10. 写清单
+    // 9. 写清单（记录 release tag 或 commit SHA，用于后续更新比对）
     let manifest = PackageManifest(
       id: pkg.id,
       addedFiles: addedFiles,
@@ -227,7 +237,8 @@ enum DictionaryPackageManager {
       defaultSchema: pkg.defaultSchema,
       installedAt: Date(),
       version: "0.3.0",
-      installedCommit: installedCommit)
+      installedCommit: commitSHA,
+      installedTag: releaseTag)
     let mData = try JSONEncoder().encode(manifest)
     try mData.write(to: manifestURL(for: pkg.id), options: .atomic)
 
@@ -287,10 +298,18 @@ enum DictionaryPackageManager {
     let rime = rimeDir()
     try fm.createDirectory(at: rime, withIntermediateDirectories: true)
 
-    let remote = try? await fetchLatestCommit(pkg: pkg)
+    let releaseTag: String?
+    let commitSHA: String?
+    if usesReleaseAsset(pkg) {
+      releaseTag = try? await fetchLatestRelease(pkg: pkg).tag
+      commitSHA = nil
+    } else {
+      releaseTag = nil
+      commitSHA = try? await fetchLatestCommit(pkg: pkg).sha
+    }
 
-    // 1. 下载精确到 commit 的归档，避免分支归档被镜像缓存导致装到旧版
-    let zipURL = try await download(from: archiveURL(for: pkg, commitSHA: remote?.sha))
+    // 1. 下载：release asset 包使用 release asset 候选 URL；commit-based 包使用精确 commit 归档
+    let zipURL = try await download(from: installDownloadURLs(for: pkg, releaseTag: releaseTag, commitSHA: commitSHA))
 
     // 2. 解压
     let stage = FileManager.default.temporaryDirectory
@@ -337,7 +356,8 @@ enum DictionaryPackageManager {
     // 8. 更新清单
     var updated = manifest
     updated.addedFiles = filesToInstall
-    updated.installedCommit = remote?.sha
+    updated.installedCommit = commitSHA
+    updated.installedTag = releaseTag
     updated.installedAt = Date()
     updated.version = "0.3.2"
     let mData = try JSONEncoder().encode(updated)
@@ -424,26 +444,69 @@ enum DictionaryPackageManager {
 
   // MARK: - 下载
 
-  private static func download(from urlString: String) async throws -> URL {
+  /// 从候选 URL 列表中依次尝试下载，任一成功即返回本地临时文件路径。
+  private static func download(from candidates: [String]) async throws -> URL {
     let dest = FileManager.default.temporaryDirectory
       .appending(path: "squirrel-panel-\(UUID().uuidString).zip")
-    do {
-      try await GitHubMirrorFetch.download(from: urlString, to: dest, timeout: 60)
-    } catch {
-      throw PackageManagerError.downloadFailed(urlString)
+    var lastURL = candidates.first ?? ""
+    for urlString in candidates {
+      lastURL = urlString
+      do {
+        try await GitHubMirrorFetch.download(from: urlString, to: dest, timeout: 60)
+        return dest
+      } catch {
+        continue
+      }
     }
-    return dest
+    throw PackageManagerError.downloadFailed(lastURL)
   }
 
-  /// 构造精确到 commit 的归档下载 URL。若缺少必要信息则回退到注册表中的 sourceURL。
-  /// 使用 commit-specific URL 可避免镜像缓存分支归档（refs/heads/main.zip）导致装到旧版。
-  private static func archiveURL(for pkg: DictionaryPackage, commitSHA: String?) -> String {
+  /// 该包是否使用 GitHub Release asset 分发（如 full.zip）。
+  private static func usesReleaseAsset(_ pkg: DictionaryPackage) -> Bool {
+    return pkg.releaseAsset?.isEmpty == false
+  }
+
+  /// release asset 包的候选下载 URL：原始 URL + 南大镜像 + 普通镜像前缀。
+  private static func releaseAssetURLs(for pkg: DictionaryPackage) -> [String] {
+    guard let asset = pkg.releaseAsset, !asset.isEmpty,
+          let owner = pkg.repoOwner, !owner.isEmpty,
+          let repo = pkg.repoName, !repo.isEmpty else { return [] }
+    let original = "https://github.com/\(owner)/\(repo)/releases/latest/download/\(asset)"
+    var result = GitHubMirrorFetch.candidateURLs(for: original)
+    // 南大镜像使用固定路径结构，不是简单前缀拼接
+    let nju = "https://mirror.nju.edu.cn/github-release/\(owner)/\(repo)/LatestRelease/\(asset)"
+    result.insert(nju, at: 1)
+    return result
+  }
+
+  /// 根据包类型构造安装/更新时的候选下载 URL 列表。
+  /// - release asset 包：使用 release asset 候选列表。
+  /// - commit-based 包：使用精确到 commit 的归档 URL + 普通镜像 fallback。
+  private static func installDownloadURLs(
+    for pkg: DictionaryPackage,
+    releaseTag: String?,
+    commitSHA: String?
+  ) -> [String] {
+    if usesReleaseAsset(pkg) {
+      return releaseAssetURLs(for: pkg)
+    }
     guard let sha = commitSHA, !sha.isEmpty,
           let owner = pkg.repoOwner, !owner.isEmpty,
           let repo = pkg.repoName, !repo.isEmpty else {
-      return pkg.sourceURL
+      return [pkg.sourceURL]
     }
-    return "https://github.com/\(owner)/\(repo)/archive/\(sha).zip"
+    let original = "https://github.com/\(owner)/\(repo)/archive/\(sha).zip"
+    return GitHubMirrorFetch.candidateURLs(for: original)
+  }
+
+  /// 获取 release asset 包的 latest release tag（用于版本比对与记录）。
+  static func fetchLatestRelease(pkg: DictionaryPackage) async throws -> (tag: String, htmlURL: String?) {
+    guard let owner = pkg.repoOwner, let repo = pkg.repoName,
+          !owner.isEmpty, !repo.isEmpty else {
+      throw PackageManagerError.updateCheckFailed("no repo info")
+    }
+    let result = try await GitHubMirrorFetch.fetchLatestRelease(repo: "\(owner)/\(repo)")
+    return (result.tag, result.htmlURL)
   }
 
   // MARK: - 定位包根
