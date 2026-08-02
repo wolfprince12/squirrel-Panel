@@ -260,6 +260,8 @@ enum PanelError: LocalizedError {
   case refusedToOverwrite(String)
   case squirrelNotInstalled
   case commandFailed(String, Int32)
+  /// 部署前校验发现：以下方案的 .schema.yaml 源文件缺失，已中止部署以免输入法失效
+  case schemaSourcesMissing([String])
 
   var errorDescription: String? {
     switch self {
@@ -269,6 +271,8 @@ enum PanelError: LocalizedError {
       return String(localized: "error.squirrelNotInstalled")
     case .commandFailed(let cmd, let code):
       return String(format: String(localized: "error.commandFailed"), cmd, code)
+    case .schemaSourcesMissing(let ids):
+      return String(format: String(localized: "error.schemaSourcesMissing"), ids.joined(separator: "、"))
     }
   }
 }

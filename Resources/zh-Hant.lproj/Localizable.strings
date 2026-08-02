@@ -34,6 +34,8 @@
 "error.yaml.notMapping" = "檔案頂層不是鍵值對應。";
 "error.refusedToOverwrite" = "%@ 無法解析，為避免損壞你的設定，控制面板拒絕寫入。請手動檢查該檔案的 YAML 語法。";
 "error.squirrelNotInstalled" = "未偵測到鼠須管，請先安裝 Squirrel 輸入法。";
+"error.schemaSourcesMissing" = "偵測到以下輸入方案缺少來源檔：%@。已暫停重新部署以免輸入法失效，請恢復這些方案或重新安裝對應詞庫套件後再試。";
+"status.deploySkipped" = "設定已儲存，但偵測到方案來源檔缺失，已暫停重新部署以保護輸入法。";
 "error.commandFailed" = "指令執行失敗（%@，結束碼 %d）。";
 "mirror.error.unexpected" = "鏡像返回了無法識別的內容，請檢查網路或稍後重試。";
 "mirror.error.empty" = "鏡像返回了空回應。";

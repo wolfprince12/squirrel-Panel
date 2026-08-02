@@ -522,11 +522,20 @@ final class SettingsStore: ObservableObject {
 
       if environment.isInstalled {
         statusMessage = "status.deploying"
-        try SquirrelBridge.deploy(environment: environment)
-        // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
-        // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
-        // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
-        statusMessage = "status.deployed"
+        do {
+          try SquirrelBridge.deploy(environment: environment)
+          // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
+          // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
+          // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
+          statusMessage = "status.deployed"
+        } catch let e as PanelError {
+          // 防事故：部署前发现方案源文件缺失，SquirrelBridge.deploy 已中止部署。
+          // 配置已写入磁盘，仅暂停重建方案，避免把输入法打挂。
+          lastError = e.localizedDescription
+          statusMessage = "status.deploySkipped"
+          isApplying = false
+          return
+        }
       } else {
         statusMessage = "status.savedWithoutSquirrel"
       }
@@ -556,7 +565,12 @@ final class SettingsStore: ObservableObject {
       try defaultPatch.save()
       reload()
       if environment.isInstalled {
-        try SquirrelBridge.deploy(environment: environment)
+        do {
+          try SquirrelBridge.deploy(environment: environment)
+        } catch let e as PanelError {
+          // 清空管理项时若检测到方案源文件缺失，暂停部署并提示，但不阻断重置完成
+          lastError = e.localizedDescription
+        }
       }
       statusMessage = "status.reset"
     } catch {

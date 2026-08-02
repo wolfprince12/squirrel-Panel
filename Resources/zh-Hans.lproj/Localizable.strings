@@ -34,6 +34,8 @@
 "error.yaml.notMapping" = "文件顶层不是键值映射。";
 "error.refusedToOverwrite" = "%@ 无法解析，为避免损坏你的配置，控制面板拒绝写入。请手动检查该文件的 YAML 语法。";
 "error.squirrelNotInstalled" = "未检测到鼠须管，请先安装 Squirrel 输入法。";
+"error.schemaSourcesMissing" = "检测到以下输入方案缺少源文件：%@。已暂停重新部署以免输入法失效，请恢复这些方案或重新安装对应词库包后再试。";
+"status.deploySkipped" = "配置已保存，但检测到方案源文件缺失，已暂停重新部署以保护输入法。";
 "error.commandFailed" = "命令执行失败（%@，退出码 %d）。";
 "mirror.error.unexpected" = "镜像返回了无法识别的内容，请检查网络或稍后重试。";
 "mirror.error.empty" = "镜像返回了空响应。";

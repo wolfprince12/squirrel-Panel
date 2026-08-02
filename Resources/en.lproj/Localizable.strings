@@ -34,6 +34,8 @@
 "error.yaml.notMapping" = "The top level of the file is not a key-value mapping.";
 "error.refusedToOverwrite" = "%@ could not be parsed. To avoid corrupting your configuration, the panel refused to write. Please check the YAML syntax manually.";
 "error.squirrelNotInstalled" = "Squirrel not detected. Please install the Squirrel input method first.";
+"error.schemaSourcesMissing" = "The following input schemas are missing their source files: %@. Deployment was paused to avoid breaking the input method. Please restore these schemas or reinstall the corresponding dictionary package, then try again.";
+"status.deploySkipped" = "Settings saved, but schema source files are missing; deployment was skipped to protect the input method.";
 "error.commandFailed" = "Command failed (%@, exit code %d).";
 "mirror.error.unexpected" = "Mirror returned an unrecognized response. Please check your network or try again later.";
 "mirror.error.empty" = "Mirror returned an empty response.";
