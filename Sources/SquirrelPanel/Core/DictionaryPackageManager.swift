@@ -162,10 +162,13 @@ enum DictionaryPackageManager {
     try fm.createDirectory(at: manifestsDir(), withIntermediateDirectories: true)
     try fm.createDirectory(at: backupDir(for: pkg.id), withIntermediateDirectories: true)
 
-    // 1. 下载
-    let zipURL = try await download(from: pkg.sourceURL)
+    // 1. 先取上游最新 commit，用于锁定下载版本和后续比对（失败不影响安装）
+    let remote = try? await fetchLatestCommit(pkg: pkg)
 
-    // 2. 解压到临时目录（ditto 非交互，可正确处理非常规文件名）
+    // 2. 下载精确到 commit 的归档，避免分支归档被镜像缓存导致装到旧版
+    let zipURL = try await download(from: archiveURL(for: pkg, commitSHA: remote?.sha))
+
+    // 3. 解压到临时目录（ditto 非交互，可正确处理非常规文件名）
     let stage = FileManager.default.temporaryDirectory
       .appending(path: "squirrel-panel-\(pkg.id)-\(UUID().uuidString)", directoryHint: .isDirectory)
     try? fm.removeItem(at: stage)
@@ -179,17 +182,17 @@ enum DictionaryPackageManager {
       throw PackageManagerError.extractFailed("ditto exit \(ditto.terminationStatus)")
     }
 
-    // 3. 定位包根（处理内层文件夹，如 rime-ice-main）
+    // 4. 定位包根（处理内层文件夹，如 rime-ice-main 或 rime-ice-<sha>）
     let packageRoot = locatePackageRoot(in: stage)
 
-    // 4. 枚举要安装的文件（排除非运行时文件）
+    // 5. 枚举要安装的文件（排除非运行时文件）
     let allFiles = snapshotFiles(in: packageRoot)
     let filesToInstall = allFiles.filter { rel in
       let top = rel.split(separator: "/").first.map(String.init) ?? rel
       return !Self.excludeFromInstall.contains(top)
     }
 
-    // 5. 备份会被覆盖的文件 + 复制
+    // 6. 备份会被覆盖的文件 + 复制
     var addedFiles: [String] = []
     for rel in filesToInstall {
       let src = packageRoot.appending(path: rel)
@@ -206,20 +209,17 @@ enum DictionaryPackageManager {
       addedFiles.append(rel)
     }
 
-    // 6. 启用默认方案
+    // 7. 启用默认方案
     enableSchema(pkg.defaultSchema, environment: environment)
 
-    // 7. 重新部署
+    // 8. 重新部署
     try SquirrelBridge.deploy(environment: environment)
     try? await Task.sleep(nanoseconds: 2_000_000_000)
 
-    // 8. 记录上游版本（用于更新比对；失败不影响安装）
-    var installedCommit: String? = nil
-    if let remote = try? await fetchLatestCommit(pkg: pkg) {
-      installedCommit = remote.sha
-    }
+    // 9. 记录上游版本（remote 在第 1 步已取得；失败不影响安装）
+    let installedCommit = remote?.sha
 
-    // 9. 写清单
+    // 10. 写清单
     let manifest = PackageManifest(
       id: pkg.id,
       addedFiles: addedFiles,
@@ -289,8 +289,8 @@ enum DictionaryPackageManager {
 
     let remote = try? await fetchLatestCommit(pkg: pkg)
 
-    // 1. 下载
-    let zipURL = try await download(from: pkg.sourceURL)
+    // 1. 下载精确到 commit 的归档，避免分支归档被镜像缓存导致装到旧版
+    let zipURL = try await download(from: archiveURL(for: pkg, commitSHA: remote?.sha))
 
     // 2. 解压
     let stage = FileManager.default.temporaryDirectory
@@ -433,6 +433,17 @@ enum DictionaryPackageManager {
       throw PackageManagerError.downloadFailed(urlString)
     }
     return dest
+  }
+
+  /// 构造精确到 commit 的归档下载 URL。若缺少必要信息则回退到注册表中的 sourceURL。
+  /// 使用 commit-specific URL 可避免镜像缓存分支归档（refs/heads/main.zip）导致装到旧版。
+  private static func archiveURL(for pkg: DictionaryPackage, commitSHA: String?) -> String {
+    guard let sha = commitSHA, !sha.isEmpty,
+          let owner = pkg.repoOwner, !owner.isEmpty,
+          let repo = pkg.repoName, !repo.isEmpty else {
+      return pkg.sourceURL
+    }
+    return "https://github.com/\(owner)/\(repo)/archive/\(sha).zip"
   }
 
   // MARK: - 定位包根

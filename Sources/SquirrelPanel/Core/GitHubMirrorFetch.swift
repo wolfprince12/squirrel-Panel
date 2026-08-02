@@ -204,8 +204,9 @@ enum GitHubMirrorFetch {
       }
     }
 
-    // 2) API 全部失败时，尝试 commit 页面 HTML：最新 commit SHA 会出现在页面链接中
-    let commitPage = "https://github.com/\(owner)/\(repo)/commit/\(branch)"
+    // 2) API 全部失败时，尝试 commits 页面 HTML：最新 commit SHA 会出现在页面链接中。
+    // 注意：/commit/{branch} 会被 CDN 缓存并返回旧提交，/commits/{branch} 才是分支提交列表。
+    let commitPage = "https://github.com/\(owner)/\(repo)/commits/\(branch)"
     let pageCandidates = candidateURLs(for: commitPage)
     for urlString in pageCandidates {
       guard let url = URL(string: urlString) else { continue }

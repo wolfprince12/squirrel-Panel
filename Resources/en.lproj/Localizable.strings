@@ -324,6 +324,7 @@
 "package.button.update" = "Update";
 "package.button.checkAll" = "Check for Updates";
 "package.button.checkUpdate" = "Retry";
+"package.button.checkNow" = "Check for Updates";
 "package.checkingAll" = "Checking…";
 "package.button.homepage" = "Homepage";
 "package.log.install" = "Installing %@";

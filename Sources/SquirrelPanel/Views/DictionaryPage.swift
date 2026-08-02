@@ -60,19 +60,6 @@ struct DictionaryPage: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         // MARK: - 第三方词库包
-        SettingsGroup("package.title") {
-          HStack(alignment: .top, spacing: 12) {
-            Text("package.intro")
-              .font(.callout)
-              .foregroundStyle(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-            Spacer()
-            Button(updateCenter.dictionaryCheckingAll ? "package.checkingAll" : "package.button.checkAll") { updateCenter.checkDictionaryUpdates() }
-              .controlSize(.small)
-              .disabled(updateCenter.dictionaryCheckingAll)
-          }
-        }
-
         ForEach(packages) { pkg in
           PackageCard(
             pkg: pkg,
@@ -419,8 +406,6 @@ struct PackageCard: View {
               Button("package.button.update", action: onUpdate)
                 .controlSize(.small)
             case .failed(let msg):
-              Button("package.button.checkUpdate", action: onCheck)
-                .controlSize(.small)
               Text(msg).font(.caption2).foregroundStyle(.red).lineLimit(1)
             case .checking:
               ProgressView().controlSize(.small)
@@ -438,6 +423,10 @@ struct PackageCard: View {
           case .notInstalled:
             Button("package.button.install", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)
+          }
+          if status.isInstalled, !updateState.isChecking {
+            Button("package.button.checkNow", action: onCheck)
+              .controlSize(.small)
           }
           if let url = URL(string: pkg.homepage) {
             Link("package.button.homepage", destination: url)

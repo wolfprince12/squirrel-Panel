@@ -147,13 +147,20 @@ final class UpdateCenter: ObservableObject {
     guard case .installed(let manifest) = status else { return .notApplicable }
     do {
       let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
-      if let installed = manifest.installedCommit {
-        return installed == remote.sha ? .upToDate : .available
+      guard let installedNorm = normalizedSHA(manifest.installedCommit),
+            let remoteNorm = normalizedSHA(remote.sha) else {
+        return .unknown
       }
-      return .unknown
+      return installedNorm == remoteNorm ? .upToDate : .available
     } catch {
       return .failed(error.localizedDescription)
     }
+  }
+
+  /// 归一化 SHA：去空白、转小写，便于跨来源（API / HTML / 清单）比对。
+  private static func normalizedSHA(_ sha: String?) -> String? {
+    guard let sha = sha?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !sha.isEmpty else { return nil }
+    return sha
   }
 
   // MARK: - 版本比较
