@@ -322,9 +322,11 @@
 "package.button.manage" = "纳入管理";
 "package.button.uninstall" = "卸载";
 "package.button.update" = "更新";
+"package.button.updateManual" = "手动更新";
 "package.button.checkAll" = "检查更新";
 "package.button.checkUpdate" = "重试检查";
 "package.button.checkNow" = "检查更新";
+"package.button.checking" = "检查中…";
 "package.checkingAll" = "检查更新中…";
 "package.button.homepage" = "项目主页";
 "package.log.install" = "正在安装 %@";

@@ -210,7 +210,8 @@ struct PackageCard: View {
               Button("package.button.update", action: onUpdate)
                 .controlSize(.small).buttonStyle(.borderedProminent)
             case .unknown:
-              Button("package.button.update", action: onUpdate)
+              // 无法判断是否有更新时，不显示“可更新”的暗示，只提供手动更新入口
+              Button("package.button.updateManual", action: onUpdate)
                 .controlSize(.small)
             case .failed(let msg):
               Text(msg).font(.caption2).foregroundStyle(.red).lineLimit(1)
@@ -231,9 +232,15 @@ struct PackageCard: View {
             Button("package.button.install", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)
           }
-          if status.isInstalled, !updateState.isChecking {
-            Button("package.button.checkNow", action: onCheck)
-              .controlSize(.small)
+          if status.isInstalled {
+            if updateState.isChecking {
+              Button("package.button.checking", action: {})
+                .controlSize(.small)
+                .disabled(true)
+            } else {
+              Button("package.button.checkNow", action: onCheck)
+                .controlSize(.small)
+            }
           }
           if let url = URL(string: pkg.homepage) {
             Link("package.button.homepage", destination: url)

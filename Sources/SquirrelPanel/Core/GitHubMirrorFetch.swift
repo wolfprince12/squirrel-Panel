@@ -247,10 +247,18 @@ enum GitHubMirrorFetch {
   }
 
   /// 下载文件（zip 等），自动 fallback 镜像。
+  /// 对 .zip 文件额外校验文件签名（PK\x03\x04），避免 mirror 返回 HTML 错误页或截断数据。
   static func download(from originalURL: String, to destination: URL, timeout: TimeInterval = 60) async throws {
     let (data, _, _) = try await fetch(from: originalURL, timeout: timeout)
     guard !data.isEmpty else {
       throw GitHubMirrorFetchError.emptyResponse
+    }
+    if originalURL.lowercased().hasSuffix(".zip") {
+      let zipSignature = Data([0x50, 0x4B, 0x03, 0x04])
+      guard data.count >= zipSignature.count,
+            data.prefix(zipSignature.count) == zipSignature else {
+        throw GitHubMirrorFetchError.unexpectedResponse
+      }
     }
     try data.write(to: destination, options: .atomic)
   }

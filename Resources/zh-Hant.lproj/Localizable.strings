@@ -334,9 +334,11 @@
 "package.button.manage" = "納入管理";
 "package.button.uninstall" = "解除安裝";
 "package.button.update" = "更新";
+"package.button.updateManual" = "手動更新";
 "package.button.checkAll" = "檢查更新";
 "package.button.checkUpdate" = "重試檢查";
 "package.button.checkNow" = "檢查更新";
+"package.button.checking" = "檢查中…";
 "package.checkingAll" = "檢查更新中…";
 "package.button.homepage" = "專案首頁";
 "package.log.install" = "正在安裝 %@";

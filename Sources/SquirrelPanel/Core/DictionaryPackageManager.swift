@@ -252,6 +252,7 @@ enum DictionaryPackageManager {
 
   /// 把包内文件复制进 Rime 目录。overwrite=true 时直接覆盖（用于更新，保留首次安装时的原始备份）；
   /// overwrite=false 时会先备份被覆盖的文件（用于首次安装）。返回实际写入的相对路径列表。
+  /// 若 source 文件在包内不存在（zip 损坏/不完整），则跳过并记录警告，不终止整个流程。
   private static func applyPackageFiles(
     packageRoot: URL, files: [String], rime: URL,
     backupDir: URL, overwrite: Bool
@@ -261,6 +262,10 @@ enum DictionaryPackageManager {
     for rel in files {
       let src = packageRoot.appending(path: rel)
       let dst = rime.appending(path: rel)
+      guard fm.fileExists(atPath: src.path(percentEncoded: false)) else {
+        print("[SquirrelPanel] update skipped missing source file: \(src.path(percentEncoded: false))")
+        continue
+      }
       if !overwrite, fm.fileExists(atPath: dst.path(percentEncoded: false)) {
         let backup = backupDir.appending(path: rel)
         try? fm.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)

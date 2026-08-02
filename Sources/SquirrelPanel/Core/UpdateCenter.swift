@@ -137,6 +137,7 @@ final class UpdateCenter: ObservableObject {
   func checkDictionaryOne(_ pkg: DictionaryPackage) {
     let status = DictionaryPackageManager.status(of: pkg, environment: store.environment)
     guard case .installed = status else { return }
+    dictionaryUpdateStates[pkg.id] = .checking
     Task {
       let st = await Self.computeUpdateState(for: pkg, status: status)
       await MainActor.run { self.dictionaryUpdateStates[pkg.id] = st }
@@ -147,11 +148,19 @@ final class UpdateCenter: ObservableObject {
     guard case .installed(let manifest) = status else { return .notApplicable }
     do {
       if isReleaseAssetPackage(pkg) {
-        // release asset 包：按 release tag 比对
+        // release asset 包：优先按 release tag 比对
         let remote = try await DictionaryPackageManager.fetchLatestRelease(pkg: pkg)
-        let installed = manifest.installedTag?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let installed = installed, !installed.isEmpty else { return .unknown }
-        return installed == remote.tag ? .upToDate : .available
+        if let installedTag = manifest.installedTag?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !installedTag.isEmpty {
+          return installedTag == remote.tag ? .upToDate : .available
+        }
+        // 旧版 manifest 可能没有 installedTag（commit-based 安装记录迁移而来），回退到 SHA 比对
+        if let installedCommit = normalizedSHA(manifest.installedCommit) {
+          let remoteCommit = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
+          guard let remoteNorm = normalizedSHA(remoteCommit.sha) else { return .unknown }
+          return installedCommit == remoteNorm ? .upToDate : .available
+        }
+        return .unknown
       } else {
         // commit-based 包：按 commit SHA 比对
         let remote = try await DictionaryPackageManager.fetchLatestCommit(pkg: pkg)
