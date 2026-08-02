@@ -91,7 +91,7 @@ enum DictionaryPackageManager {
   static let managedDirName = ".squirrel-panel"
   /// 安装时跳过的非运行时文件/目录（陈旧编译产物、仓库元数据、庞杂素材等）
   static let excludeFromInstall = Set([
-    "build", ".git", ".github", "others",
+    "build", ".git", ".github", "others", "__MACOSX",
     "AGENTS.md", "README.md", "LICENSE", ".gitignore", "recipe.yaml"
   ])
 
@@ -141,18 +141,35 @@ enum DictionaryPackageManager {
   // MARK: - 快照
 
   /// 递归列出目录下所有文件，返回相对路径（以 / 分隔）
+  /// 注意：macOS 的 `FileManager.enumerator` 可能返回 `/private/var/...` 规范化路径，
+  /// 而 `root` 可能是 `/var/...`，直接字符串替换会产生 `private/...` 这样的错误相对路径。
+  /// 这里用 `pathComponents` 做前缀匹配，避免 `/var` 与 `/private/var` 的差异。
   private static func snapshotFiles(in root: URL) -> [String] {
     var result: [String] = []
     guard let enumerator = FileManager.default.enumerator(
       at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return result }
+    let baseURL = root.resolvingSymlinksInPath()
+    let baseComponents = baseURL.pathComponents
     for case let url as URL in enumerator {
       if url.hasDirectoryPath { continue }
-      let base = root.path(percentEncoded: false)
-      let rel = url.path(percentEncoded: false).replacingOccurrences(of: base, with: "")
-      let clean = rel.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      let resolved = url.resolvingSymlinksInPath()
+      let components = resolved.pathComponents
+      guard components.count > baseComponents.count else { continue }
+      let relComponents = components.dropFirst(baseComponents.count)
+      let clean = relComponents.joined(separator: "/")
       if !clean.isEmpty { result.append(clean) }
     }
     return result
+  }
+
+  /// 判断某条相对路径是否应该被安装（排除非运行时文件、macOS 元数据等）
+  private static func shouldInstall(_ rel: String) -> Bool {
+    let parts = rel.split(separator: "/").map(String.init)
+    guard let top = parts.first else { return false }
+    if Self.excludeFromInstall.contains(top) { return false }
+    // 排除 AppleDouble 资源分支文件（._*）以及隐藏文件
+    if let last = parts.last, last.hasPrefix(".") { return false }
+    return true
   }
 
   // MARK: - 安装
@@ -198,29 +215,14 @@ enum DictionaryPackageManager {
     // 4. 定位包根（处理内层文件夹，如 rime-ice-main 或 rime-ice-<sha>）
     let packageRoot = locatePackageRoot(in: stage)
 
-    // 5. 枚举要安装的文件（排除非运行时文件）
+    // 5. 枚举要安装的文件（排除非运行时文件与 macOS 元数据）
     let allFiles = snapshotFiles(in: packageRoot)
-    let filesToInstall = allFiles.filter { rel in
-      let top = rel.split(separator: "/").first.map(String.init) ?? rel
-      return !Self.excludeFromInstall.contains(top)
-    }
+    let filesToInstall = allFiles.filter { shouldInstall($0) }
 
-    // 6. 备份会被覆盖的文件 + 复制
-    var addedFiles: [String] = []
-    for rel in filesToInstall {
-      let src = packageRoot.appending(path: rel)
-      let dst = rime.appending(path: rel)
-      if fm.fileExists(atPath: dst.path(percentEncoded: false)) {
-        let backup = backupDir(for: pkg.id).appending(path: rel)
-        try? fm.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? fm.removeItem(at: backup)
-        try? fm.copyItem(at: dst, to: backup)
-      }
-      try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try? fm.removeItem(at: dst)
-      try fm.copyItem(at: src, to: dst)
-      addedFiles.append(rel)
-    }
+    // 6. 备份会被覆盖的文件 + 复制（源文件缺失时跳过，避免单个缺失文件卡死整包安装）
+    let addedFiles = try applyPackageFiles(
+      packageRoot: packageRoot, files: filesToInstall,
+      rime: rime, backupDir: backupDir(for: pkg.id), overwrite: false)
 
     // 7. 启用默认方案
     enableSchema(pkg.defaultSchema, environment: environment)
@@ -333,12 +335,9 @@ enum DictionaryPackageManager {
     // 3. 定位包根
     let packageRoot = locatePackageRoot(in: stage)
 
-    // 4. 枚举要安装的文件（排除非运行时文件）
+    // 4. 枚举要安装的文件（排除非运行时文件与 macOS 元数据）
     let allFiles = snapshotFiles(in: packageRoot)
-    let filesToInstall = allFiles.filter { rel in
-      let top = rel.split(separator: "/").first.map(String.init) ?? rel
-      return !Self.excludeFromInstall.contains(top)
-    }
+    let filesToInstall = allFiles.filter { shouldInstall($0) }
 
     // 5. 删除「旧版本有、新版本没有」的文件（仅动我们追踪的）
     let oldSet = Set(manifest.addedFiles)
