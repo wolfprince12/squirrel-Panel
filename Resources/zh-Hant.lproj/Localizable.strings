@@ -22,6 +22,7 @@
 "riceice.basic.title" = "基礎開關";
 "riceice.basic.hint" = "設定每個開關的預設狀態，變更寫入 rime_ice.custom.yaml。";
 "riceice.notInstalled" = "未偵測到霧凇拼音方案，請先在上方「套件管理」中安裝。";
+"riceice.notInstalled.disabledHint" = "下列選項暫不可用，安裝霧凇拼音後才會生效。";
 "riceice.switch.ascii_mode" = "中英文模式";
 "riceice.switch.ascii_punct" = "中英標點";
 "riceice.switch.traditionalization" = "簡繁轉換";

@@ -7,8 +7,8 @@
 //  两个必现 bug 都藏在这个盲区里：
 //    NEW-1 出厂即「记忆」的 5 个开关被误判为非出厂 → switches 整段永远被写进
 //          rime_ice.custom.yaml（整段替换非追加），等于给上游 switches 拍永久快照；
-//    NEW-2 候选词数没有继承态跟踪 → 用户改全局候选数，雾凇面板凭空变脏并把旧值
-//          反向钉成方案级覆盖（方案级压过全局，用户改了个寂寞）。
+//    NEW-2 候选词数被写成方案级覆盖 → 用户改全局候选数，雾凇面板凭空变脏且旧值
+//          压过全局（方案级优先，用户改了个寂寞）。v1.2.1 起雾凇彻底不碰这个键。
 //
 //  这些用例一律**只读磁盘**：构造 SettingsStore / RimeIceConfigStore 只会读配置，
 //  绝不调用 apply() / writePatch() / resetManagedRimeIce()，不会碰真实 ~/Library/Rime。
@@ -146,51 +146,53 @@ final class RimeIceFactoryStateTests: XCTestCase {
     XCTAssertFalse(store.isDirty, "刚 reload 完的干净安装不应被判为有未保存改动")
   }
 
-  // MARK: - ③ 改全局候选词数不得污染雾凇（NEW-2）
+  // MARK: - ③ 候选词数只归「按键与行为」面板管（NEW-2 / V121-4）
 
-  /// 继承态下把全局候选数改掉（模拟「按键与行为」面板的操作，仅改内存不落盘）：
+  /// 改全局候选数（模拟「按键与行为」面板的操作，仅改内存不落盘）：
   /// 雾凇的 menu/page_size 必须仍写 nil，面板也不得因此变脏。
-  func testGlobalPageSizeChangeKeepsInheritedRimeIceClean() throws {
+  func testGlobalPageSizeChangeKeepsRimeIceClean() throws {
     let settings = SettingsStore()
     let store = RimeIceConfigStore(settings: settings)
     try XCTSkipUnless(store.isInstalled, "本机未安装 rime_ice.schema.yaml，跳过真实安装态探针")
-    try XCTSkipUnless(!iceCustomExists, "本机已存在 rime_ice.custom.yaml，无法保证处于继承态，跳过")
+    try XCTSkipUnless(!iceCustomExists, "本机已存在 rime_ice.custom.yaml，无法保证处于出厂态，跳过")
 
-    XCTAssertNil(store.compileIcePatch()["menu/page_size"] ?? nil, "前置：继承态下不应写 menu/page_size")
+    XCTAssertNil(store.compileIcePatch()["menu/page_size"] ?? nil, "前置：雾凇不应写 menu/page_size")
     let dirtyBefore = store.isDirty
-    let inherited = store.menuPageSize
+    let original = settings.pageSize
 
     // 用户在别的面板把全局候选数改掉
-    settings.pageSize = inherited + 1
+    settings.pageSize = original + 1
 
     XCTAssertNil(store.compileIcePatch()["menu/page_size"] ?? nil,
-                 "继承态下全局改动不得被反向钉成方案级覆盖，否则主力方案实际仍是旧值")
+                 "全局改动不得被反向钉成方案级覆盖，否则主力方案实际仍是旧值")
     XCTAssertEqual(store.isDirty, dirtyBefore,
                    "用户没碰雾凇面板，全局候选数改动不得让它凭空变脏")
 
     // 反方向也要成立：全局改回来同样不写
-    settings.pageSize = inherited
+    settings.pageSize = original
     XCTAssertNil(store.compileIcePatch()["menu/page_size"] ?? nil)
   }
 
-  /// 反向对照：用户在雾凇面板亲手拨过 Stepper 之后，继承态解除，
-  /// 显式值必须照写（防止为了修 NEW-2 而把 page_size 写成恒 nil）。
-  func testUserAdjustedPageSizeIsWrittenAsSchemaOverride() throws {
+  /// 雾凇面板已彻底交出候选数控制权：即便面板别的项被改动、整份补丁要落盘，
+  /// `menu/page_size` 也永远是 nil（= 删键，继承全局）。
+  ///
+  /// 方案级 `menu/page_size` 压过全局，只要它被写出来，「按键与行为」面板里的
+  /// 候选数设置对主力方案就完全无效——v1.2.0 的真实故障。
+  func testRimeIceNeverWritesSchemaLevelPageSize() throws {
     let settings = SettingsStore()
     let store = RimeIceConfigStore(settings: settings)
     try XCTSkipUnless(store.isInstalled, "本机未安装 rime_ice.schema.yaml，跳过真实安装态探针")
 
-    let target = settings.pageSize + 2
-    store.menuPageSize = target   // 等价于界面上的 Stepper 拨动
-
-    XCTAssertEqual(store.compileIcePatch()["menu/page_size"] ?? nil, .int(target),
-                   "用户显式设过的候选数必须写成方案级覆盖")
-    XCTAssertTrue(store.isDirty, "拨动 Stepper 后必须能被识别为有未保存改动")
-
-    // 显式值与全局重合时仍回落，保持补丁精简
-    store.menuPageSize = settings.pageSize
     XCTAssertNil(store.compileIcePatch()["menu/page_size"] ?? nil,
-                 "显式值与全局一致时应回落删键，不留冗余覆盖")
+                 "前置：出厂态不得写方案级候选数覆盖")
+
+    // 让面板真的有东西要写（只改内存，不落盘）
+    store.opencc = (store.opencc == "s2t.json") ? "s2hk.json" : "s2t.json"
+    let patch = store.compileIcePatch()
+    XCTAssertNotNil(patch["traditionalize/opencc_config"] ?? nil,
+                    "前置：得真有托管键要写，本断言才有意义")
+    XCTAssertNil(patch["menu/page_size"] ?? nil,
+                 "有改动要落盘时同样不得夹带方案级候选数覆盖")
   }
 
   // MARK: - ④ 陈旧的短语保存错误横幅必须能消失（NEW-4）

@@ -22,6 +22,7 @@
 "riceice.basic.title" = "Basic Switches";
 "riceice.basic.hint" = "Set the default state of each switch. Changes are written to rime_ice.custom.yaml.";
 "riceice.notInstalled" = "Rime-ice schema not detected. Install it from Package Management above first.";
+"riceice.notInstalled.disabledHint" = "The options below are disabled and take effect only after rime-ice is installed.";
 "riceice.switch.ascii_mode" = "Chinese/English mode";
 "riceice.switch.ascii_punct" = "Chinese/Western punctuation";
 "riceice.switch.traditionalization" = "Simplified/Traditional";

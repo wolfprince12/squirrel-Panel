@@ -114,25 +114,10 @@ final class RimeIceConfigStore: ObservableObject {
   // MARK: - UI 状态：基础开关（Phase B）
 
   @Published var switches: [RimeIceSwitchItem] = []
-  /// 方案级候选词数。基准是全局 `menu/page_size`（SettingsStore.pageSize），
-  /// 不是写死的 5——rime_ice.schema.yaml 根本没有 `menu:` 段。
-  /// 这里的初值只是占位，reload() 会立刻用 settings.pageSize 覆盖。
-  ///
-  /// 用户在本面板亲手拨过 Stepper 才算「显式设定」，此时才把值钉进
-  /// rime_ice.custom.yaml；否则一直跟随全局（见 `menuPageSizeIsInherited`）。
-  @Published var menuPageSize: Int = 5 {
-    didSet {
-      guard !isReloading, oldValue != menuPageSize else { return }
-      menuPageSizeIsInherited = false
-    }
-  }
 
-  /// 候选词数是否仍处于「继承全局」状态（rime_ice.custom.yaml 里没有 menu/page_size 键）。
-  ///
-  /// 没有这个标志时，界面值只在 reload 时同步一次，之后用户去「按键与行为」把全局
-  /// 候选数从 9 改成 8，雾凇面板仍留着 9 → `menuPageSize != settings.pageSize` →
-  /// 面板凭空变脏，并把旧值 9 钉进方案级覆盖（方案级压过全局，用户改了个寂寞）。
-  private var menuPageSizeIsInherited: Bool = true
+  // 候选词数（menu/page_size）**不再由本面板管理**：
+  // 唯一入口是「按键与行为」面板的全局 `menu/page_size`（SettingsStore.pageSize），
+  // rime-ice 永远继承全局，绝不写方案级覆盖。见 `compileIcePatch()` 里的删键逻辑。
 
   // MARK: - UI 状态：词库与短语（Phase C）
 
@@ -178,7 +163,10 @@ final class RimeIceConfigStore: ObservableObject {
 
   // MARK: - 托管常量（照抄 rime_ice.schema.yaml，杜绝手写错）
 
-  /// 本类托管的 rime_ice.custom.yaml 键（「恢复默认」只清理这些）
+  /// 本类托管的 rime_ice.custom.yaml 键（「恢复默认」只清理这些）。
+  ///
+  /// `menu/page_size` 仍在名单里，但语义已变成「只删不写」：候选数改由「按键与行为」
+  /// 面板全局托管，这里保留它是为了清掉 v1.2.0 遗留的方案级覆盖（方案级会压过全局）。
   static let managedIceKeys: Set<String> = [
     "switches", "menu/page_size", "traditionalize/opencc_config",
     "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra"
@@ -206,6 +194,21 @@ final class RimeIceConfigStore: ObservableObject {
 
   /// 托管的 dependencies 条目
   static let managedDependencies: Set<String> = ["melt_eng", "radical_pinyin"]
+
+  /// 未安装雾凇拼音时用于**占位展示**的开关行（置灰不可改，永不落盘）。
+  ///
+  /// 出厂 rime-ice 把 6 个开关里的 5 个写进了 `switcher/save_options`（即「记忆」），
+  /// 只有 `ascii_mode` 是固定关——这里照抄该事实，用户装好之后界面不会突然跳变。
+  /// `states` 有意留空：真实文案要从 rime_ice.schema.yaml 读，装之前不该编造，
+  /// 留空时 `RimeIcePage.switchRow` 会自动省掉那行状态副标题。
+  static let previewSwitches: [RimeIceSwitchItem] = [
+    RimeIceSwitchItem(name: "ascii_mode", states: [], abbrev: nil, mode: .off),
+    RimeIceSwitchItem(name: "ascii_punct", states: [], abbrev: nil, mode: .remember),
+    RimeIceSwitchItem(name: "traditionalization", states: [], abbrev: nil, mode: .remember),
+    RimeIceSwitchItem(name: "emoji", states: [], abbrev: nil, mode: .remember),
+    RimeIceSwitchItem(name: "full_shape", states: [], abbrev: nil, mode: .remember),
+    RimeIceSwitchItem(name: "search_single_char", states: [], abbrev: nil, mode: .remember)
+  ]
 
   /// 可独立开关的 6 个 Lua 滤镜（键 = lua 名，实际条目为 `lua_filter@` + 键）
   static let luaFilterKeys: [String] = [
@@ -367,9 +370,13 @@ final class RimeIceConfigStore: ObservableObject {
     phrases = CustomPhraseFile(fileURL: phraseFileURL)
 
     guard isInstalled else {
-      switches = []
-      menuPageSizeIsInherited = true
-      menuPageSize = settings.pageSize
+      // 未安装时没有出厂模板可读，但界面仍要把 6 个开关行**展示出来**（置灰不可改），
+      // 让用户先看清面板提供哪些能力。这批占位项**永远不会落盘**：
+      // switches 只被 compileIcePatch() 与 contribute(to:) 消费，二者均以 `guard isInstalled`
+      // 开头直接短路；writePatch() / resetManagedRimeIce() 同样以该 guard 保驾（writePatch 在
+      // guard 前还有 phrases.save / writeDoublePinyinPatch 两条前置写盘路径，但二者都不触碰
+      // switches），因此未安装时占位项没有任何一条路径能写进磁盘。
+      switches = Self.previewSwitches
       opencc = "s2t.json"
       enableMeltEng = true
       enableCnEn = true
@@ -403,11 +410,6 @@ final class RimeIceConfigStore: ObservableObject {
       return RimeIceSwitchItem(name: t.name, states: t.states, abbrev: t.abbrev, mode: mode)
     }
 
-    // rime_ice.schema.yaml 没有 menu 段，方案没写覆盖时生效的就是全局候选词数。
-    // 补丁里没这个键 = 用户从没在本面板设过 → 继承态，之后全局怎么改都跟着走、且不写回。
-    let storedPage = icePatch.int(forPath: "menu/page_size")
-    menuPageSizeIsInherited = (storedPage == nil)
-    menuPageSize = storedPage ?? settings.pageSize
     opencc = icePatch.string(forPath: "traditionalize/opencc_config") ?? template.opencc
 
     // 列表型托管项：以「用户现状」为准，缺省回落出厂模板
@@ -640,13 +642,13 @@ final class RimeIceConfigStore: ObservableObject {
     // 让 rime_ice.custom.yaml 里根本不出现 switches 段——「恢复默认」后文件才是干净的。
     set["switches"] = switchesAreAllFactory ? PatchValue?.none : .mapList(list)
 
-    // 候选词数：方案级覆盖全局。rime_ice.schema.yaml 没有 menu 段，基准就是全局 menu/page_size。
-    // 继承态（用户从没在本面板拨过 Stepper）永远写 nil：全局改成多少都跟着走，
-    // 既不会把旧值反向钉死成方案级覆盖，也不会让本面板凭空变脏。
-    // 显式设定后才比对全局，与全局一致仍然回落（不写）。
-    set["menu/page_size"] = menuPageSizeIsInherited
-      ? PatchValue?.none
-      : ((menuPageSize == settings.pageSize) ? PatchValue?.none : .int(menuPageSize))
+    // 候选词数：**恒写 nil = 恒删键**。候选数的唯一入口是「按键与行为」面板的全局
+    // menu/page_size，rime-ice 永远继承它，本面板不再提供方案级覆盖。
+    //
+    // 这里保留键、只写 nil（而不是整条去掉）是自愈路径：v1.2.0 曾允许用户在本面板
+    // 拨候选数，那批用户的 rime_ice.custom.yaml 里躺着一个方案级 menu/page_size，
+    // 方案级压过全局 —— 不显式删键的话，他们去「按键与行为」怎么改都没效果。
+    set["menu/page_size"] = PatchValue?.none
 
     // 繁体类型：与出厂（s2t.json）相同则回落
     set["traditionalize/opencc_config"] = (opencc == template.opencc) ? PatchValue?.none : .string(opencc)
@@ -824,10 +826,6 @@ final class RimeIceConfigStore: ObservableObject {
     switches = template.switches.map { t in
       RimeIceSwitchItem(name: t.name, states: t.states, abbrev: t.abbrev, mode: factoryMode(for: t))
     }
-    // 候选词数回到全局值（雾凇方案本身不带 menu 段），并回到继承态：
-    // 重置之后再改全局，雾凇应当继续跟随，而不是被钉在重置那一刻的数值上。
-    menuPageSize = settings.pageSize
-    menuPageSizeIsInherited = true
     opencc = template.opencc
     // rime-ice 出厂全部词库 / 滤镜均为开启
     enableMeltEng = true

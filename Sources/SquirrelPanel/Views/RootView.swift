@@ -26,7 +26,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     switch self {
     case .appearance: return "paintpalette"
     case .schemas: return "character.book.closed"
-    case .riceIce: return "textformat"
+    case .riceIce: return "tree"
     case .behavior: return "keyboard"
     case .appOptions: return "square.grid.2x2"
     case .dictionary: return "externaldrive"
@@ -49,6 +49,12 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
 struct RootView: View {
   @EnvironmentObject private var store: SettingsStore
+  /// 底部操作栏的启用态取决于 `store.isDirty`，而它含 `rimeIce?.isDirty`。
+  /// `SettingsStore` 与 `RimeIceConfigStore` 是两个独立的 ObservableObject：
+  /// 用户在雾凇面板改控件时只有 `ice` 的 @Published 变化，不订阅它的话
+  /// `RootView.body`（footer 所在）不会重求值，「应用及部署」按钮会一直停在禁用态。
+  /// 这里只为订阅变更通知而持有，不直接读取。
+  @EnvironmentObject private var ice: RimeIceConfigStore
   @EnvironmentObject private var updateCenter: UpdateCenter
   @State private var selection: PanelSection = .appearance
   @State private var showingYAML = false

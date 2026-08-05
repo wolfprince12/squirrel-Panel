@@ -5,7 +5,7 @@
 //  雾凇拼音 (rime-ice) 独立面板：
 //  上半部分是包管理（安装/卸载/更新/检查更新），从「输入方案」面板迁移而来；
 //  下半部分是雾凇拼音专属配置管理——
-//    · 基础开关（Phase B）：6 个三态开关 + 候选词数
+//    · 基础开关（Phase B）：6 个三态开关（候选词数归「按键与行为」面板全局管理，本面板不碰）
 //    · 词库与短语（Phase C）：英文/中英混合词/部件拆字/Emoji 词库 + 自定义短语编辑器
 //    · 语言与拼音（Phase D）：繁体类型 + 全拼↔双拼切换 + 双拼编码原样显示
 //    · 高级（Phase E）：Lua 滤镜开关 + 模糊音规则多选 + 直接编辑 rime_ice.custom.yaml
@@ -26,33 +26,50 @@ struct RimeIcePage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
+        // 包管理是安装入口，必须**始终可用**——把它一起置灰会让用户永远装不上雾凇。
         PackageManagerSection()
 
-        if ice.isInstalled {
+        if !ice.isInstalled {
+          notInstalledBanner
+        }
+
+        // 未安装时配置区照常呈现（用户能看清面板到底提供哪些能力），整段置灰不可改。
+        VStack(alignment: .leading, spacing: 20) {
           basicSection
           lexiconSection
           langSection
           advancedSection
-        } else {
-          notInstalledSection
         }
+        .disabled(!ice.isInstalled)
       }
       .padding(20)
     }
   }
 
-  // MARK: - 未安装占位
+  // MARK: - 未安装提示横幅
 
-  private var notInstalledSection: some View {
-    SettingsGroup("riceice.config.title") {
-      Label {
+  /// 未安装雾凇拼音时的醒目提示：下方配置区可见但不可改，装好后才生效。
+  private var notInstalledBanner: some View {
+    Label {
+      VStack(alignment: .leading, spacing: 2) {
         Text("riceice.notInstalled")
           .font(.callout)
-      } icon: {
-        Image(systemName: "exclamationmark.triangle")
+        Text("riceice.notInstalled.disabledHint")
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
-      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+    } icon: {
+      Image(systemName: "info.circle")
+        .foregroundStyle(Color.blue)
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 14)
+    .padding(.vertical, 11)
+    .background(
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .fill(Color.blue.opacity(0.10))
+    )
   }
 
   // MARK: - 基础开关（Phase B）
@@ -69,14 +86,8 @@ struct RimeIcePage: View {
           Divider()
         }
 
-        Stepper(value: $ice.menuPageSize, in: 1...10) {
-          HStack {
-            Text("riceice.pageSize")
-            Spacer()
-            Text("\(ice.menuPageSize)").foregroundStyle(.secondary)
-          }
-        }
-
+        // 候选词数**只**由「按键与行为」面板控制（全局 menu/page_size）。
+        // 雾凇面板不再提供方案级覆盖，永远跟随全局。
         Text("riceice.saveOptions.note")
           .font(.caption)
           .foregroundStyle(.secondary)

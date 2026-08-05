@@ -19,7 +19,9 @@
 //    T1-1  干净安装首次 apply 凭空生成只有注释头的空 rime_ice.custom.yaml；
 //    H1    reload 不清短语保存错误横幅；
 //    NEW-1 出厂开关态被整段写进 rime_ice.custom.yaml；
-//    NEW-2 候选词数继承态被反向钉成方案级覆盖。
+//    NEW-2 候选词数继承态被反向钉成方案级覆盖；
+//    V121-3 雾凇面板改动传导不到 SettingsStore.isDirty（「应用及部署」点不动）；
+//    V121-4 雾凇仍写方案级 menu/page_size（压过「按键与行为」的全局候选数）。
 //
 
 import XCTest
@@ -407,43 +409,142 @@ final class RimeFixtureTests: XCTestCase {
     let (_, ice) = makeStores()
     let patch = ice.compileIcePatch()
     XCTAssertNil(patch["switches"] ?? nil, "干净安装不得写 switches 段（NEW-1 回潮）")
-    XCTAssertNil(patch["menu/page_size"] ?? nil, "继承态不得写 menu/page_size（NEW-2 回潮）")
+    XCTAssertNil(patch["menu/page_size"] ?? nil, "雾凇不得写 menu/page_size（NEW-2 回潮）")
     XCTAssertFalse(ice.isDirty, "刚 reload 完的干净安装不应被判为有未保存改动")
   }
 
-  /// 继承态下改全局候选数：雾凇不得被反向钉成方案级覆盖，也不得凭空变脏。
-  func testGlobalPageSizeChangeKeepsInheritedRimeIceClean() throws {
+  // MARK: - V121-4：候选词数只归「按键与行为」面板管
+
+  /// 雾凇面板不再控制候选词数：无论全局怎么改、面板其它项是否有改动，
+  /// `compileIcePatch()` 里的 `menu/page_size` 永远是 nil（= 删键，继承全局）。
+  ///
+  /// 方案级 `menu/page_size` 会压过全局，一旦被写出来，用户在「按键与行为」
+  /// 面板改候选数对主力方案就完全无效——v1.2.0 的真实故障。
+  func testRimeIceNeverWritesSchemaLevelPageSize() throws {
     let fixture = try makeFixture()
     defer { teardown(fixture) }
 
     let (settings, ice) = makeStores()
-    XCTAssertNil(ice.compileIcePatch()["menu/page_size"] ?? nil, "前置：继承态不写 menu/page_size")
-    let inherited = ice.menuPageSize
 
-    settings.pageSize = inherited + 1
+    // ① 出厂态
+    XCTAssertNil(ice.compileIcePatch()["menu/page_size"] ?? nil,
+                 "出厂态不得写方案级候选数覆盖")
+
+    // ② 全局候选数怎么改都不写，也不得让雾凇面板凭空变脏
+    let original = settings.pageSize
+    settings.pageSize = original + 3
     XCTAssertNil(ice.compileIcePatch()["menu/page_size"] ?? nil,
                  "全局改动不得被反向钉成方案级覆盖，否则主力方案实际仍是旧值")
     XCTAssertFalse(ice.isDirty, "用户没碰雾凇面板，全局候选数改动不得让它凭空变脏")
 
-    settings.pageSize = inherited
+    settings.pageSize = original
     XCTAssertNil(ice.compileIcePatch()["menu/page_size"] ?? nil)
+
+    // ③ 面板别的项确实有改动、整份补丁要落盘时，仍然不带这个键
+    ice.opencc = "s2hk.json"
+    let patch = ice.compileIcePatch()
+    XCTAssertNotNil(patch["traditionalize/opencc_config"] ?? nil,
+                    "前置：得真有托管键要写，本断言才有意义")
+    XCTAssertNil(patch["menu/page_size"] ?? nil,
+                 "有改动要落盘时同样不得夹带方案级候选数覆盖")
   }
 
-  /// 反向对照：用户亲手拨过 Stepper 后，显式值必须写成方案级覆盖。
-  func testUserAdjustedPageSizeIsWrittenAsSchemaOverride() throws {
+  /// 自愈：v1.2.0 曾允许在雾凇面板拨候选数，那批用户的 rime_ice.custom.yaml 里
+  /// 躺着一个方案级 menu/page_size。升级后第一次「应用」必须把它删掉，
+  /// 否则他们在「按键与行为」面板怎么改候选数都不生效。
+  func testStaleSchemaLevelPageSizeIsRemovedOnApply() throws {
+    let stale = """
+      patch:
+        menu/page_size: 9
+      """
+    let fixture = try makeFixture(iceCustomYAML: stale)
+    defer { teardown(fixture) }
+
+    let (settings, ice) = makeStores()
+    XCTAssertTrue(ice.isInstalled, "前置：fixture 里雾凇方案是装好的")
+
+    settings.apply()
+    XCTAssertNil(settings.lastError, "fixture 下写盘不应出错")
+
+    let healed = try XCTUnwrap(text(at: fixture.iceCustomURL), "文件已存在，不得跳过写盘")
+    XCTAssertFalse(healed.contains("page_size"),
+                   "遗留的方案级候选数覆盖必须被删掉，否则全局候选数设置永远无效")
+  }
+
+  // MARK: - V121-3：雾凇面板的改动必须能点亮「应用及部署」
+
+  /// 底部操作栏的 `Button("button.applyDeploy").disabled(!store.isDirty ...)` 依赖
+  /// `SettingsStore.isDirty`，而它含 `rimeIce?.isDirty`。这里钉住数据侧的传导：
+  /// 动一下雾凇面板的任意 @Published，`settings.isDirty` 必须随之为真。
+  ///
+  /// （视图侧的另一半是 RootView 必须 `@EnvironmentObject var ice`——不订阅
+  ///   RimeIceConfigStore，footer 不会重渲染，按钮就一直停在禁用态。）
+  func testRimeIceEditMarksSettingsDirty() throws {
     let fixture = try makeFixture()
     defer { teardown(fixture) }
 
     let (settings, ice) = makeStores()
-    let target = settings.pageSize + 2
-    ice.menuPageSize = target
-    XCTAssertEqual(ice.compileIcePatch()["menu/page_size"] ?? nil, .int(target),
-                   "显式设过的候选数必须写成方案级覆盖")
-    XCTAssertTrue(ice.isDirty, "拨动 Stepper 后必须能被识别为有未保存改动")
+    XCTAssertFalse(settings.isDirty, "前置：干净安装刚 reload 完不应判脏")
 
-    ice.menuPageSize = settings.pageSize
-    XCTAssertNil(ice.compileIcePatch()["menu/page_size"] ?? nil,
-                 "显式值与全局一致时应回落删键")
+    // 等价于在雾凇面板关掉「英文输入」开关
+    ice.enableMeltEng.toggle()
+
+    XCTAssertTrue(ice.isDirty, "雾凇面板自身必须先认得这次改动")
+    XCTAssertTrue(settings.isDirty,
+                  "雾凇改动必须传导到 SettingsStore.isDirty，否则「应用及部署」按钮点不动")
+  }
+
+  /// 反向对照：把改动改回去，脏标记必须落回干净，
+  /// 防止为了修「按钮点不动」把 isDirty 写成恒真（那样按钮永远亮着，还原按钮也永远在）。
+  func testRevertingRimeIceEditClearsSettingsDirty() throws {
+    let fixture = try makeFixture()
+    defer { teardown(fixture) }
+
+    let (settings, ice) = makeStores()
+    ice.enableMeltEng.toggle()
+    XCTAssertTrue(settings.isDirty, "前置：改动后应判脏")
+
+    ice.enableMeltEng.toggle()
+    XCTAssertFalse(ice.isDirty, "改回原值后雾凇面板必须恢复干净")
+    XCTAssertFalse(settings.isDirty, "改回原值后全局脏标记必须一起落回")
+  }
+
+  // MARK: - V121-2：未安装时配置区可见但置灰
+
+  /// 未安装雾凇时，6 个开关行仍要展示出来（界面靠 `.disabled` 置灰），
+  /// 但这批占位项绝不能被当成真实配置编译、落盘。
+  func testUninstalledPreviewSwitchesAreShownButNeverWritten() throws {
+    // 只造 default.yaml、不造 rime_ice.schema.yaml = 鼠须管在、雾凇没装
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory
+      .appending(path: "squirrel-panel-noice-\(UUID().uuidString)", directoryHint: .isDirectory)
+    let userDirectory = root.appending(path: "Rime", directoryHint: .isDirectory)
+    let sharedSupport = root.appending(path: "SharedSupport", directoryHint: .isDirectory)
+    try fm.createDirectory(at: userDirectory, withIntermediateDirectories: true)
+    try fm.createDirectory(at: sharedSupport, withIntermediateDirectories: true)
+    try Self.factoryDefaultYAML.write(to: sharedSupport.appending(path: "default.yaml"),
+                                      atomically: true, encoding: .utf8)
+    RimeEnvironment.testUserDirectoryOverride = userDirectory
+    RimeEnvironment.testEnvironmentOverride = RimeEnvironment(
+      appURL: nil, version: nil, sharedSupportURL: sharedSupport)
+    defer {
+      RimeEnvironment.clearTestOverrides()
+      try? fm.removeItem(at: root)
+    }
+
+    let (settings, ice) = makeStores()
+    XCTAssertFalse(ice.isInstalled, "前置：本 fixture 里雾凇是没装的")
+    XCTAssertEqual(ice.switches.count, 6,
+                   "未安装时也要把 6 个开关行摆出来（置灰），不能是空白一片")
+
+    // 占位项一律不得进入编译结果，更不得落盘
+    XCTAssertTrue(ice.compileIcePatch().isEmpty, "未安装时编译结果必须为空")
+    XCTAssertFalse(ice.isDirty, "占位开关不得让面板凭空变脏")
+
+    settings.apply()
+    XCTAssertNil(settings.lastError)
+    XCTAssertFalse(exists(userDirectory.appending(path: "rime_ice.custom.yaml")),
+                   "雾凇没装就不该生成 rime_ice.custom.yaml，占位开关更不能被写出去")
   }
 
   // MARK: - H1：短语保存错误横幅不得穿越 reload
