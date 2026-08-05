@@ -23,6 +23,9 @@ struct RimeIcePage: View {
   @State private var rawError: String?
   @State private var rawMessage: String?
 
+  // 急救按钮二次确认
+  @State private var showingEmergencyResetAlert = false
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -41,8 +44,45 @@ struct RimeIcePage: View {
           advancedSection
         }
         .disabled(!ice.isInstalled)
+
+        // 维护区：与配置区并列，不受 `.disabled(!ice.isInstalled)` 影响——
+        // 急救按钮在「装好却配乱了」的场景下也必须可点，未安装则 rime_ice.custom.yaml
+        // 根本不存在，resetAllRimeIceConfigs 内部 guard 自行短路。
+        maintenanceSection
       }
       .padding(20)
+    }
+    .alert("alert.iceEmergencyResetTitle", isPresented: $showingEmergencyResetAlert) {
+      Button("alert.cancel", role: .cancel) {}
+      Button("alert.iceEmergencyReset", role: .destructive) {
+        ice.resetAllRimeIceConfigs()
+      }
+    } message: {
+      Text("alert.iceEmergencyResetMessage")
+    }
+  }
+
+  // MARK: - 维护 / 急救
+
+  /// 急救保险区：一键把雾凇拼音**所有**配置恢复到出厂默认
+  /// （删除 rime_ice.custom.yaml + save_options 回落出厂，落盘部署一气呵成），
+  /// 用于「鼠标点错了什么把 rime-ice 搞乱了」的救场，与「关于」页还原鼠须管配置同级。
+  private var maintenanceSection: some View {
+    SettingsGroup("riceice.maintenance.title") {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("riceice.emergencyReset.hint")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        HStack {
+          Spacer()
+          Button("riceice.emergencyReset", role: .destructive) {
+            showingEmergencyResetAlert = true
+          }
+          .controlSize(.small)
+        }
+      }
     }
   }
 

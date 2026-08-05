@@ -35,6 +35,9 @@
 "riceice.pageSize" = "候選詞數";
 "riceice.saveOptions.note" = "選「記憶」會把該開關加入 default.custom.yaml 的 switcher/save_options，切換方案後狀態被記住；選「固定開啟/關閉」則將其移除並鎖定到預設值。這是所有方案共用的全域設定。";
 "riceice.reset" = "恢復霧凇預設";
+"riceice.maintenance.title" = "維護";
+"riceice.emergencyReset" = "恢復霧凇拼音全部預設";
+"riceice.emergencyReset.hint" = "一鍵刪除 rime_ice.custom.yaml（含你手寫的非託管鍵）並把開關記憶回落出廠，讓霧凇拼音完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失敗：%@";
 
 /* RimeIcePage — 詞庫與短語 */
@@ -426,6 +429,9 @@
 "alert.squirrelResetTitle" = "恢復鼠須管預設設定？";
 "alert.squirrelResetMessage" = "將刪除所有 *.custom.yaml 檔案（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠須管會完全回到安裝後的初始狀態。操作前會自動產生 .bak 備份。";
 "alert.squirrelReset" = "恢復初始狀態";
+"alert.iceEmergencyResetTitle" = "恢復霧凇拼音全部預設？";
+"alert.iceEmergencyResetMessage" = "將刪除 rime_ice.custom.yaml（含你手寫的所有設定），並把相關開關記憶回落出廠。鼠須管會重新部署以套用此變更。操作前會自動產生 .bak 備份。";
+"alert.iceEmergencyReset" = "恢復全部預設";
 
 /* PackagePage */
 "package.title" = "第三方詞庫";

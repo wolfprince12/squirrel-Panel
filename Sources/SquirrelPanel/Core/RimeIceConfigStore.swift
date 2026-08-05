@@ -812,8 +812,10 @@ final class RimeIceConfigStore: ObservableObject {
 
   // MARK: - 恢复默认
 
-  /// 把本面板管理的配置全部回到出厂默认：UI 状态回出厂、save_options 回落出厂，
-  /// 最后统一走 settings.apply() 一次落盘 + 部署（写盘逻辑集中在 apply → writePatch）。
+  /// 把本面板管理的配置全部回到出厂默认：UI 状态回出厂、save_options 回落出厂。
+  /// **不**直接落盘——改动进入 dirty 状态，用户需点底部「应用并重新部署」才会
+  /// 一次落盘 + 部署（写盘逻辑集中在 apply → writePatch）。
+  /// 与全项目「未应用即不落盘」铁律一致。
   ///
   /// 有意**不**重置 schema_list 中的拼音方案选择——那属于全局方案列表，
   /// 在「恢复雾凇默认」里悄悄改掉用户的双拼选择过于意外。
@@ -840,9 +842,44 @@ final class RimeIceConfigStore: ObservableObject {
     //    这一步额外负责扫掉历史遗留（例如旧版本写过、现已不再编译的键），
     //    用户手写的其他条目不受影响。
     icePatch.removeManaged(keys: Self.managedIceKeys)
-    // 3. save_options 回落出厂（由 settings.apply 统一写入 default.custom.yaml）
+    // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
-    // 4. 统一落盘 + 部署（apply 内部会写 ice 补丁与 default 补丁，并触发 deploy）
+    // 4. 注意：此处**不**调 settings.apply()。
+    //    UI 状态 / icePatch / savedSwitchOptions 与基线不再一致 → SettingsStore.isDirty
+    //    变为 true，底部「应用并重新部署」按钮会被点亮，用户确认后再统一落盘 + 部署。
+  }
+
+  /// 急救机制：将雾凇拼音**所有**配置恢复到出厂默认状态。
+  /// 与 `resetManagedRimeIce()` 的区别：会删除 `rime_ice.custom.yaml` 整个文件
+  /// （包括用户手写的非托管键），并把 `default.custom.yaml` 的 save_options 回落出厂。
+  /// `rime_ice.custom.yaml` 删除前自动备份为 `.bak`。
+  ///
+  /// 落盘 + 部署一气呵成（与 SettingsStore.resetSquirrelDefaults 同级「保险」语义，
+  /// 用于「鼠标点错了什么配置把 rime-ice 搞乱了」的确诊与救场场景）。
+  func resetAllRimeIceConfigs() {
+    guard isInstalled else { return }
+    let fm = FileManager.default
+    let dir = RimeEnvironment.userDirectory
+
+    // 1. 备份并删除 rime_ice.custom.yaml
+    //    删除前复制一份 *.bak 落在同目录，用户可手动 mv 还原。
+    let iceFile = dir.appendingPathComponent("rime_ice.custom.yaml")
+    if fm.fileExists(atPath: iceFile.path) {
+      let backup = iceFile.appendingPathExtension("bak")
+      try? fm.removeItem(at: backup)
+      try? fm.copyItem(at: iceFile, to: backup)
+      try? fm.removeItem(at: iceFile)
+    }
+
+    // 2. save_options 回落出厂
+    //    reload() 内部会读 settings.savedSwitchOptions 决定 switches 模式，
+    //    所以必须在 reload() 之前赋值，否则会被磁盘上的旧值覆盖。
+    settings.savedSwitchOptions = factorySaveOptions()
+
+    // 3. 重新加载（读盘，icePatch 现在是空的，UI 状态回到出厂）
+    reload()
+
+    // 4. 落盘 + 部署（apply 会写 default.custom.yaml 的 save_options 并触发 deploy）
     settings.apply()
   }
 

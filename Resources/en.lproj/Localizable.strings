@@ -35,6 +35,9 @@
 "riceice.pageSize" = "Candidates per Page";
 "riceice.saveOptions.note" = "“Remember” adds the switch to switcher/save_options in default.custom.yaml, so its state persists across schema switches. “Always On/Off” removes it and pins the default. This is a global setting shared by all schemas.";
 "riceice.reset" = "Reset Rime-ice";
+"riceice.maintenance.title" = "Maintenance";
+"riceice.emergencyReset" = "Restore all Rime-ice defaults";
+"riceice.emergencyReset.hint" = "One tap deletes rime_ice.custom.yaml (including your hand-written, unmanaged keys) and reverts switch memory to factory, bringing Rime-ice fully back to its initial state. A .bak backup is created automatically.";
 "error.parse.riceice" = "rime_ice.custom.yaml parsing failed: %@";
 
 /* RimeIcePage — Lexicon & Phrases */
@@ -458,3 +461,6 @@
 "alert.squirrelResetTitle" = "Reset Squirrel to Defaults?";
 "alert.squirrelResetMessage" = "This will delete all *.custom.yaml files (including squirrel.custom.yaml and default.custom.yaml). Squirrel will be completely restored to its initial state. .bak backups are created automatically.";
 "alert.squirrelReset" = "Reset";
+"alert.iceEmergencyResetTitle" = "Restore all Rime-ice defaults?";
+"alert.iceEmergencyResetMessage" = "This will delete rime_ice.custom.yaml (including all your hand-written configuration) and revert related switch memory to factory. Squirrel will re-deploy to apply the change. A .bak backup is created automatically.";
+"alert.iceEmergencyReset" = "Restore all defaults";
