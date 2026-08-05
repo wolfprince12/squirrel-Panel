@@ -29,6 +29,8 @@ struct PackageManagerSection: View {
   @State private var busyID: String? = nil
   @State private var logText: String = ""
   @State private var logTitle: String = ""
+  /// 完成/错误提示的自动消失定时器；in-progress 状态或新一轮操作会取消它
+  @State private var dismissTask: Task<Void, Never>? = nil
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
@@ -61,6 +63,7 @@ struct PackageManagerSection: View {
       }
     }
     .onAppear(perform: reloadPackages)
+    .onDisappear { dismissTask?.cancel() }
   }
 
   // MARK: - 词库包管理
@@ -74,22 +77,49 @@ struct PackageManagerSection: View {
     statuses = st
   }
 
+  // MARK: - 日志与自动消失
+
+  /// 操作进行中：设置标题/正文，并取消任何挂起的自动消失定时器
+  private func setProgressLog(title: String, text: String) {
+    dismissTask?.cancel()
+    dismissTask = nil
+    logTitle = title
+    logText = text
+  }
+
+  /// 操作完成/失败：仅更新正文，3 秒后自动清空。
+  /// 期间开始新操作会被 `setProgressLog` 取消，不会误清进行中的提示。
+  private func setCompletionLog(text: String) {
+    logText = text
+    dismissTask?.cancel()
+    dismissTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 3_000_000_000)
+      guard !Task.isCancelled else { return }
+      withAnimation(.easeOut(duration: 0.3)) {
+        logText = ""
+        logTitle = ""
+      }
+    }
+  }
+
   private func install(_ pkg: DictionaryPackage) {
     busyID = pkg.id
-    logTitle = String(format: String(localized: "package.log.install"), pkg.name)
-    logText = String(localized: "package.log.downloading")
+    setProgressLog(
+      title: String(format: String(localized: "package.log.install"), pkg.name),
+      text: String(localized: "package.log.downloading")
+    )
     Task {
       do {
         let manifest = try await DictionaryPackageManager.install(pkg: pkg, environment: store.environment)
         await MainActor.run {
-          logText = String(format: String(localized: "package.log.installed"), "\(manifest.addedFiles.count)")
+          setCompletionLog(text: String(format: String(localized: "package.log.installed"), "\(manifest.addedFiles.count)"))
           busyID = nil
           store.reload()
           reloadPackages()
         }
       } catch {
         await MainActor.run {
-          logText = String(format: String(localized: "package.log.error"), error.localizedDescription)
+          setCompletionLog(text: String(format: String(localized: "package.log.error"), error.localizedDescription))
           busyID = nil
         }
       }
@@ -98,20 +128,22 @@ struct PackageManagerSection: View {
 
   private func uninstall(_ pkg: DictionaryPackage) {
     busyID = pkg.id
-    logTitle = String(format: String(localized: "package.log.uninstall"), pkg.name)
-    logText = String(localized: "package.log.removing")
+    setProgressLog(
+      title: String(format: String(localized: "package.log.uninstall"), pkg.name),
+      text: String(localized: "package.log.removing")
+    )
     Task {
       do {
         try await DictionaryPackageManager.uninstall(pkg: pkg, environment: store.environment)
         await MainActor.run {
-          logText = String(localized: "package.log.removed")
+          setCompletionLog(text: String(localized: "package.log.removed"))
           busyID = nil
           store.reload()
           reloadPackages()
         }
       } catch {
         await MainActor.run {
-          logText = String(format: String(localized: "package.log.error"), error.localizedDescription)
+          setCompletionLog(text: String(format: String(localized: "package.log.error"), error.localizedDescription))
           busyID = nil
         }
       }
@@ -120,14 +152,16 @@ struct PackageManagerSection: View {
 
   private func update(_ pkg: DictionaryPackage) {
     busyID = pkg.id
-    logTitle = String(format: String(localized: "package.log.update"), pkg.name)
-    logText = String(localized: "package.log.downloading")
+    setProgressLog(
+      title: String(format: String(localized: "package.log.update"), pkg.name),
+      text: String(localized: "package.log.downloading")
+    )
     Task {
       do {
         let manifest = try await DictionaryPackageManager.update(pkg: pkg, environment: store.environment)
         let newVersion = manifest.installedTag ?? manifest.installedCommit ?? "?"
         await MainActor.run {
-          logText = String(format: String(localized: "package.log.updated"), newVersion)
+          setCompletionLog(text: String(format: String(localized: "package.log.updated"), newVersion))
           busyID = nil
           store.reload()
           reloadPackages()
@@ -135,7 +169,7 @@ struct PackageManagerSection: View {
         }
       } catch {
         await MainActor.run {
-          logText = String(format: String(localized: "package.log.error"), error.localizedDescription)
+          setCompletionLog(text: String(format: String(localized: "package.log.error"), error.localizedDescription))
           busyID = nil
         }
       }
