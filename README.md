@@ -12,20 +12,43 @@
 
 </div>
 
+## 最新版本
+
+**v1.2.2 已发布** —— 本版本的核心是把「雾凇拼音（rime-ice）」从通用输入方案里独立出来，做成一个专属控制面板，可一站式开关雾凇拼音的各项功能，不再需要手改 YAML。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.2)
+
 ## 功能
 
+- **🌳 雾凇拼音独立面板**：侧边栏新增专属入口，集中控制雾凇拼音的包管理、基础开关、词库与短语、语言与拼音、高级滤镜等，无需手改 YAML。
 - **🎨 外观**：配色方案、字体、候选窗布局、实时预览。
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键（点击输入框即自动录制）、菜单标题。
 - **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
-- **📚 词库与同步**：第三方词库包（如「雾凇拼音」「Rime 设置集」）一键安装/更新/卸载并自动备份；用户词库概览；同步目录与 ID、一键同步。
+- **📚 词库与同步**：第三方词库包「雾凇拼音（rime-ice）」一键安装/更新/卸载并自动备份；用户词库概览；同步目录与 ID、一键同步。
 - **🔧 关于**：运行状态、路径跳转、恢复默认、YAML 预览、版本更新提醒（含鼠须管本体更新检查）。
 
-所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
+> 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
+
+### 🌳 雾凇拼音独立面板
+
+这是 v1.2.2 的主打能力。在侧边栏点击 🌳 图标即可进入，把雾凇拼音最常见的配置收进一个页面：
+
+![雾凇拼音独立面板](docs/assets/rime-ice-panel.png)
+
+面板分为五大区块：
+
+- **包管理**：雾凇拼音的安装 / 更新 / 卸载，以及安装后的部署状态。
+- **基础开关**：雾凇拼音出厂的多个开关（简繁、Emoji、中英混输、拆字等）支持「记忆 / 开 / 关」三态控制。
+- **词库与短语**：用户词库概览与短语编辑。
+- **语言与拼音**：繁体类型、双拼方案切换。
+- **高级**：Lua 滤镜、模糊音等进阶选项。
+
+面板底部还提供「维护」区：
+- **恢复雾凇默认**：仅清除本面板托管的配置项，保留你手写的其它 `rime_ice.custom.yaml` 内容，改动走「应用并重新部署」确认流程。
+- **恢复雾凇拼音全部默认**（急救）：一键删除 `rime_ice.custom.yaml`（含手写配置，删前自动 `.bak` 备份）并重新部署，让雾凇拼音整体回到出厂状态——与「关于」页还原鼠须管配置同级的安全网。
 
 ## 下载 / 安装
 
-1. 从 [Releases](https://github.com/wolfprince12/squirrel-Panel/releases) 下载最新 `Squirrel-Panel.dmg`。
+1. 从 [Releases](https://github.com/wolfprince12/squirrel-Panel/releases) 下载最新的 `Squirrel-Panel-x.y.z.dmg`。
 2. 打开 DMG，将 `Squirrel Panel.app` 拖入 **应用程序** 文件夹。
 3. 首次运行如提示「无法打开」，请前往 **系统设置 → 隐私与安全性** 点击「仍要打开」。
 
@@ -111,20 +134,43 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 </div>
 
+## Latest version
+
+**v1.2.2 is out** — the headline of this release is a dedicated control panel for **Rime Ice (雾凇拼音)**: a new sidebar entry that lets you toggle Rime Ice's features in one place, with no YAML editing. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.2)
+
 ## Features
 
+- **🌳 Rime Ice dedicated panel**: a new sidebar entry to centrally manage Rime Ice — package management, basic switches, lexicon & phrases, language & pinyin, advanced filters — all without hand-editing YAML.
 - **🎨 Appearance**: color schemes, fonts, candidate window layout, live preview.
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys (click the box to capture), menu title.
 - **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
-- **📚 Dictionary & sync**: third-party packages (e.g. **Rime Ice**, **Rime Settings Set**) with one-click install/update/uninstall and automatic backup; user dictionary overview; sync dir & ID and one-click sync.
+- **📚 Dictionary & sync**: third-party package **Rime Ice (雾凇拼音)** with one-click install/update/uninstall and automatic backup; user dictionary overview; sync dir & ID and one-click sync.
 - **🔧 About**: running status, path jump, restore defaults, YAML preview, and update checks (including Squirrel itself).
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.
 
+### 🌳 Rime Ice dedicated panel
+
+The headline feature of v1.2.2. Click the 🌳 icon in the sidebar to open a single page for the most common Rime Ice settings:
+
+![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png)
+
+The panel is organized into five sections:
+
+- **Package**: install / update / uninstall Rime Ice, plus its deploy status.
+- **Basic switches**: Rime Ice's built-in switches (simplification/traditional, Emoji, mixed CN/EN, radical, etc.) with three states — remember / on / off.
+- **Lexicon & phrases**: user dictionary overview and phrase editing.
+- **Language & pinyin**: traditionalization type, double-pinyin scheme switching.
+- **Advanced**: Lua filters, fuzzy pinyin and other options.
+
+At the bottom there is a **Maintenance** area:
+- **Reset Rime Ice defaults**: clears only the config items managed by this panel, keeping your other hand-written `rime_ice.custom.yaml` content; changes go through the "Apply & redeploy" confirmation flow.
+- **Reset all Rime Ice configs** (emergency): one click deletes `rime_ice.custom.yaml` (including hand-written config, auto-backed up as `.bak` first) and redeploys, returning Rime Ice to factory state — a safety net on par with the "restore Squirrel defaults" action on the About page.
+
 ## Install
 
-1. Download the latest `Squirrel-Panel.dmg` from [Releases](https://github.com/wolfprince12/squirrel-Panel/releases).
+1. Download the latest `Squirrel-Panel-x.y.z.dmg` from [Releases](https://github.com/wolfprince12/squirrel-Panel/releases).
 2. Open the DMG and drag `Squirrel Panel.app` into **Applications**. The app name follows your system language: **Squirrel Panel** (English), **鼠须管控制面板** (Simplified Chinese), or **鼠鬚管控制面板** (Traditional Chinese).
 3. If the first launch says "cannot be opened", go to **System Settings → Privacy & Security** and click "Open Anyway".
 
