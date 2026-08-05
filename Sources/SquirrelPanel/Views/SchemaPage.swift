@@ -41,9 +41,6 @@ struct SchemaPage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        // MARK: - 第三方词库包
-        PackageManagerSection()
-
         SettingsGroup("schema.enabled.title") {
           if enabled.isEmpty {
             EmptyHint(text: String(localized: "schema.enabled.empty"))

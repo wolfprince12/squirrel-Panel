@@ -2,6 +2,7 @@
 "app.name" = "鼠鬚管控制面板";
 "nav.appearance" = "外觀";
 "nav.schemas" = "輸入方案";
+"nav.riceIce" = "霧鬚管";
 "nav.behavior" = "按鍵與行為";
 "nav.appOptions" = "應用適配";
 "nav.dictionary" = "詞庫與同步";
@@ -15,6 +16,25 @@
 "button.applyDeploy" = "套用並重新部署";
 "footer.hint" = "所有變更寫入 custom.yaml 補丁，不會覆蓋你手寫的設定。";
 "menu.openUserDir" = "在 Finder 中開啟使用者目錄";
+
+/* RimeIcePage（霧鬚管） */
+"riceice.config.title" = "霧鬚管配置";
+"riceice.basic.title" = "基礎開關";
+"riceice.basic.hint" = "設定每個開關的預設狀態，變更寫入 rime_ice.custom.yaml。";
+"riceice.notInstalled" = "未偵測到霧鬚管方案，請先在上方「套件管理」中安裝。";
+"riceice.switch.ascii_mode" = "中英文模式";
+"riceice.switch.ascii_punct" = "中英標點";
+"riceice.switch.traditionalization" = "簡繁轉換";
+"riceice.switch.emoji" = "Emoji 表情";
+"riceice.switch.full_shape" = "全形字元";
+"riceice.switch.search_single_char" = "輔碼單字優先";
+"riceice.mode.remember" = "記憶";
+"riceice.mode.on" = "固定開啟";
+"riceice.mode.off" = "固定關閉";
+"riceice.pageSize" = "候選詞數";
+"riceice.saveOptions.note" = "選「記憶」會把該開關加入 default.custom.yaml 的 switcher/save_options，切換方案後狀態被記住；選「固定開啟/關閉」則將其移除並鎖定到預設值。這是所有方案共用的全域設定。";
+"riceice.reset" = "恢復霧鬚管預設";
+"error.parse.riceice" = "rime_ice.custom.yaml 解析失敗：%@";
 
 /* Status Messages */
 "status.loaded" = "已讀取目前設定";

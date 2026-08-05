@@ -2,6 +2,7 @@
 "app.name" = "鼠须管控制面板";
 "nav.appearance" = "外观";
 "nav.schemas" = "输入方案";
+"nav.riceIce" = "雾凇拼音";
 "nav.behavior" = "按键与行为";
 "nav.appOptions" = "应用适配";
 "nav.dictionary" = "词库与同步";
@@ -15,6 +16,25 @@
 "button.applyDeploy" = "应用并重新部署";
 "footer.hint" = "所有改动写入 custom.yaml 补丁，不会覆盖你手写的配置。";
 "menu.openUserDir" = "在访达中打开用户目录";
+
+/* RimeIcePage（雾凇拼音） */
+"riceice.config.title" = "雾凇拼音配置";
+"riceice.basic.title" = "基础开关";
+"riceice.basic.hint" = "设置每个开关的默认状态，改动写入 rime_ice.custom.yaml。";
+"riceice.notInstalled" = "未检测到雾凇拼音方案，请先在上方「包管理」中安装。";
+"riceice.switch.ascii_mode" = "中英文模式";
+"riceice.switch.ascii_punct" = "中英标点";
+"riceice.switch.traditionalization" = "简繁转换";
+"riceice.switch.emoji" = "Emoji 表情";
+"riceice.switch.full_shape" = "全角字符";
+"riceice.switch.search_single_char" = "辅码单字优先";
+"riceice.mode.remember" = "记忆";
+"riceice.mode.on" = "固定开启";
+"riceice.mode.off" = "固定关闭";
+"riceice.pageSize" = "候选词数";
+"riceice.saveOptions.note" = "选「记忆」会把该开关加入 default.custom.yaml 的 switcher/save_options，方案切换后状态被记住；选「固定开启/关闭」则把它移除并锁定到默认值。这是所有方案共享的全局设置。";
+"riceice.reset" = "恢复雾凇默认";
+"error.parse.riceice" = "rime_ice.custom.yaml 解析失败：%@";
 
 /* Status Messages */
 "status.loaded" = "已读取当前配置";

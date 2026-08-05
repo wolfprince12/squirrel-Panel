@@ -17,6 +17,9 @@ enum PatchValue: Equatable {
   case schemaList([String])
   /// Rime 的 key_bindings 列表（每个元素是 [String: Any] 的映射）
   case keyBindings([[String: Any]])
+  /// 任意「列表的映射」结构（例如 rime_ice.custom.yaml 的 switches 整段），
+  /// 用于整段重写而非逐键 patch。
+  case mapList([[String: Any]])
 
   /// 转换成可交给 Yams 序列化的对象
   var yamlObject: Any {
@@ -30,6 +33,7 @@ enum PatchValue: Equatable {
     case .stringList(let v): return v
     case .schemaList(let v): return v.map { ["schema": $0] }
     case .keyBindings(let v): return v
+    case .mapList(let v): return v
     }
   }
 
@@ -41,19 +45,23 @@ enum PatchValue: Equatable {
     case (.string(let a), .string(let b)): return a == b
     case (.stringList(let a), .stringList(let b)): return a == b
     case (.schemaList(let a), .schemaList(let b)): return a == b
-    case (.keyBindings(let a), .keyBindings(let b)):
-      guard a.count == b.count else { return false }
-      for (x, y) in zip(a, b) {
-        guard Set(x.keys) == Set(y.keys) else { return false }
-        for key in x.keys {
-          guard let vx = x[key], let vy = y[key] else { return false }
-          if !valueEqual(vx, vy) { return false }
-        }
-      }
-      return true
+    case (.keyBindings(let a), .keyBindings(let b)): return listOfMapsEqual(a, b)
+    case (.mapList(let a), .mapList(let b)): return listOfMapsEqual(a, b)
     default:
       return false
     }
+  }
+
+  private static func listOfMapsEqual(_ a: [[String: Any]], _ b: [[String: Any]]) -> Bool {
+    guard a.count == b.count else { return false }
+    for (x, y) in zip(a, b) {
+      guard Set(x.keys) == Set(y.keys) else { return false }
+      for key in x.keys {
+        guard let vx = x[key], let vy = y[key] else { return false }
+        if !valueEqual(vx, vy) { return false }
+      }
+    }
+    return true
   }
 
   private static func valueEqual(_ a: Any, _ b: Any) -> Bool {

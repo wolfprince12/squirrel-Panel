@@ -42,6 +42,11 @@ final class SettingsStore: ObservableObject {
   private var squirrelPatch: CustomYAMLFile
   private var defaultPatch: CustomYAMLFile
 
+  /// 雾凇拼音面板（RimeIceConfigStore）的反向引用，用于在统一的「应用并部署」中
+  /// 一并写盘 rime_ice.custom.yaml 与 default.custom.yaml 的 switcher/save_options。
+  /// 用 weak 避免与 RimeIceConfigStore 的 unowned settings 形成循环。
+  weak var rimeIce: RimeIceConfigStore?
+
   /// 载入时的编译快照，用于判断是否有未应用的改动
   private var baselineSquirrel: PatchSet = [:]
   private var baselineDefault: PatchSet = [:]
@@ -77,6 +82,9 @@ final class SettingsStore: ObservableObject {
   @Published var enabledSchemaIDs: [String] = []
   @Published var switcherHotkeys = ""
   @Published var switcherCaption = ""
+  /// switcher/save_options：哪些开关在方案选单切换后被「记住」。
+  /// 由 RimeIceConfigStore 在应用配置时改写；其余面板不碰它。
+  @Published var savedSwitchOptions: [String] = []
 
   // MARK: - 按键与行为
 
@@ -107,7 +115,9 @@ final class SettingsStore: ObservableObject {
   @Published var isApplying = false
 
   var isDirty: Bool {
-    compileSquirrelPatch() != baselineSquirrel || compileDefaultPatch() != baselineDefault
+    compileSquirrelPatch() != baselineSquirrel
+      || compileDefaultPatch() != baselineDefault
+      || rimeIce?.isDirty == true
   }
 
   var canWrite: Bool { squirrelPatch.isWritable && defaultPatch.isWritable }
@@ -143,6 +153,8 @@ final class SettingsStore: ObservableObject {
     baselineSquirrel = compileSquirrelPatch()
     baselineDefault = compileDefaultPatch()
     statusMessage = environment.isInstalled ? "status.loaded" : "status.notInstalled"
+    // 雾凇面板跟着一起重载，保证两边状态一致（应用、还原、重置后都会走到这里）
+    rimeIce?.reload()
   }
 
   // MARK: - 读：补丁 → 界面
@@ -207,6 +219,13 @@ final class SettingsStore: ObservableObject {
     enabledSchemaIDs = SchemaCatalog.enabledSchemaIDs(patch: defaultPatch, environment: environment)
     switcherHotkeys = readList(defaultPatch, "switcher/hotkeys").joined(separator: ", ")
     switcherCaption = defaultPatch.string(forPath: "switcher/caption") ?? ""
+    // switcher/save_options：用户若显式写过（即使为空列表）则尊重之；
+    // 否则回落到 default.yaml 出厂默认，避免一上来就把 5 个开关全塞进 save_options。
+    if defaultPatch.value(forPath: "switcher/save_options") != nil {
+      savedSwitchOptions = readList(defaultPatch, "switcher/save_options")
+    } else {
+      savedSwitchOptions = defaultSaveOptions()
+    }
 
     pageSize = defaultPatch.int(forPath: "menu/page_size") ?? readDefaultYAMLInt("menu/page_size") ?? 5
     goodOldCapsLock = defaultPatch.bool(forPath: "ascii_composer/good_old_caps_lock") ?? true
@@ -244,6 +263,22 @@ final class SettingsStore: ObservableObject {
       if let v = node as? Int { return v }
     }
     return nil
+  }
+
+  /// 从出厂 default.yaml 读取 switcher/save_options（仅当 default.custom.yaml 没写过时用）
+  private func defaultSaveOptions() -> [String] {
+    for url in environment.configSources(named: "default.yaml") {
+      guard let text = try? String(contentsOf: url, encoding: .utf8),
+            let object = try? Yams.load(yaml: text) as? [String: Any] else { continue }
+      var node: Any? = object
+      for part in "switcher/save_options".split(separator: "/") {
+        node = (node as? [String: Any])?[String(part)]
+      }
+      if let list = node as? [Any] {
+        return list.compactMap { $0 as? String }
+      }
+    }
+    return []
   }
 
   // MARK: - 键位（key_binder/bindings）
@@ -473,6 +508,10 @@ final class SettingsStore: ObservableObject {
       .filter { !$0.isEmpty }
     set["switcher/hotkeys"] = hotkeys.isEmpty ? PatchValue?.none : .stringList(hotkeys)
     set["switcher/caption"] = switcherCaption.isEmpty ? PatchValue?.none : .string(switcherCaption)
+    // switcher/save_options：由 RimeIceConfigStore 在应用雾凇配置时改写；
+    // 与 switches 的 reset 互斥——记住的开关不能带 reset。
+    let saveOptions = savedSwitchOptions
+    set["switcher/save_options"] = saveOptions.isEmpty ? PatchValue?.none : .stringList(saveOptions)
     // Tab 翻页通过 key_binder/bindings/+ 追加到现有键位列表；启用时追加，关闭时移除我们的条目
     if managingKeyBindings || tabPagingEnabled {
       let appendList = mergedTabBindingAppendList()
@@ -501,14 +540,18 @@ final class SettingsStore: ObservableObject {
   // MARK: - 应用
 
   func apply() {
-    guard canWrite else {
-      lastError = unparsableWarning
+    guard canWrite, rimeIce?.canWrite ?? true else {
+      lastError = unparsableWarning ?? rimeIce?.unparsableWarning
       return
     }
     isApplying = true
     lastError = nil
     statusMessage = "status.saving"
     do {
+      // 若雾凇拼音面板有未保存改动，先把 save_options 同步进本面板编译结果，
+      // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
+      rimeIce?.contribute(to: self)
+      try rimeIce?.writePatch()
       let squirrelSet = compileSquirrelPatch()
       let defaultSet = compileDefaultPatch()
       for (key, value) in squirrelSet { squirrelPatch.set(value?.yamlObject, forPath: key) }

@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, behavior, appOptions, dictionary, about
+  case appearance, schemas, riceIce, behavior, appOptions, dictionary, about
 
   var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     switch self {
     case .appearance: return "nav.appearance"
     case .schemas: return "nav.schemas"
+    case .riceIce: return "nav.riceIce"
     case .behavior: return "nav.behavior"
     case .appOptions: return "nav.appOptions"
     case .dictionary: return "nav.dictionary"
@@ -25,6 +26,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     switch self {
     case .appearance: return "paintpalette"
     case .schemas: return "character.book.closed"
+    case .riceIce: return "textformat"
     case .behavior: return "keyboard"
     case .appOptions: return "square.grid.2x2"
     case .dictionary: return "externaldrive"
@@ -36,6 +38,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     switch self {
     case .appearance: return .orange
     case .schemas: return .green
+    case .riceIce: return .teal
     case .behavior: return .indigo
     case .appOptions: return .blue
     case .dictionary: return .pink
@@ -77,6 +80,7 @@ struct RootView: View {
         switch selection {
         case .appearance: AppearancePage()
         case .schemas: SchemaPage()
+    case .riceIce: RimeIcePage()
         case .behavior: BehaviorPage()
         case .appOptions: AppOptionsPage()
         case .dictionary: DictionaryPage()

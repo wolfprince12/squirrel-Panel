@@ -2,6 +2,7 @@
 "app.name" = "Squirrel Panel";
 "nav.appearance" = "Appearance";
 "nav.schemas" = "Schemas";
+"nav.riceIce" = "Rime-ice";
 "nav.behavior" = "Behavior";
 "nav.appOptions" = "App Options";
 "nav.dictionary" = "Dictionary";
@@ -15,6 +16,25 @@
 "button.applyDeploy" = "Apply & Deploy";
 "footer.hint" = "All changes are written to custom.yaml patches and will not overwrite your manual settings.";
 "menu.openUserDir" = "Open User Directory in Finder";
+
+/* RimeIcePage (rime-ice) */
+"riceice.config.title" = "Rime-ice Configuration";
+"riceice.basic.title" = "Basic Switches";
+"riceice.basic.hint" = "Set the default state of each switch. Changes are written to rime_ice.custom.yaml.";
+"riceice.notInstalled" = "Rime-ice schema not detected. Install it from Package Management above first.";
+"riceice.switch.ascii_mode" = "Chinese/English mode";
+"riceice.switch.ascii_punct" = "Chinese/Western punctuation";
+"riceice.switch.traditionalization" = "Simplified/Traditional";
+"riceice.switch.emoji" = "Emoji";
+"riceice.switch.full_shape" = "Full-width characters";
+"riceice.switch.search_single_char" = "Single-char priority (radical lookup)";
+"riceice.mode.remember" = "Remember";
+"riceice.mode.on" = "Always On";
+"riceice.mode.off" = "Always Off";
+"riceice.pageSize" = "Candidates per Page";
+"riceice.saveOptions.note" = "“Remember” adds the switch to switcher/save_options in default.custom.yaml, so its state persists across schema switches. “Always On/Off” removes it and pins the default. This is a global setting shared by all schemas.";
+"riceice.reset" = "Reset Rime-ice";
+"error.parse.riceice" = "rime_ice.custom.yaml parsing failed: %@";
 
 /* Status Messages */
 "status.loaded" = "Configuration loaded";
