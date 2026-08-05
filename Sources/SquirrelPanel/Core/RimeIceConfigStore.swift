@@ -6,10 +6,13 @@
 //
 //  设计铁律（见实现计划第二节）：
 //  1. 本类**独占** `rime_ice.custom.yaml`，绝不直接 save() `default.custom.yaml`。
-//  2. 凡是必须落到 `default.custom.yaml` 的（当前仅 `switcher/save_options`），
+//  2. 凡是必须落到 `default.custom.yaml` 的（`switcher/save_options`、双拼 `schema_list`），
 //     一律改写 `SettingsStore` 的 @Published 属性，最后由 `settings.apply()` 统一落盘 + 部署。
 //  3. `switches` 是列表不是映射，采用「读出厂模板 → 改托管项 reset → 整段写回」。
 //  4. `reset`（固定默认）与 `save_options`（开关记忆）互斥：设固定默认时把该项从 save_options 摘除。
+//  5. `engine/translators`、`engine/filters`、`schema/dependencies`、`speller/algebra` 是列表，
+//     采用「列表托管合并」：只增删本类认得的条目，用户自己加的条目原样保留；
+//     合并结果与出厂模板完全一致时写 nil（删键，回落出厂）。
 //
 
 import Foundation
@@ -36,6 +39,16 @@ private struct RimeIceSwitchTemplate {
   let factoryReset: Int
 }
 
+/// 从 rime_ice.schema.yaml 解析出的出厂模板全集（reload 时读一次，缓存）
+private struct RimeIceTemplate {
+  var switches: [RimeIceSwitchTemplate] = []
+  var translators: [String] = []
+  var filters: [String] = []
+  var dependencies: [String] = []
+  var algebra: [String] = []
+  var opencc: String = "s2t.json"
+}
+
 /// 界面上的一个 switch 行
 struct RimeIceSwitchItem: Identifiable {
   var id: String { name }
@@ -43,6 +56,31 @@ struct RimeIceSwitchItem: Identifiable {
   let states: [String]
   let abbrev: [String]?
   var mode: SwitchDefaultMode
+}
+
+/// 模糊音规则分组
+enum FuzzyRuleGroup: String, CaseIterable, Identifiable {
+  case initials
+  case finals
+  case syllables
+
+  var id: String { rawValue }
+
+  var titleKey: LocalizedStringKey {
+    switch self {
+    case .initials: return "riceice.fuzzy.initials"
+    case .finals: return "riceice.fuzzy.finals"
+    case .syllables: return "riceice.fuzzy.syllables"
+    }
+  }
+}
+
+/// 一条模糊音规则：`rule` 是写进 `speller/algebra` 的原文，`label` 是界面上的人类可读描述
+struct FuzzyRule: Identifiable, Hashable {
+  var id: String { rule }
+  let rule: String
+  let label: String
+  let group: FuzzyRuleGroup
 }
 
 @MainActor
@@ -55,30 +93,244 @@ final class RimeIceConfigStore: ObservableObject {
   private var baselineIce: PatchSet = [:]
 
   /// 出厂模板（reload 时从 rime_ice.schema.yaml 读一次，缓存）
-  private var templates: [RimeIceSwitchTemplate] = []
+  private var template = RimeIceTemplate()
 
-  // MARK: - UI 状态
+  /// 出厂 `default.yaml` 的 `switcher/save_options` 名单（reload 时读一次，缓存）。
+  ///
+  /// 判断「开关是否停在出厂默认」必须带上它：rime-ice 出厂把 6 个开关里的 5 个
+  /// （ascii_punct / traditionalization / emoji / full_shape / search_single_char）
+  /// 写进了 save_options，它们的出厂态是「记忆」而非任何一侧的固定默认。
+  /// 只按 `reset` 判定会把这 5 项一律当成「被用户改过」，`switchesAreAllFactory`
+  /// 恒 false → 干净安装也会往 rime_ice.custom.yaml 里整段写 switches（整段替换非追加），
+  /// 上游日后调整 switches 会被这份陈旧快照永久覆盖。
+  ///
+  /// **只在 reload() 里读一次盘**：`compileIcePatch()` 挂在 SwiftUI 求值路径上，
+  /// 每帧都会跑，绝不能在其中做磁盘 I/O。
+  private var cachedFactorySaveOptions: Set<String> = []
+
+  /// reload 期间抑制属性观察器的副作用（避免回写 SettingsStore 造成递归）
+  private var isReloading = false
+
+  // MARK: - UI 状态：基础开关（Phase B）
 
   @Published var switches: [RimeIceSwitchItem] = []
-  @Published var menuPageSize: Int = 5
+  /// 方案级候选词数。基准是全局 `menu/page_size`（SettingsStore.pageSize），
+  /// 不是写死的 5——rime_ice.schema.yaml 根本没有 `menu:` 段。
+  /// 这里的初值只是占位，reload() 会立刻用 settings.pageSize 覆盖。
+  ///
+  /// 用户在本面板亲手拨过 Stepper 才算「显式设定」，此时才把值钉进
+  /// rime_ice.custom.yaml；否则一直跟随全局（见 `menuPageSizeIsInherited`）。
+  @Published var menuPageSize: Int = 5 {
+    didSet {
+      guard !isReloading, oldValue != menuPageSize else { return }
+      menuPageSizeIsInherited = false
+    }
+  }
 
-  // MARK: - 本类托管的 rime_ice.custom.yaml 键（「恢复默认」只清理这些）
+  /// 候选词数是否仍处于「继承全局」状态（rime_ice.custom.yaml 里没有 menu/page_size 键）。
+  ///
+  /// 没有这个标志时，界面值只在 reload 时同步一次，之后用户去「按键与行为」把全局
+  /// 候选数从 9 改成 8，雾凇面板仍留着 9 → `menuPageSize != settings.pageSize` →
+  /// 面板凭空变脏，并把旧值 9 钉进方案级覆盖（方案级压过全局，用户改了个寂寞）。
+  private var menuPageSizeIsInherited: Bool = true
 
+  // MARK: - UI 状态：词库与短语（Phase C）
+
+  /// 英文输入 melt_eng（translator + dependency 成对，autocap / reduce_english 随之同生同死）
+  @Published var enableMeltEng: Bool = true
+  /// 中英混合词 cn_en
+  @Published var enableCnEn: Bool = true
+  /// 部件拆字（translator + 两个 filter + dependency 四者联动）
+  @Published var enableRadical: Bool = true
+  /// Emoji 词库 simplifier@emoji
+  @Published var enableEmojiDict: Bool = true
+  /// 自定义短语文件；目标随当前激活方案在
+  /// custom_phrase.txt（全拼）与 custom_phrase_double.txt（双拼）之间切换
+  @Published var phrases: CustomPhraseFile
+
+  // MARK: - UI 状态：语言与拼音（Phase D）
+
+  /// 繁体类型：s2t.json | s2hk.json | s2tw.json | s2twp.json
+  @Published var opencc: String = "s2t.json"
+  /// 当前排在 schema_list 首位的拼音类方案（rime_ice = 全拼）
+  @Published var activePinyinSchemaID: String = "rime_ice" {
+    didSet {
+      guard !isReloading, oldValue != activePinyinSchemaID else { return }
+      promoteActivePinyinSchema()
+      loadDoublePinyinPatch(for: activePinyinSchemaID)
+      syncPhraseFile()
+    }
+  }
+  /// 双拼「编码原样显示」：写 `<dp>.custom.yaml` 的 `translator/preedit_format: []`
+  @Published var showRawDoubleCode: Bool = false
+
+  // MARK: - UI 状态：高级（Phase E）
+
+  /// 6 个可独立开关的 Lua 滤镜，键为 lua 名（如 `*corrector`）
+  @Published var luaFilters: [String: Bool] = [:]
+  /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
+  @Published var fuzzySelection: Set<String> = []
+
+  // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
+
+  private var doublePinyinPatch: CustomYAMLFile?
+  private var baselineShowRawDoubleCode = false
+
+  // MARK: - 托管常量（照抄 rime_ice.schema.yaml，杜绝手写错）
+
+  /// 本类托管的 rime_ice.custom.yaml 键（「恢复默认」只清理这些）
   static let managedIceKeys: Set<String> = [
     "switches", "menu/page_size", "traditionalize/opencc_config",
     "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra"
   ]
+
+  /// 托管的 translators 条目
+  static let managedTranslators: Set<String> = [
+    "table_translator@melt_eng",
+    "table_translator@cn_en",
+    "table_translator@radical_lookup"
+  ]
+
+  /// 托管的 filters 条目
+  static let managedFilters: Set<String> = [
+    "lua_filter@*corrector",
+    "lua_filter@*autocap_filter",
+    "lua_filter@*v_filter",
+    "lua_filter@*pin_cand_filter",
+    "lua_filter@*long_word_filter",
+    "lua_filter@*reduce_english_filter",
+    "simplifier@emoji",
+    "lua_filter@*search@radical_pinyin",
+    "reverse_lookup_filter@radical_reverse_lookup"
+  ]
+
+  /// 托管的 dependencies 条目
+  static let managedDependencies: Set<String> = ["melt_eng", "radical_pinyin"]
+
+  /// 可独立开关的 6 个 Lua 滤镜（键 = lua 名，实际条目为 `lua_filter@` + 键）
+  static let luaFilterKeys: [String] = [
+    "*corrector", "*autocap_filter", "*v_filter",
+    "*pin_cand_filter", "*long_word_filter", "*reduce_english_filter"
+  ]
+
+  /// 英文开关关闭时必须一并摘除的 Lua 滤镜
+  static let englishBoundLuaFilters: Set<String> = ["*autocap_filter", "*reduce_english_filter"]
+
+  /// 繁体类型可选值（Rime 内置 OpenCC 配置）
+  static let openccOptions: [String] = ["s2t.json", "s2hk.json", "s2tw.json", "s2twp.json"]
+
+  /// 出厂模板中默认注释掉的模糊音规则表（原文取自 rime_ice.schema.yaml）
+  static let fuzzyRules: [FuzzyRule] = [
+    // 声母
+    FuzzyRule(rule: "derive/^([zcs])h/$1/", label: "zh, ch, sh → z, c, s", group: .initials),
+    FuzzyRule(rule: "derive/^([zcs])([^h])/$1h$2/", label: "z, c, s → zh, ch, sh", group: .initials),
+    FuzzyRule(rule: "derive/^l/n/", label: "l → n", group: .initials),
+    FuzzyRule(rule: "derive/^n/l/", label: "n → l", group: .initials),
+    FuzzyRule(rule: "derive/^f/h/", label: "f → h", group: .initials),
+    FuzzyRule(rule: "derive/^h/f/", label: "h → f", group: .initials),
+    FuzzyRule(rule: "derive/^l/r/", label: "l → r", group: .initials),
+    FuzzyRule(rule: "derive/^r/l/", label: "r → l", group: .initials),
+    FuzzyRule(rule: "derive/^g/k/", label: "g → k", group: .initials),
+    FuzzyRule(rule: "derive/^k/g/", label: "k → g", group: .initials),
+    // 韵母
+    FuzzyRule(rule: "derive/ang$/an/", label: "ang → an", group: .finals),
+    FuzzyRule(rule: "derive/an$/ang/", label: "an → ang", group: .finals),
+    FuzzyRule(rule: "derive/eng$/en/", label: "eng → en", group: .finals),
+    FuzzyRule(rule: "derive/en$/eng/", label: "en → eng", group: .finals),
+    FuzzyRule(rule: "derive/in$/ing/", label: "in → ing", group: .finals),
+    FuzzyRule(rule: "derive/ing$/in/", label: "ing → in", group: .finals),
+    FuzzyRule(rule: "derive/ian$/iang/", label: "ian → iang", group: .finals),
+    FuzzyRule(rule: "derive/iang$/ian/", label: "iang → ian", group: .finals),
+    FuzzyRule(rule: "derive/uan$/uang/", label: "uan → uang", group: .finals),
+    FuzzyRule(rule: "derive/uang$/uan/", label: "uang → uan", group: .finals),
+    FuzzyRule(rule: "derive/ai$/an/", label: "ai → an", group: .finals),
+    FuzzyRule(rule: "derive/an$/ai/", label: "an → ai", group: .finals),
+    FuzzyRule(rule: "derive/ong$/un/", label: "ong → un", group: .finals),
+    FuzzyRule(rule: "derive/un$/ong/", label: "un → ong", group: .finals),
+    FuzzyRule(rule: "derive/ong$/on/", label: "ong → on", group: .finals),
+    FuzzyRule(rule: "derive/iong$/un/", label: "iong → un", group: .finals),
+    FuzzyRule(rule: "derive/un$/iong/", label: "un → iong", group: .finals),
+    FuzzyRule(rule: "derive/ong$/eng/", label: "ong → eng", group: .finals),
+    FuzzyRule(rule: "derive/eng$/ong/", label: "eng → ong", group: .finals),
+    // 音节
+    FuzzyRule(rule: "derive/^fei$/hui/", label: "fei → hui", group: .syllables),
+    FuzzyRule(rule: "derive/^hui$/fei/", label: "hui → fei", group: .syllables),
+    FuzzyRule(rule: "derive/^hu$/fu/", label: "hu → fu", group: .syllables),
+    FuzzyRule(rule: "derive/^fu$/hu/", label: "fu → hu", group: .syllables),
+    FuzzyRule(rule: "derive/^wang$/huang/", label: "wang → huang", group: .syllables),
+    FuzzyRule(rule: "derive/^huang$/wang/", label: "huang → wang", group: .syllables)
+  ]
+
+  /// 模糊音规则原文集合，用于从用户现有 algebra 中识别并剥离
+  static let fuzzyRuleSet: Set<String> = Set(fuzzyRules.map(\.rule))
+
+  /// 拼音类方案（全拼 rime_ice + 各家双拼）
+  static func isPinyinFamily(_ id: String) -> Bool {
+    id == "rime_ice" || id.hasPrefix("double_pinyin")
+  }
+
+  // MARK: - 自定义短语文件的归属
+
+  /// 全拼的自定义短语文件（rime_ice.schema.yaml 的 `custom_phrase/user_dict: custom_phrase`）
+  static let phraseFileFullPinyin = "custom_phrase.txt"
+  /// 双拼的自定义短语文件：所有 `double_pinyin*.schema.yaml` 的
+  /// `custom_phrase/user_dict` 都是 `custom_phrase_double`，与全拼是两个独立词典。
+  static let phraseFileDoublePinyin = "custom_phrase_double.txt"
+
+  /// 某个拼音方案对应的短语文件名。非 rime_ice（即各家双拼）一律用双拼词典。
+  static func phraseFileName(forSchema id: String) -> String {
+    (id.isEmpty || id == "rime_ice") ? phraseFileFullPinyin : phraseFileDoublePinyin
+  }
+
+  /// 当前激活方案对应的短语文件位置
+  private var phraseFileURL: URL {
+    RimeEnvironment.userDirectory
+      .appending(path: Self.phraseFileName(forSchema: activePinyinSchemaID))
+  }
+
+  /// 切换拼音方案时短语文件保存失败后的上层提示（UI 展示用）。
+  /// 仅当 `syncPhraseFile()` 保存旧文件失败（只读目录 / 磁盘满 / 权限）时才有值，
+  /// 此时会**阻止**指针重指向，未保存词条留在编辑器里，绝不静默丢失。
+  @Published var phraseSaveError: String?
+
+  /// 切换拼音方案后把短语编辑器指向新方案的词典文件。
+  /// 切换前若旧文件有未保存内容，先落盘到**旧文件**——用户手打的词条不能因为
+  /// 动了一下方案选择器就凭空消失，也绝不能被写进另一个方案的词典。
+  ///
+  /// 保存一旦失败（目录只读、磁盘满、权限不足等），**必须阻止**重指向：否则下一行
+  /// 会把 `phrases` 重指向新文件，未保存词条随之蒸发且零提示。此时保留旧 `phrases`
+  /// 并把错误暴露给 UI，让用户看到并主动处理，而不是吞掉。
+  private func syncPhraseFile() {
+    let url = phraseFileURL
+    // 清错误必须在 early-return 之前：失败后用户把方案 Picker 切回原方案时，
+    // 目标文件与当前指针一致会命中下面的 guard 直接返回，红条否则永远消不掉。
+    phraseSaveError = nil
+    guard phrases.fileURL != url else { return }
+    guard phrases.isDirty else {
+      phrases = CustomPhraseFile(fileURL: url)
+      return
+    }
+    do {
+      try phrases.save()
+      phrases = CustomPhraseFile(fileURL: url)
+    } catch {
+      phraseSaveError = error.localizedDescription
+    }
+  }
 
   // MARK: - 生命周期
 
   init(settings: SettingsStore) {
     self.settings = settings
     self.icePatch = CustomYAMLFile(fileURL: RimeEnvironment.userDirectory.appending(path: "rime_ice.custom.yaml"))
+    // 占位：真正的归属在 reload() 里按当前激活方案决定
+    self.phrases = CustomPhraseFile(
+      fileURL: RimeEnvironment.userDirectory.appending(path: Self.phraseFileFullPinyin))
     reload()
   }
 
   /// 雾凇拼音方案（rime_ice.schema.yaml）已安装才启用配置区，否则整段置灰
-  var isInstalled: Bool { !templates.isEmpty }
+  var isInstalled: Bool { !template.switches.isEmpty }
 
   var canWrite: Bool { icePatch.isWritable }
 
@@ -89,13 +341,42 @@ final class RimeIceConfigStore: ObservableObject {
     return nil
   }
 
+  /// rime_ice.custom.yaml 的磁盘位置（原始 YAML 编辑器要用）
+  var iceFileURL: URL { icePatch.fileURL }
+
   func reload() {
-    templates = Self.parseTemplates()
+    isReloading = true
+    defer { isReloading = false }
+
+    // 陈旧的短语保存错误横幅不能穿越 reload 存活。
+    // 下面给 activePinyinSchemaID 赋值时 isReloading 已为 true，didSet 被抑制，
+    // syncPhraseFile() 不会执行，红条没有别的清除时机——用户保存失败后点「还原」
+    // （revert → settings.reload → 本方法）也消不掉，只能重启 App。
+    phraseSaveError = nil
+
+    template = Self.parseTemplate(environment: settings.environment)
+    // 出厂 save_options 名单：整个生命周期只在这里读盘一次，
+    // 供 switchesAreAllFactory / resetManagedRimeIce 判定「出厂开关模式」。
+    cachedFactorySaveOptions = Set(factorySaveOptions())
     icePatch.load()
+
+    // 拼音方案：从 default.custom.yaml（经 SettingsStore）已启用列表推断，首位的拼音类方案即当前方案
+    activePinyinSchemaID = settings.enabledSchemaIDs.first(where: { Self.isPinyinFamily($0) }) ?? "rime_ice"
+    loadDoublePinyinPatch(for: activePinyinSchemaID)
+    // 短语文件归属取决于上面刚定下来的方案，必须在其之后重建
+    phrases = CustomPhraseFile(fileURL: phraseFileURL)
 
     guard isInstalled else {
       switches = []
-      menuPageSize = 5
+      menuPageSizeIsInherited = true
+      menuPageSize = settings.pageSize
+      opencc = "s2t.json"
+      enableMeltEng = true
+      enableCnEn = true
+      enableRadical = true
+      enableEmojiDict = true
+      luaFilters = Dictionary(uniqueKeysWithValues: Self.luaFilterKeys.map { ($0, true) })
+      fuzzySelection = []
       baselineIce = [:]
       return
     }
@@ -110,7 +391,7 @@ final class RimeIceConfigStore: ObservableObject {
     // 记忆名单（来自 default.custom.yaml 的 save_options，经 SettingsStore 读取）
     let saved = Set(settings.savedSwitchOptions)
 
-    switches = templates.map { t in
+    switches = template.switches.map { t in
       let mode: SwitchDefaultMode
       if saved.contains(t.name) {
         mode = .remember
@@ -122,32 +403,217 @@ final class RimeIceConfigStore: ObservableObject {
       return RimeIceSwitchItem(name: t.name, states: t.states, abbrev: t.abbrev, mode: mode)
     }
 
-    menuPageSize = icePatch.int(forPath: "menu/page_size") ?? 5
+    // rime_ice.schema.yaml 没有 menu 段，方案没写覆盖时生效的就是全局候选词数。
+    // 补丁里没这个键 = 用户从没在本面板设过 → 继承态，之后全局怎么改都跟着走、且不写回。
+    let storedPage = icePatch.int(forPath: "menu/page_size")
+    menuPageSizeIsInherited = (storedPage == nil)
+    menuPageSize = storedPage ?? settings.pageSize
+    opencc = icePatch.string(forPath: "traditionalize/opencc_config") ?? template.opencc
+
+    // 列表型托管项：以「用户现状」为准，缺省回落出厂模板
+    let currentTranslators = currentList("engine/translators", fallback: template.translators)
+    let currentFilters = currentList("engine/filters", fallback: template.filters)
+    let currentAlgebra = currentList("speller/algebra", fallback: template.algebra)
+
+    enableMeltEng = currentTranslators.contains("table_translator@melt_eng")
+    enableCnEn = currentTranslators.contains("table_translator@cn_en")
+    enableRadical = currentTranslators.contains("table_translator@radical_lookup")
+    enableEmojiDict = currentFilters.contains("simplifier@emoji")
+
+    var lua: [String: Bool] = [:]
+    for key in Self.luaFilterKeys {
+      if !enableMeltEng && Self.englishBoundLuaFilters.contains(key) {
+        // 英文关闭时这两项被强制摘除，界面记忆为「开」，重新开启英文后随之恢复
+        lua[key] = true
+      } else {
+        lua[key] = currentFilters.contains("lua_filter@" + key)
+      }
+    }
+    luaFilters = lua
+
+    fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
     baselineIce = compileIcePatch()
   }
 
   // MARK: - 读出厂模板
 
-  /// 从 rime_ice.schema.yaml 解析 switches（优先非 build/ 的源文件，避免反馈环）
-  private static func parseTemplates() -> [RimeIceSwitchTemplate] {
-    let env = RimeEnvironment.detect()
-    let urls = env.configSources(named: "rime_ice.schema.yaml")
-    guard let url = urls.first(where: { !$0.pathComponents.contains("build") }) ?? urls.first,
+  /// 从 rime_ice.schema.yaml 解析出厂模板。
+  ///
+  /// **只认非 build/ 的源文件**，取不到就返回空模板（面板随之整段置灰）。
+  /// 绝不回退去读 `build/` 里的编译产物——那份已经合并过我们自己打的补丁，
+  /// 拿它当「出厂模板」会形成反馈环：用户勾选的模糊音会被认成出厂自带，
+  /// 下次编译时因「与出厂一致」而写 nil，规则就此静默消失。
+  private static func parseTemplate(environment: RimeEnvironment) -> RimeIceTemplate {
+    var result = RimeIceTemplate()
+    let urls = environment.configSources(named: "rime_ice.schema.yaml")
+    guard let url = urls.first(where: { !$0.pathComponents.contains("build") }),
           let text = try? String(contentsOf: url, encoding: .utf8),
-          let object = try? Yams.load(yaml: text) as? [String: Any],
-          let list = object["switches"] as? [[String: Any]] else { return [] }
+          let object = try? Yams.load(yaml: text) as? [String: Any] else { return result }
 
-    return list.compactMap { item -> RimeIceSwitchTemplate? in
-      guard let name = item["name"] as? String else { return nil }
-      let states = (item["states"] as? [Any])?.compactMap { "\($0)" } ?? []
-      let abbrev = (item["abbrev"] as? [Any])?.compactMap { "\($0)" }
-      let reset = (item["reset"] as? Int) ?? 0
-      return RimeIceSwitchTemplate(name: name, states: states, abbrev: abbrev, factoryReset: reset)
+    if let list = object["switches"] as? [[String: Any]] {
+      result.switches = list.compactMap { item -> RimeIceSwitchTemplate? in
+        guard let name = item["name"] as? String else { return nil }
+        let states = (item["states"] as? [Any])?.compactMap { "\($0)" } ?? []
+        let abbrev = (item["abbrev"] as? [Any])?.compactMap { "\($0)" }
+        let reset = (item["reset"] as? Int) ?? 0
+        return RimeIceSwitchTemplate(name: name, states: states, abbrev: abbrev, factoryReset: reset)
+      }
+    }
+    if let engine = object["engine"] as? [String: Any] {
+      result.translators = stringList(engine["translators"])
+      result.filters = stringList(engine["filters"])
+    }
+    if let schema = object["schema"] as? [String: Any] {
+      result.dependencies = stringList(schema["dependencies"])
+    }
+    if let speller = object["speller"] as? [String: Any] {
+      result.algebra = stringList(speller["algebra"])
+    }
+    if let traditionalize = object["traditionalize"] as? [String: Any],
+       let config = traditionalize["opencc_config"] as? String {
+      result.opencc = config
+    }
+    return result
+  }
+
+  private static func stringList(_ node: Any?) -> [String] {
+    guard let list = node as? [Any] else { return [] }
+    return list.compactMap { $0 as? String }
+  }
+
+  /// 读取当前补丁中的列表。
+  ///
+  /// 区分「键不存在」与「显式空列表」：
+  /// 键不存在才回落出厂模板；用户手写 `engine/filters: []` 是明确表态
+  /// （「这条链上只留我允许的东西」），必须尊重，不能把整套出厂条目塞回去。
+  private func currentList(_ path: String, fallback: [String]) -> [String] {
+    guard let list = icePatch.value(forPath: path) as? [Any] else { return fallback }
+    return list.compactMap { $0 as? String }
+  }
+
+  // MARK: - 列表型托管合并
+
+  /// 列表托管合并算法（借鉴 SettingsStore.mergedTabBindingAppendList 的三要素，另加顺序锚点）：
+  /// ① 以 current（用户现状）为骨架：剔除被关闭的托管项、去重，其余原样保留；
+  /// ② 缺失的已开启托管项，按 template 中的相对位置（前邻优先、后邻兜底）插回。
+  ///
+  /// 顺序锚点由 template 自身保证（rime-ice 注释要求：pin_cand > emoji > traditionalize、long_word > emoji）。
+  static func mergedList(template: [String],
+                         current: [String],
+                         managed: Set<String>,
+                         isEnabled: (String) -> Bool) -> [String] {
+    var result: [String] = []
+    var seen = Set<String>()
+
+    for item in current {
+      if managed.contains(item) && !isEnabled(item) { continue }
+      if seen.contains(item) { continue }
+      seen.insert(item)
+      result.append(item)
+    }
+
+    for (index, item) in template.enumerated() {
+      guard managed.contains(item), isEnabled(item), !seen.contains(item) else { continue }
+      var insertAt = result.count
+      if let anchor = template[0..<index].reversed().first(where: { result.contains($0) }),
+         let position = result.firstIndex(of: anchor) {
+        insertAt = position + 1
+      } else if let anchor = template[(index + 1)...].first(where: { result.contains($0) }),
+                let position = result.firstIndex(of: anchor) {
+        insertAt = position
+      }
+      result.insert(item, at: insertAt)
+      seen.insert(item)
+    }
+    return result
+  }
+
+  /// 成对约束集中在这里：melt_eng 的 translator 与 dependency 同生同死；
+  /// 部件拆字牵动 translator + 两个 filter + dependency；英文关闭时 autocap / reduce_english 必随关。
+  private func isTranslatorEnabled(_ item: String) -> Bool {
+    switch item {
+    case "table_translator@melt_eng": return enableMeltEng
+    case "table_translator@cn_en": return enableCnEn
+    case "table_translator@radical_lookup": return enableRadical
+    default: return true
     }
   }
 
+  private func isFilterEnabled(_ item: String) -> Bool {
+    switch item {
+    case "simplifier@emoji":
+      return enableEmojiDict
+    case "lua_filter@*search@radical_pinyin", "reverse_lookup_filter@radical_reverse_lookup":
+      return enableRadical
+    default:
+      guard item.hasPrefix("lua_filter@") else { return true }
+      let key = String(item.dropFirst("lua_filter@".count))
+      guard Self.luaFilterKeys.contains(key) else { return true }
+      if Self.englishBoundLuaFilters.contains(key) && !enableMeltEng { return false }
+      return luaFilters[key] ?? true
+    }
+  }
+
+  private func isDependencyEnabled(_ item: String) -> Bool {
+    switch item {
+    case "melt_eng": return enableMeltEng
+    case "radical_pinyin": return enableRadical
+    default: return true
+    }
+  }
+
+  private func mergedTranslators() -> [String] {
+    Self.mergedList(template: template.translators,
+                    current: currentList("engine/translators", fallback: template.translators),
+                    managed: Self.managedTranslators,
+                    isEnabled: { self.isTranslatorEnabled($0) })
+  }
+
+  private func mergedFilters() -> [String] {
+    Self.mergedList(template: template.filters,
+                    current: currentList("engine/filters", fallback: template.filters),
+                    managed: Self.managedFilters,
+                    isEnabled: { self.isFilterEnabled($0) })
+  }
+
+  private func mergedDependencies() -> [String] {
+    Self.mergedList(template: template.dependencies,
+                    current: currentList("schema/dependencies", fallback: template.dependencies),
+                    managed: Self.managedDependencies,
+                    isEnabled: { self.isDependencyEnabled($0) })
+  }
+
+  /// 模糊音：把已选规则**前置**到用户现有 algebra 之前；
+  /// 出厂常驻规则（erase / abbrev / v-u 转换 / 自动纠错）原样保留。
+  private func mergedAlgebra() -> [String] {
+    let current = currentList("speller/algebra", fallback: template.algebra)
+    let base = current.filter { !Self.fuzzyRuleSet.contains($0) }
+    let selected = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
+    return selected + base
+  }
+
   // MARK: - 写：界面 → 补丁
+
+  /// 界面上的开关是否全部停在出厂默认。
+  ///
+  /// 出厂默认分两种，缺一不可：
+  /// - 名字在出厂 `default.yaml` 的 `switcher/save_options` 里 → 出厂态是「记忆」；
+  /// - 否则看方案里写的 `reset`（没写即 0 → 固定关）。
+  ///
+  /// 漏掉前者会让 5/6 个开关在干净安装下就被判成「已改动」，switches 整段被无谓写入
+  /// rime_ice.custom.yaml，等于给上游的 switches 定义拍了张永久快照。
+  private var switchesAreAllFactory: Bool {
+    switches.allSatisfy { item in
+      guard let t = template.switches.first(where: { $0.name == item.name }) else { return false }
+      return item.mode == factoryMode(for: t)
+    }
+  }
+
+  /// 某个出厂开关的出厂模式（save_options 优先于 reset）
+  private func factoryMode(for t: RimeIceSwitchTemplate) -> SwitchDefaultMode {
+    cachedFactorySaveOptions.contains(t.name) ? .remember : ((t.factoryReset == 1) ? .on : .off)
+  }
 
   /// 编译本面板要写入 rime_ice.custom.yaml 的补丁集合。
   /// 与出厂一致的项写 nil（落回出厂默认），保持补丁文件精简。
@@ -170,51 +636,215 @@ final class RimeIceConfigStore: ObservableObject {
       }
       return dict
     }
-    set["switches"] = .mapList(list)
+    // 全部开关都停在出厂默认（没有 .remember，也没有任何固定默认覆盖）时写 nil，
+    // 让 rime_ice.custom.yaml 里根本不出现 switches 段——「恢复默认」后文件才是干净的。
+    set["switches"] = switchesAreAllFactory ? PatchValue?.none : .mapList(list)
 
-    // 候选词数：方案级覆盖全局；与出厂默认 5 相同则回落（不写）
-    set["menu/page_size"] = (menuPageSize == 5) ? PatchValue?.none : .int(menuPageSize)
+    // 候选词数：方案级覆盖全局。rime_ice.schema.yaml 没有 menu 段，基准就是全局 menu/page_size。
+    // 继承态（用户从没在本面板拨过 Stepper）永远写 nil：全局改成多少都跟着走，
+    // 既不会把旧值反向钉死成方案级覆盖，也不会让本面板凭空变脏。
+    // 显式设定后才比对全局，与全局一致仍然回落（不写）。
+    set["menu/page_size"] = menuPageSizeIsInherited
+      ? PatchValue?.none
+      : ((menuPageSize == settings.pageSize) ? PatchValue?.none : .int(menuPageSize))
+
+    // 繁体类型：与出厂（s2t.json）相同则回落
+    set["traditionalize/opencc_config"] = (opencc == template.opencc) ? PatchValue?.none : .string(opencc)
+
+    // 三个列表型托管项 + 模糊音：合并结果等于出厂模板时写 nil，用户条目不丢
+    let translators = mergedTranslators()
+    set["engine/translators"] = (translators == template.translators) ? PatchValue?.none : .stringList(translators)
+
+    let filters = mergedFilters()
+    set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
+
+    let dependencies = mergedDependencies()
+    set["schema/dependencies"] = (dependencies == template.dependencies) ? PatchValue?.none : .stringList(dependencies)
+
+    let algebra = mergedAlgebra()
+    set["speller/algebra"] = (algebra == template.algebra) ? PatchValue?.none : .stringList(algebra)
 
     return set
   }
 
-  /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options
+  /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options。
+  ///
+  /// `switcher/save_options` 是**全局**名单，五笔、仓颉等其他方案的开关也在里面。
+  /// 只能增删雾凇自己那 6 个名字，整体覆盖会把别的方案的记忆项静默删掉。
   func contribute(to settings: SettingsStore) {
     guard isInstalled else { return }
     let remember = switches.filter { $0.mode == .remember }.map { $0.name }
-    settings.savedSwitchOptions = remember
+    let mine = Set(template.switches.map { $0.name })
+    let others = settings.savedSwitchOptions.filter { !mine.contains($0) }
+    settings.savedSwitchOptions = others + remember
   }
 
-  /// 把本面板编译结果写盘（自带 .bak + unparsable 拒写），并更新基线
+  /// 把本面板编译结果写盘（自带 .bak + unparsable 拒写），并更新基线。
+  /// 同时负责自定义短语与双拼方案补丁——它们都不属于 default.custom.yaml，可安全独立写入。
   func writePatch() throws {
+    if phrases.isDirty { try phrases.save() }
+    try writeDoublePinyinPatch()
     guard isInstalled, icePatch.isWritable else { return }
     let set = compileIcePatch()
+    // 干净安装 + 全部托管项都回落出厂 = 一个键都不用写。此时凭空创建一份只有注释头、
+    // 没有任何 patch 段的 rime_ice.custom.yaml 纯属垃圾文件：用户从没打开过雾凇面板，
+    // 只在别处点了一次「应用」，家目录里就多出一个文件。
+    //
+    // 文件**已存在**时必须照常 save——那是删除历史托管键的自愈路径（旧版本写进去的
+    // switches / save_options 快照要靠这一步清掉），跳过就永远自愈不了。
+    let hasValueToWrite = set.values.contains { $0 != nil }
+    let fileExists = FileManager.default.fileExists(
+      atPath: icePatch.fileURL.path(percentEncoded: false))
+    guard hasValueToWrite || fileExists else {
+      baselineIce = set
+      return
+    }
     for (key, value) in set { icePatch.set(value?.yamlObject, forPath: key) }
     try icePatch.save()
     baselineIce = set
   }
 
-  /// 雾凇面板自身的脏值判断
+  /// 雾凇面板自身的脏值判断（覆盖 B/C/D/E 全部状态）
   var isDirty: Bool {
+    if phrases.isDirty { return true }
+    if showRawDoubleCode != baselineShowRawDoubleCode { return true }
     guard isInstalled else { return false }
     return compileIcePatch() != baselineIce
+  }
+
+  // MARK: - 双拼方案
+
+  /// 本机可选的拼音类方案（全拼 rime_ice + 已安装的各家双拼）
+  var pinyinSchemaChoices: [RimeSchema] {
+    var list = settings.availableSchemas.filter { Self.isPinyinFamily($0.id) }
+    if !activePinyinSchemaID.isEmpty && !list.contains(where: { $0.id == activePinyinSchemaID }) {
+      // 当前方案未被扫描到（例如刚被卸载），补一个占位项，保证 Picker 选中态不丢
+      list.append(RimeSchema(id: activePinyinSchemaID, name: activePinyinSchemaID,
+                             version: nil, author: nil, description: nil, isUserProvided: false))
+    }
+    return list
+  }
+
+  /// 当前是否为双拼方案（全拼 rime_ice 时「编码原样显示」不适用）
+  var isDoublePinyinActive: Bool {
+    !activePinyinSchemaID.isEmpty && activePinyinSchemaID != "rime_ice"
+  }
+
+  /// 把选中的拼音方案置于 schema_list 首位。
+  /// 绝不直接写 default.custom.yaml——只改 SettingsStore 的 @Published，由 settings.apply() 统一落盘。
+  private func promoteActivePinyinSchema() {
+    guard !activePinyinSchemaID.isEmpty else { return }
+    var ids = settings.enabledSchemaIDs
+    ids.removeAll { $0 == activePinyinSchemaID }
+    ids.insert(activePinyinSchemaID, at: 0)
+    settings.enabledSchemaIDs = ids
+  }
+
+  /// 载入某个双拼方案自己的 `<id>.custom.yaml`，读出 `translator/preedit_format` 现状
+  private func loadDoublePinyinPatch(for id: String) {
+    guard !id.isEmpty, id != "rime_ice" else {
+      doublePinyinPatch = nil
+      showRawDoubleCode = false
+      baselineShowRawDoubleCode = false
+      return
+    }
+    let file = CustomYAMLFile(fileURL: RimeEnvironment.userDirectory.appending(path: "\(id).custom.yaml"))
+    doublePinyinPatch = file
+    // 空列表（[]）表示「不做任何 preedit 转换」，即原样显示双拼编码
+    let raw = (file.value(forPath: "translator/preedit_format") as? [Any])?.isEmpty ?? false
+    showRawDoubleCode = raw
+    baselineShowRawDoubleCode = raw
+  }
+
+  /// 写双拼方案补丁（写前 .bak 由 CustomYAMLFile.save() 负责）
+  private func writeDoublePinyinPatch() throws {
+    guard let file = doublePinyinPatch, file.isWritable else { return }
+    guard showRawDoubleCode != baselineShowRawDoubleCode else { return }
+    file.set(showRawDoubleCode ? [String]() : nil, forPath: "translator/preedit_format")
+    try file.save()
+    baselineShowRawDoubleCode = showRawDoubleCode
+  }
+
+  // MARK: - 原始 YAML 编辑
+
+  /// rime_ice.custom.yaml 的磁盘原文（文件不存在时给出即将写入的骨架）
+  func rawIceText() -> String {
+    if let text = try? String(contentsOf: icePatch.fileURL, encoding: .utf8) { return text }
+    return (try? icePatch.serialize()) ?? ""
+  }
+
+  /// 校验原始 YAML；返回 nil 表示合法，否则返回错误描述
+  func validateRawIce(_ text: String) -> String? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty { return nil }
+    do {
+      guard let object = try Yams.load(yaml: text) else { return nil }
+      guard object is [String: Any] else { return String(localized: "error.yaml.notMapping") }
+      return nil
+    } catch {
+      return error.localizedDescription
+    }
+  }
+
+  /// 保存原始 YAML：校验 → .bak → 落盘 → 重载界面 → 部署
+  func saveRawIce(_ text: String) throws {
+    guard validateRawIce(text) == nil else {
+      throw PanelError.refusedToOverwrite(icePatch.fileURL.lastPathComponent)
+    }
+    let url = icePatch.fileURL
+    let fm = FileManager.default
+    try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if fm.fileExists(atPath: url.path(percentEncoded: false)) {
+      let backup = url.appendingPathExtension("bak")
+      try? fm.removeItem(at: backup)
+      try? fm.copyItem(at: url, to: backup)
+    }
+    var body = text
+    if !body.hasSuffix("\n") { body += "\n" }
+    try body.write(to: url, atomically: true, encoding: .utf8)
+    reload()
+    if settings.environment.isInstalled {
+      try SquirrelBridge.deploy(environment: settings.environment)
+    }
   }
 
   // MARK: - 恢复默认
 
   /// 把本面板管理的配置全部回到出厂默认：UI 状态回出厂、save_options 回落出厂，
   /// 最后统一走 settings.apply() 一次落盘 + 部署（写盘逻辑集中在 apply → writePatch）。
+  ///
+  /// 有意**不**重置 schema_list 中的拼音方案选择——那属于全局方案列表，
+  /// 在「恢复雾凇默认」里悄悄改掉用户的双拼选择过于意外。
   func resetManagedRimeIce() {
     guard isInstalled else { return }
-    // 1. UI 状态回出厂
-    switches = templates.map { t in
-      let mode: SwitchDefaultMode = (t.factoryReset == 1) ? .on : .off
-      return RimeIceSwitchItem(name: t.name, states: t.states, abbrev: t.abbrev, mode: mode)
+    // 1. UI 状态回出厂。开关模式同样要认出厂 save_options：
+    //    出厂即「记忆」的 5 项若被一律设成固定开/关，磁盘结果虽然对
+    //    （contribute 出空名单 → 删键回落 default 出厂值），界面却会错显成「固定关」
+    //    直到下一次 reload，用户会以为重置把记忆功能关掉了。
+    switches = template.switches.map { t in
+      RimeIceSwitchItem(name: t.name, states: t.states, abbrev: t.abbrev, mode: factoryMode(for: t))
     }
-    menuPageSize = 5
-    // 2. save_options 回落出厂（由 settings.apply 统一写入 default.custom.yaml）
+    // 候选词数回到全局值（雾凇方案本身不带 menu 段），并回到继承态：
+    // 重置之后再改全局，雾凇应当继续跟随，而不是被钉在重置那一刻的数值上。
+    menuPageSize = settings.pageSize
+    menuPageSizeIsInherited = true
+    opencc = template.opencc
+    // rime-ice 出厂全部词库 / 滤镜均为开启
+    enableMeltEng = true
+    enableCnEn = true
+    enableRadical = true
+    enableEmojiDict = true
+    luaFilters = Dictionary(uniqueKeysWithValues: Self.luaFilterKeys.map { ($0, true) })
+    fuzzySelection = []
+    showRawDoubleCode = false
+    // 2. 兜底清掉 rime_ice.custom.yaml 里的托管键。
+    //    UI 已回出厂 → compileIcePatch() 会对全部托管项写 nil，本来就不会再写回去；
+    //    这一步额外负责扫掉历史遗留（例如旧版本写过、现已不再编译的键），
+    //    用户手写的其他条目不受影响。
+    icePatch.removeManaged(keys: Self.managedIceKeys)
+    // 3. save_options 回落出厂（由 settings.apply 统一写入 default.custom.yaml）
     settings.savedSwitchOptions = factorySaveOptions()
-    // 3. 统一落盘 + 部署（apply 内部会写 ice 补丁与 default 补丁，并触发 deploy）
+    // 4. 统一落盘 + 部署（apply 内部会写 ice 补丁与 default 补丁，并触发 deploy）
     settings.apply()
   }
 

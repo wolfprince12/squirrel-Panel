@@ -36,6 +36,67 @@
 "riceice.reset" = "Reset Rime-ice";
 "error.parse.riceice" = "rime_ice.custom.yaml parsing failed: %@";
 
+/* RimeIcePage — Lexicon & Phrases */
+"riceice.lexicon.title" = "Lexicons & Phrases";
+"riceice.lexicon.hint" = "Turning off unused lexicons keeps candidates clean and deployment fast. Changes are written to engine/translators, engine/filters and schema/dependencies in rime_ice.custom.yaml.";
+"riceice.lexicon.meltEng" = "English input (melt_eng)";
+"riceice.lexicon.meltEng.detail" = "English lexicon for mixed Chinese/English typing. Turning it off also removes the melt_eng dependency plus the “auto capitalise” and “demote English words” filters.";
+"riceice.lexicon.cnEn" = "Mixed Chinese/English words (cn_en)";
+"riceice.lexicon.cnEn.detail" = "Enables words such as “U盘” and “C位”.";
+"riceice.lexicon.radical" = "Radical decomposition (radical_pinyin)";
+"riceice.lexicon.radical.detail" = "Radical reverse lookup and auxiliary codes. Turning it off removes the translator, both filters and the dependency together.";
+"riceice.lexicon.emojiDict" = "Emoji lexicon";
+"riceice.lexicon.emojiDict.detail" = "Offers emoji candidates for matching words. Without it the Emoji switch has nothing to show.";
+"riceice.phrase.title" = "Custom Phrases";
+"riceice.phrase.hint" = "Written to ~/Library/Rime/custom_phrase.txt — handy for e-mail addresses, phone numbers and boilerplate. The code can be anything, not just pinyin; leave the weight empty for the default. A .bak backup is created before saving.";
+"riceice.phrase.word" = "Phrase";
+"riceice.phrase.code" = "Code";
+"riceice.phrase.weight" = "Weight";
+"riceice.phrase.saveError" = "Could not save custom phrases (the file is read-only or the disk is full). Your edits are kept in the editor — fix the file, then tap Save.";
+"riceice.phrase.add" = "Add Row";
+"riceice.phrase.delete" = "Delete this row";
+"riceice.phrase.save" = "Save Phrases & Deploy";
+"riceice.phrase.empty" = "No custom phrases yet. Click “Add Row” to start.";
+
+/* RimeIcePage — Language & Pinyin */
+"riceice.lang.title" = "Language & Pinyin";
+"riceice.lang.hint" = "The traditional variant is written to rime_ice.custom.yaml. Switching the pinyin schema edits schema_list in default.custom.yaml (a global setting) and takes effect after “Apply & Deploy”.";
+"riceice.opencc" = "Traditional Variant";
+"riceice.opencc.s2t" = "Simplified → Traditional (s2t.json)";
+"riceice.opencc.s2hk" = "Simplified → Hong Kong (s2hk.json)";
+"riceice.opencc.s2tw" = "Simplified → Taiwan (s2tw.json)";
+"riceice.opencc.s2twp" = "Simplified → Taiwan with idioms (s2twp.json)";
+"riceice.pinyin.title" = "Pinyin Schema";
+"riceice.pinyin.hint" = "The selected schema is moved to the top of the schema list and becomes the default. Other schemas stay enabled.";
+"riceice.pinyin.rawCode" = "Show raw double-pinyin code";
+"riceice.pinyin.rawCode.hint" = "Shows the typed double-pinyin keys instead of expanding them to full pinyin. Written to translator/preedit_format in the selected schema’s own <schema>.custom.yaml.";
+"riceice.pinyin.rawCode.unavailable" = "Only applies to double-pinyin schemas; full pinyin is currently selected.";
+
+/* RimeIcePage — Advanced */
+"riceice.advanced.title" = "Advanced";
+"riceice.advanced.hint" = "Everything below is written to rime_ice.custom.yaml. When in doubt keep the defaults — disabling a filter changes candidate ordering right away.";
+"riceice.lua.title" = "Lua Filters";
+"riceice.lua.corrector" = "Typo hints";
+"riceice.lua.autocap" = "Auto-capitalise English";
+"riceice.lua.vFilter" = "Prioritise symbols in v-mode";
+"riceice.lua.pinCand" = "Pinned candidates";
+"riceice.lua.longWord" = "Promote long words";
+"riceice.lua.reduceEnglish" = "Demote English words";
+"riceice.lua.needEnglish" = "Requires “English input (melt_eng)” to be enabled.";
+"riceice.fuzzy.title" = "Fuzzy Pinyin";
+"riceice.fuzzy.hint" = "Selected rules are prepended to speller/algebra. The built-in super-abbreviation, v/u conversion and correction rules stay untouched. Rules may be enabled one-way or in pairs.";
+"riceice.fuzzy.initials" = "Initials";
+"riceice.fuzzy.finals" = "Finals";
+"riceice.fuzzy.syllables" = "Syllables";
+"riceice.fuzzy.count" = "%d selected";
+"riceice.fuzzy.clear" = "Clear All";
+"riceice.raw.title" = "Edit rime_ice.custom.yaml directly";
+"riceice.raw.hint" = "This is the raw file. “Write & Deploy” is disabled while the syntax is invalid; a .bak backup is created before writing and the panel reloads afterwards. If manual edits conflict with the controls above, the last action wins.";
+"riceice.raw.apply" = "Write & Deploy";
+"riceice.raw.reload" = "Reload";
+"riceice.raw.invalid" = "Invalid YAML: %@";
+"riceice.raw.applied" = "Written and redeployed.";
+
 /* Status Messages */
 "status.loaded" = "Configuration loaded";
 "status.notInstalled" = "Squirrel not detected";
@@ -307,6 +368,7 @@
 "dictionary.maintenance.title" = "Maintenance";
 "dictionary.redeploy.title" = "Recompile All Schemas";
 "dictionary.message.deployStarted" = "Deploy initiated";
+"dictionary.syncDir.message" = "Choose sync directory";
 "generic.choose" = "Choose…";
 
 /* Navigation new */

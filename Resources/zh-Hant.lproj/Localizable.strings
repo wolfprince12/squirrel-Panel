@@ -18,10 +18,10 @@
 "menu.openUserDir" = "在 Finder 中開啟使用者目錄";
 
 /* RimeIcePage（霧鬚管） */
-"riceice.config.title" = "霧鬚管配置";
+"riceice.config.title" = "霧凇拼音設定";
 "riceice.basic.title" = "基礎開關";
 "riceice.basic.hint" = "設定每個開關的預設狀態，變更寫入 rime_ice.custom.yaml。";
-"riceice.notInstalled" = "未偵測到霧鬚管方案，請先在上方「套件管理」中安裝。";
+"riceice.notInstalled" = "未偵測到霧凇拼音方案，請先在上方「套件管理」中安裝。";
 "riceice.switch.ascii_mode" = "中英文模式";
 "riceice.switch.ascii_punct" = "中英標點";
 "riceice.switch.traditionalization" = "簡繁轉換";
@@ -33,8 +33,69 @@
 "riceice.mode.off" = "固定關閉";
 "riceice.pageSize" = "候選詞數";
 "riceice.saveOptions.note" = "選「記憶」會把該開關加入 default.custom.yaml 的 switcher/save_options，切換方案後狀態被記住；選「固定開啟/關閉」則將其移除並鎖定到預設值。這是所有方案共用的全域設定。";
-"riceice.reset" = "恢復霧鬚管預設";
+"riceice.reset" = "恢復霧凇預設";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失敗：%@";
+
+/* RimeIcePage — 詞庫與短語 */
+"riceice.lexicon.title" = "詞庫與短語";
+"riceice.lexicon.hint" = "關掉不需要的詞庫可讓候選更乾淨、部署更快。變更寫入 rime_ice.custom.yaml 的 engine/translators、engine/filters 與 schema/dependencies。";
+"riceice.lexicon.meltEng" = "英文輸入（melt_eng）";
+"riceice.lexicon.meltEng.detail" = "中英混輸的英文詞庫。關閉後會一併摘除相依項目 melt_eng，以及「英文自動大寫」「降低英語單字排序」兩個濾鏡。";
+"riceice.lexicon.cnEn" = "中英混合詞（cn_en）";
+"riceice.lexicon.cnEn.detail" = "支援 U 盤、C 位這類中英混合詞彙。";
+"riceice.lexicon.radical" = "部件拆字（radical_pinyin）";
+"riceice.lexicon.radical.detail" = "拆字反查與輔碼查詞。關閉後翻譯器、反查濾鏡、輔碼濾鏡與相依項目四處一起摘除。";
+"riceice.lexicon.emojiDict" = "Emoji 詞庫";
+"riceice.lexicon.emojiDict.detail" = "輸入詞語時給出對應表情候選。關掉後 Emoji 開關也不再有候選。";
+"riceice.phrase.title" = "自訂短語";
+"riceice.phrase.hint" = "寫入 ~/Library/Rime/custom_phrase.txt，可放電子郵件、手機號碼、常用短語。編碼可自由設定，不限於拼音；權重留空即用預設。儲存前會自動產生 .bak 備份。";
+"riceice.phrase.word" = "短語";
+"riceice.phrase.code" = "編碼";
+"riceice.phrase.weight" = "權重";
+"riceice.phrase.saveError" = "無法儲存自訂短語（檔案唯讀或磁碟已滿）。你的改動已保留在編輯器裡——請先修復檔案再點「儲存」。";
+"riceice.phrase.add" = "新增一列";
+"riceice.phrase.delete" = "刪除這一列";
+"riceice.phrase.save" = "儲存短語並部署";
+"riceice.phrase.empty" = "尚無自訂短語。點「新增一列」開始。";
+
+/* RimeIcePage — 語言與拼音 */
+"riceice.lang.title" = "語言與拼音";
+"riceice.lang.hint" = "繁體類型寫入 rime_ice.custom.yaml；切換拼音方案改的是 default.custom.yaml 的 schema_list（全域生效），按下方「套用並重新部署」後生效。";
+"riceice.opencc" = "繁體類型";
+"riceice.opencc.s2t" = "簡 → 繁（s2t.json）";
+"riceice.opencc.s2hk" = "簡 → 香港繁體（s2hk.json）";
+"riceice.opencc.s2tw" = "簡 → 臺灣正體（s2tw.json）";
+"riceice.opencc.s2twp" = "簡 → 臺灣正體＋詞彙（s2twp.json）";
+"riceice.pinyin.title" = "拼音方案";
+"riceice.pinyin.hint" = "選中的方案會被排到方案清單首位，成為預設輸入方案；其餘方案仍然保留。";
+"riceice.pinyin.rawCode" = "雙拼編碼原樣顯示";
+"riceice.pinyin.rawCode.hint" = "開啟後輸入區直接顯示雙拼按鍵，不再還原成全拼。寫入所選雙拼方案自己的 <方案>.custom.yaml 的 translator/preedit_format。";
+"riceice.pinyin.rawCode.unavailable" = "此選項僅對雙拼方案有效，目前是全拼。";
+
+/* RimeIcePage — 進階 */
+"riceice.advanced.title" = "進階";
+"riceice.advanced.hint" = "以下選項都寫入 rime_ice.custom.yaml。不確定就保持預設——關掉濾鏡會直接改變候選順序。";
+"riceice.lua.title" = "Lua 濾鏡";
+"riceice.lua.corrector" = "錯音錯字提示";
+"riceice.lua.autocap" = "英文自動大寫";
+"riceice.lua.vFilter" = "v 模式符號優先";
+"riceice.lua.pinCand" = "置頂候選項";
+"riceice.lua.longWord" = "長詞優先";
+"riceice.lua.reduceEnglish" = "降低英語單字排序";
+"riceice.lua.needEnglish" = "需要先開啟「英文輸入（melt_eng）」。";
+"riceice.fuzzy.title" = "模糊音";
+"riceice.fuzzy.hint" = "勾選的規則會被前置寫入 speller/algebra，出廠常駐的超級簡拼、v/u 轉換與糾錯規則保持不變。規則可以單向啟用，也可以成對啟用。";
+"riceice.fuzzy.initials" = "聲母";
+"riceice.fuzzy.finals" = "韻母";
+"riceice.fuzzy.syllables" = "音節";
+"riceice.fuzzy.count" = "已選 %d 條";
+"riceice.fuzzy.clear" = "全部取消";
+"riceice.raw.title" = "直接編輯 rime_ice.custom.yaml";
+"riceice.raw.hint" = "這裡是檔案原文。語法非法時「寫入並部署」會被停用；寫入前自動產生 .bak 備份，寫入後介面會重新讀取。手動改過的內容若與上方控制項衝突，以最後一次操作為準。";
+"riceice.raw.apply" = "寫入並部署";
+"riceice.raw.reload" = "重新讀取";
+"riceice.raw.invalid" = "YAML 無法解析：%@";
+"riceice.raw.applied" = "已寫入並重新部署。";
 
 /* Status Messages */
 "status.loaded" = "已讀取目前設定";
@@ -337,6 +398,28 @@
 "dictionary.message.deployStarted" = "已發起部署";
 "dictionary.syncDir.message" = "選擇同步目錄";
 "generic.choose" = "選擇…";
+
+/* Navigation new */
+"nav.deploy" = "部署與診斷";
+"nav.packages" = "第三方詞庫";
+
+/* DeployPage */
+"deploy.title" = "部署與診斷";
+"deploy.redeploy.title" = "重新部署";
+"deploy.redeploy.hint" = "讓變更生效，並檢測部署是否成功、有無不可用的方案。";
+"deploy.button.redeploy" = "一鍵重新部署";
+"deploy.log.title" = "部署日誌";
+"deploy.logClean" = "部署已完成，未擷取到錯誤訊息（本機未產生 rime.log 時屬正常）。";
+"deploy.logMissing" = "以下已啟用方案未能成功建置：%@";
+"deploy.missing.title" = "無可用方案";
+"deploy.missing.text" = "已啟用但無法使用的方案：%@。它們要麼檔案缺失，要麼編譯失敗。請檢查對應的 .schema.yaml 與相依詞庫。";
+"deploy.schemas.title" = "啟用的輸入方案";
+"deploy.schemas.hint" = "勾選以啟用，取消以停用。變更會寫入 default.custom.yaml 的 schema_list 並重新部署。";
+"deploy.schemas.apply" = "套用方案啟用";
+"deploy.schemas.applied" = "方案列表已更新並重新部署";
+"deploy.result.ok" = "部署成功，方案均可用";
+"deploy.result.warn" = "部署完成，但存在不可用方案";
+"deploy.result.duration" = "耗時 %@ 毫秒";
 
 /* Alert - Squirrel Reset */
 "alert.squirrelResetTitle" = "恢復鼠須管預設設定？";

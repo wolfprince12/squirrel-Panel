@@ -36,6 +36,67 @@
 "riceice.reset" = "恢复雾凇默认";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失败：%@";
 
+/* RimeIcePage — 词库与短语 */
+"riceice.lexicon.title" = "词库与短语";
+"riceice.lexicon.hint" = "关掉不需要的词库可以让候选更干净、部署更快。改动写入 rime_ice.custom.yaml 的 engine/translators、engine/filters 与 schema/dependencies。";
+"riceice.lexicon.meltEng" = "英文输入（melt_eng）";
+"riceice.lexicon.meltEng.detail" = "中英混输的英文词库。关闭后一并摘除依赖 melt_eng，以及「英文自动大写」「降低英语单词排序」两个滤镜。";
+"riceice.lexicon.cnEn" = "中英混合词（cn_en）";
+"riceice.lexicon.cnEn.detail" = "支持 U 盘、C 位这类中英混合词汇。";
+"riceice.lexicon.radical" = "部件拆字（radical_pinyin）";
+"riceice.lexicon.radical.detail" = "拆字反查与辅码查词。关闭后翻译器、反查滤镜、辅码滤镜与依赖四处一起摘除。";
+"riceice.lexicon.emojiDict" = "Emoji 词库";
+"riceice.lexicon.emojiDict.detail" = "输入词语时给出对应表情候选。关掉后 Emoji 开关也不再有候选。";
+"riceice.phrase.title" = "自定义短语";
+"riceice.phrase.hint" = "写入 ~/Library/Rime/custom_phrase.txt，可放邮箱、手机号、常用短语。编码随便起，不限于拼音；权重留空即用默认。保存前会自动生成 .bak 备份。";
+"riceice.phrase.word" = "短语";
+"riceice.phrase.code" = "编码";
+"riceice.phrase.weight" = "权重";
+"riceice.phrase.saveError" = "无法保存自定义短语（文件只读或磁盘已满）。你的改动已保留在编辑器里——请先修复文件再点「保存」。";
+"riceice.phrase.add" = "添加一行";
+"riceice.phrase.delete" = "删除这一行";
+"riceice.phrase.save" = "保存短语并部署";
+"riceice.phrase.empty" = "还没有自定义短语。点「添加一行」开始。";
+
+/* RimeIcePage — 语言与拼音 */
+"riceice.lang.title" = "语言与拼音";
+"riceice.lang.hint" = "繁体类型写入 rime_ice.custom.yaml；切换拼音方案改的是 default.custom.yaml 的 schema_list（全局生效），点底部「应用并重新部署」后生效。";
+"riceice.opencc" = "繁体类型";
+"riceice.opencc.s2t" = "简 → 繁（s2t.json）";
+"riceice.opencc.s2hk" = "简 → 香港繁体（s2hk.json）";
+"riceice.opencc.s2tw" = "简 → 台湾正体（s2tw.json）";
+"riceice.opencc.s2twp" = "简 → 台湾正体 + 词汇（s2twp.json）";
+"riceice.pinyin.title" = "拼音方案";
+"riceice.pinyin.hint" = "选中的方案会被排到方案列表首位，成为默认输入方案；其余方案仍然保留。";
+"riceice.pinyin.rawCode" = "双拼编码原样显示";
+"riceice.pinyin.rawCode.hint" = "开启后输入区直接显示双拼按键，不再还原成全拼。写入所选双拼方案自己的 <方案>.custom.yaml 的 translator/preedit_format。";
+"riceice.pinyin.rawCode.unavailable" = "该选项仅对双拼方案有效，当前是全拼。";
+
+/* RimeIcePage — 高级 */
+"riceice.advanced.title" = "高级";
+"riceice.advanced.hint" = "以下选项都写入 rime_ice.custom.yaml。不确定就保持默认——关掉滤镜会直接改变候选顺序。";
+"riceice.lua.title" = "Lua 滤镜";
+"riceice.lua.corrector" = "错音错字提示";
+"riceice.lua.autocap" = "英文自动大写";
+"riceice.lua.vFilter" = "v 模式符号优先";
+"riceice.lua.pinCand" = "置顶候选项";
+"riceice.lua.longWord" = "长词优先";
+"riceice.lua.reduceEnglish" = "降低英语单词排序";
+"riceice.lua.needEnglish" = "需要先开启「英文输入（melt_eng）」。";
+"riceice.fuzzy.title" = "模糊音";
+"riceice.fuzzy.hint" = "勾选的规则会被前置写入 speller/algebra，出厂常驻的超级简拼、v/u 转换与纠错规则保持不变。规则可以单向启用，也可以成对启用。";
+"riceice.fuzzy.initials" = "声母";
+"riceice.fuzzy.finals" = "韵母";
+"riceice.fuzzy.syllables" = "音节";
+"riceice.fuzzy.count" = "已选 %d 条";
+"riceice.fuzzy.clear" = "全部取消";
+"riceice.raw.title" = "直接编辑 rime_ice.custom.yaml";
+"riceice.raw.hint" = "这里是文件原文。语法非法时「写入并部署」会被禁用；写入前自动生成 .bak 备份，写入后界面会重新读取。手动改过的内容若与上方控件冲突，以最后一次操作为准。";
+"riceice.raw.apply" = "写入并部署";
+"riceice.raw.reload" = "重新读取";
+"riceice.raw.invalid" = "YAML 无法解析：%@";
+"riceice.raw.applied" = "已写入并重新部署。";
+
 /* Status Messages */
 "status.loaded" = "已读取当前配置";
 "status.notInstalled" = "未检测到鼠须管";
@@ -307,6 +368,7 @@
 "dictionary.maintenance.title" = "维护";
 "dictionary.redeploy.title" = "重新编译全部方案";
 "dictionary.message.deployStarted" = "已发起部署";
+"dictionary.syncDir.message" = "选择同步目录";
 "generic.choose" = "选择…";
 
 /* Navigation new */

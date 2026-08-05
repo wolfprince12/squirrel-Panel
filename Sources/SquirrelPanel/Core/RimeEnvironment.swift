@@ -14,10 +14,10 @@ struct RimeEnvironment {
 
   // MARK: - 固定路径
 
-  /// 用户配置目录 ~/Library/Rime
+  /// 用户配置目录 ~/Library/Rime 的真实位置（计算一次，缓存）。
   /// 与 Squirrel 的 Main.swift 保持一致：优先用 getpwuid 拿真实家目录，
   /// 这样即便进程运行在容器化环境里也能拿到正确路径。
-  static let userDirectory: URL = {
+  private static let realUserDirectory: URL = {
     if let pwuid = getpwuid(getuid()) {
       return URL(fileURLWithFileSystemRepresentation: pwuid.pointee.pw_dir,
                  isDirectory: true,
@@ -29,6 +29,35 @@ struct RimeEnvironment {
       .urls(for: .libraryDirectory, in: .userDomainMask)[0]
       .appending(path: "Rime", directoryHint: .isDirectory)
   }()
+
+  /// 用户配置目录 ~/Library/Rime
+  static var userDirectory: URL {
+    #if DEBUG
+    if let override = testUserDirectoryOverride { return override }
+    #endif
+    return realUserDirectory
+  }
+
+  #if DEBUG
+  // MARK: - 测试注入点（仅 DEBUG 构建存在，发布二进制里不编译）
+  //
+  // 全部路径解析都汇聚在 `userDirectory` 与 `detect()` 两个入口，
+  // 因此把这两处重定向到临时目录，就能让整套 Store 在 fixture 上跑，
+  // 不依赖运行机器是否装了鼠须管 / 雾凇拼音（CI 上正是如此）。
+  // 生产代码的结构、调用点一行未动。
+
+  /// 把 `userDirectory` 重定向到临时目录；nil 表示用真实路径
+  nonisolated(unsafe) static var testUserDirectoryOverride: URL?
+
+  /// 让 `detect()` 直接返回指定环境；nil 表示走真实探测
+  nonisolated(unsafe) static var testEnvironmentOverride: RimeEnvironment?
+
+  /// 清除全部测试注入（测试 tearDown 必调）
+  static func clearTestOverrides() {
+    testUserDirectoryOverride = nil
+    testEnvironmentOverride = nil
+  }
+  #endif
 
   /// 鼠须管应用本体的候选安装位置
   static let appCandidates: [URL] = [
@@ -71,6 +100,9 @@ struct RimeEnvironment {
   // MARK: - 探测
 
   static func detect() -> RimeEnvironment {
+    #if DEBUG
+    if let override = testEnvironmentOverride { return override }
+    #endif
     let fm = FileManager.default
     guard let app = appCandidates.first(where: { fm.fileExists(atPath: $0.path(percentEncoded: false)) }) else {
       return RimeEnvironment(appURL: nil, version: nil, sharedSupportURL: nil)

@@ -70,6 +70,13 @@ enum PatchValue: Equatable {
     case (let i1 as Int, let i2 as Int): return i1 == i2
     case (let d1 as Double, let d2 as Double): return d1 == d2
     case (let b1 as Bool, let b2 as Bool): return b1 == b2
+    // switches 的每一项都带 `states: [String]`（部分还带 `abbrev: [String]`）。
+    // 不处理数组会让 mapList 永远判不等，isDirty 恒为真（保存按钮永远亮）。
+    case (let a as [Any], let b as [Any]):
+      return a.count == b.count && zip(a, b).allSatisfy { valueEqual($0, $1) }
+    case (let a as [String: Any], let b as [String: Any]):
+      // 复用逐键比较逻辑（含键集合相等判定），支持任意深度的嵌套映射
+      return listOfMapsEqual([a], [b])
     default: return false
     }
   }

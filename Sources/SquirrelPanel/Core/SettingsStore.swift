@@ -51,6 +51,17 @@ final class SettingsStore: ObservableObject {
   private var baselineSquirrel: PatchSet = [:]
   private var baselineDefault: PatchSet = [:]
 
+  /// 出厂 `default.yaml` 的 `switcher/save_options` 名单（reload 时读一次，缓存）。
+  ///
+  /// 用于在 `compileDefaultPatch()` 里判定「名单是否与出厂逐项相同」——相同就不落盘。
+  /// 只判空不判出厂会让干净安装下的一次「应用」把出厂名单原样快照进
+  /// `default.custom.yaml`，上游 rime-ice 日后往 save_options 里加开关时会被这份
+  /// 陈旧快照静默压掉（新增开关不再被记忆），与 switches 段是同一个升级冻结雷。
+  ///
+  /// **只在 reload() → readIntoUI() 里读一次盘**：`compileDefaultPatch()` 挂在
+  /// SwiftUI 求值路径上（`isDirty` 每帧调），绝不能在其中做磁盘 I/O。
+  private var cachedFactorySaveOptions: Set<String> = []
+
   // MARK: - 外观
 
   @Published var colorSchemeID = "native"
@@ -221,10 +232,15 @@ final class SettingsStore: ObservableObject {
     switcherCaption = defaultPatch.string(forPath: "switcher/caption") ?? ""
     // switcher/save_options：用户若显式写过（即使为空列表）则尊重之；
     // 否则回落到 default.yaml 出厂默认，避免一上来就把 5 个开关全塞进 save_options。
+    //
+    // 出厂名单在这里读一次并缓存（整个 reload 周期唯一一次读盘，与下面的回落共用结果），
+    // 供 compileDefaultPatch() 判定「与出厂相同 → 不落盘」。
+    let factorySaveOptions = defaultSaveOptions()
+    cachedFactorySaveOptions = Set(factorySaveOptions)
     if defaultPatch.value(forPath: "switcher/save_options") != nil {
       savedSwitchOptions = readList(defaultPatch, "switcher/save_options")
     } else {
-      savedSwitchOptions = defaultSaveOptions()
+      savedSwitchOptions = factorySaveOptions
     }
 
     pageSize = defaultPatch.int(forPath: "menu/page_size") ?? readDefaultYAMLInt("menu/page_size") ?? 5
@@ -510,8 +526,19 @@ final class SettingsStore: ObservableObject {
     set["switcher/caption"] = switcherCaption.isEmpty ? PatchValue?.none : .string(switcherCaption)
     // switcher/save_options：由 RimeIceConfigStore 在应用雾凇配置时改写；
     // 与 switches 的 reset 互斥——记住的开关不能带 reset。
+    //
+    // 与出厂 default.yaml 逐项相同的名单一律不落盘（同 switches 段的铁律）：
+    // 只判空不判出厂时，用户在任意面板点一次「应用」就会把出厂名单快照进
+    // default.custom.yaml，上游日后增删 save_options 会被这份陈旧快照静默压掉。
+    // Rime 的 save_options 是集合语义（只做 contains 判定），比较时忽略顺序。
+    //
+    // 名单为空 → 同样写 nil 回落出厂：这是「6 个开关全设成固定默认」的既有设计，
+    // 此时 rime_ice.custom.yaml 的 switches 段带 reset，会压过 default 的记忆名单。
     let saveOptions = savedSwitchOptions
-    set["switcher/save_options"] = saveOptions.isEmpty ? PatchValue?.none : .stringList(saveOptions)
+    let matchesFactory = Set(saveOptions) == cachedFactorySaveOptions
+    set["switcher/save_options"] = (saveOptions.isEmpty || matchesFactory)
+      ? PatchValue?.none
+      : .stringList(saveOptions)
     // Tab 翻页通过 key_binder/bindings/+ 追加到现有键位列表；启用时追加，关闭时移除我们的条目
     if managingKeyBindings || tabPagingEnabled {
       let appendList = mergedTabBindingAppendList()
