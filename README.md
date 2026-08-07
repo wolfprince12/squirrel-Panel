@@ -14,7 +14,7 @@
 
 ## 最新版本
 
-**v1.2.2 已发布** —— 本版本的核心是把「雾凇拼音（rime-ice）」从通用输入方案里独立出来，做成一个专属控制面板，可一站式开关雾凇拼音的各项功能，不再需要手改 YAML。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.2)
+**v1.2.3 已发布** —— 修复了「配置含特殊空格（U+2005）缩进导致面板整体只读」的兼容性问题，并在关于页「维护」新增一键修复按钮；v1.2.2 起雾凇拼音已有独立控制面板。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.3)
 
 ## 功能
 
@@ -136,7 +136,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## Latest version
 
-**v1.2.2 is out** — the headline of this release is a dedicated control panel for **Rime Ice (雾凇拼音)**: a new sidebar entry that lets you toggle Rime Ice's features in one place, with no YAML editing. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.2)
+**v1.2.3 is out** — fixes a compatibility bug where configs with special-space (U+2005) indentation made the whole panel read-only, and adds a one-click repair button under About → Maintenance; since v1.2.2 Rime Ice has its own dedicated panel. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.3)
 
 ## Features
 
