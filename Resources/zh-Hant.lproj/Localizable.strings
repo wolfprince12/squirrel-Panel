@@ -112,6 +112,8 @@
 "status.reverted" = "已放棄未儲存的變更";
 "status.reset" = "已還原預設設定";
 "status.squirrelReset" = "鼠須管已還原到初始狀態";
+"status.whitespaceFixed" = "已修復配置文件縮進空白，面板恢復可寫。";
+"status.whitespaceNone" = "未偵測到需要修復的特殊縮進空白。";
 
 /* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml 解析失敗：%@";
@@ -255,6 +257,9 @@
 "about.squirrelReset.title" = "恢復鼠須管預設設定";
 "about.squirrelReset.subtitle" = "刪除所有 custom.yaml 補丁檔案，讓鼠須管完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "about.squirrelReset.button" = "恢復鼠須管預設";
+"about.fixWhitespace.title" = "修復配置縮進空白字元";
+"about.fixWhitespace.subtitle" = "某些第三方配置用特殊空格（如 U+2005）做縮進，會讓整個面板變成唯讀。此操作僅把行首縮進的特殊空格替換為普通空格，並自動備份，不改變你的其它配置。";
+"about.fixWhitespace.button" = "修復縮進空白";
 "about.description" = "鼠鬚管控制面板是一個獨立的第三方工具，用於圖形化設定 Rime 輸入法引擎的 macOS 前端「鼠鬚管」(Squirrel)。";
 "about.disclaimer" = "本專案不隸屬於 RIME 官方，也不會修改鼠須管本體。所有變更都以標準的 Rime 補丁檔案形式寫入使用者目錄，隨時可以手動編輯或刪除。";
 "about.license" = "以 GPL-3.0 協議開源。";

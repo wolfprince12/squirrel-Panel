@@ -45,6 +45,42 @@ final class CustomYAMLFile {
     load()
   }
 
+  // MARK: - 缩进空白归一化
+
+  /// YAML 规范只允许 U+0020(空格) 与 U+0009(Tab) 作为结构空白。
+  /// 以下「特殊空格」若出现在行首缩进位置，会被解析器判为非法 → 文件不可解析 → 只读。
+  private static let structuralWhitespace: CharacterSet = {
+    var set = CharacterSet()
+    for cp in 0x2000...0x200A { set.insert(Unicode.Scalar(cp)!) }
+    for cp in [0x202F, 0x205F, 0x3000] { set.insert(Unicode.Scalar(cp)!) }
+    return set
+  }()
+
+  /// 把每行「行首缩进段」里的特殊空格替换为普通空格，其余内容原样保留。
+  /// 只处理行首连续空白（普通空格 / Tab / 特殊空格），不碰引号内或值中的特殊空格。
+  static func normalizeIndentation(_ text: String) -> String {
+    // 逐字符切行（避免 String.split 在 Sequence/Collection 两个候选间歧义），精确保留换行与空行。
+    var lines: [String] = []
+    var current = ""
+    for ch in text {
+      if ch == "\n" {
+        lines.append(current)
+        current = ""
+      } else {
+        current.append(ch)
+      }
+    }
+    lines.append(current)
+    return lines.map { line in
+      let indentEnd = line.prefix(while: { ch in
+        if ch == " " || ch == "\t" { return true }
+        guard let scalar = ch.unicodeScalars.first else { return false }
+        return CustomYAMLFile.structuralWhitespace.contains(scalar)
+      }).count
+      return String(repeating: " ", count: indentEnd) + line.dropFirst(indentEnd)
+    }.joined(separator: "\n")
+  }
+
   // MARK: - 载入
 
   func load() {
@@ -55,7 +91,11 @@ final class CustomYAMLFile {
       return
     }
     do {
-      let text = try String(contentsOf: fileURL, encoding: .utf8)
+      let raw = try String(contentsOf: fileURL, encoding: .utf8)
+      // 解析前把行首缩进处的特殊空格（U+2000–U+200A / U+202F / U+205F / U+3000）统一替换成普通空格。
+      // 某些第三方配置集（如旧版 rime-settings）用 U+2005 做缩进，会让 Yams 直接报「无法解析」→
+      // 文件进入只读 → 整个面板按钮变灰。只动行首缩进，绝不碰引号内 / 值里的特殊空格（如 candidate_format）。
+      let text = CustomYAMLFile.normalizeIndentation(raw)
       if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         state = .loaded
         return

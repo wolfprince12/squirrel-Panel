@@ -367,6 +367,17 @@ struct AboutPage: View {
         Button("about.squirrelReset.button", role: .destructive) { showingSquirrelResetAlert = true }
           .disabled(!store.environment.isInstalled)
       }
+      Divider()
+      HStack {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("about.fixWhitespace.title")
+          Text("about.fixWhitespace.subtitle")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        Spacer()
+        Button("about.fixWhitespace.button") { store.fixWhitespaceInConfigFiles() }
+      }
     }
   }
 

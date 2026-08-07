@@ -673,6 +673,41 @@ final class SettingsStore: ObservableObject {
     statusMessage = "status.squirrelReset"
   }
 
+  // MARK: - 修复配置缩进空白
+
+  /// 修复配置文件因「特殊空格 / 非 ASCII 缩进」(典型如 U+2005) 导致解析失败、面板整体只读的问题。
+  /// 仅把行首缩进处的特殊空格替换为普通空格，绝不改动值内容（例如 candidate_format 里的 U+2005）。
+  /// 对受影响的文件先生成 .bak 备份，再原地写回归一化后的文本；修复完成后重载，面板恢复可写。
+  func fixWhitespaceInConfigFiles() {
+    let fm = FileManager.default
+    let dir = RimeEnvironment.userDirectory
+    guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else {
+      lastError = String(localized: "error.squirrelNotInstalled")
+      return
+    }
+    let customFiles = items.filter { $0.pathExtension == "yaml" && $0.lastPathComponent.hasSuffix(".custom.yaml") }
+    var fixedCount = 0
+    for file in customFiles {
+      if Self.normalizeWhitespaceInFile(at: file) { fixedCount += 1 }
+    }
+    reload()
+    statusMessage = fixedCount > 0 ? "status.whitespaceFixed" : "status.whitespaceNone"
+  }
+
+  /// 将单个文件行首缩进的特殊空格归一化为普通空格。没有变动则返回 false。
+  private static func normalizeWhitespaceInFile(at url: URL) -> Bool {
+    let fm = FileManager.default
+    guard fm.fileExists(atPath: url.path(percentEncoded: false)) else { return false }
+    guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return false }
+    let normalized = CustomYAMLFile.normalizeIndentation(raw)
+    guard normalized != raw else { return false }
+    let backup = url.appendingPathExtension("bak")
+    try? fm.removeItem(at: backup)
+    try? fm.copyItem(at: url, to: backup)
+    try? normalized.write(to: url, atomically: true, encoding: .utf8)
+    return true
+  }
+
   // MARK: - 预览
 
   /// 生成即将写入磁盘的两份文件内容，供界面上的 YAML 预览使用

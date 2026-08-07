@@ -112,6 +112,8 @@
 "status.reverted" = "Unsaved changes discarded";
 "status.reset" = "Settings reset";
 "status.squirrelReset" = "Squirrel has been reset to defaults";
+"status.whitespaceFixed" = "Fixed indentation whitespace in config files; the panel is writable again.";
+"status.whitespaceNone" = "No special indentation whitespace detected.";
 
 /* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml parsing failed: %@";
@@ -458,6 +460,9 @@
 "about.squirrelReset.title" = "Reset Squirrel to Defaults";
 "about.squirrelReset.subtitle" = "Delete all custom.yaml patch files to completely restore Squirrel to its initial state. .bak backups are created automatically.";
 "about.squirrelReset.button" = "Reset Squirrel";
+"about.fixWhitespace.title" = "Fix indentation whitespace";
+"about.fixWhitespace.subtitle" = "Some third-party configs indent with special spaces (e.g. U+2005), which makes the whole panel read-only. This only replaces special spaces in line-leading indentation with normal spaces, with an automatic backup — your other settings are untouched.";
+"about.fixWhitespace.button" = "Fix whitespace";
 "alert.squirrelResetTitle" = "Reset Squirrel to Defaults?";
 "alert.squirrelResetMessage" = "This will delete all *.custom.yaml files (including squirrel.custom.yaml and default.custom.yaml). Squirrel will be completely restored to its initial state. .bak backups are created automatically.";
 "alert.squirrelReset" = "Reset";

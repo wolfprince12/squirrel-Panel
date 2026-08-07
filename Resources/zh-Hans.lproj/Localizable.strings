@@ -112,6 +112,8 @@
 "status.reverted" = "已放弃未保存的改动";
 "status.reset" = "已恢复默认设置";
 "status.squirrelReset" = "鼠须管已恢复到初始状态";
+"status.whitespaceFixed" = "已修复配置文件缩进空白，面板恢复可写。";
+"status.whitespaceNone" = "未检测到需要修复的特殊缩进空白。";
 
 /* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml 解析失败：%@";
@@ -458,6 +460,9 @@
 "about.squirrelReset.title" = "恢复鼠须管默认设置";
 "about.squirrelReset.subtitle" = "删除所有 custom.yaml 补丁文件，让鼠须管完全回到初始状态。操作前会自动生成 .bak 备份。";
 "about.squirrelReset.button" = "恢复鼠须管默认";
+"about.fixWhitespace.title" = "修复配置缩进空白字符";
+"about.fixWhitespace.subtitle" = "某些第三方配置用特殊空格（如 U+2005）做缩进，会让整个面板变成只读。此操作仅把行首缩进的特殊空格替换为普通空格，并自动备份，不改变你的其它配置。";
+"about.fixWhitespace.button" = "修复缩进空白";
 "alert.squirrelResetTitle" = "恢复鼠须管默认设置？";
 "alert.squirrelResetMessage" = "将删除所有 *.custom.yaml 文件（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠须管会完全回到安装后的初始状态。操作前会自动生成 .bak 备份。";
 "alert.squirrelReset" = "恢复初始状态";
