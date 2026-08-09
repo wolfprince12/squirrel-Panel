@@ -14,7 +14,7 @@
 
 ## 最新版本
 
-**v1.2.3 已发布** —— 修复了「配置含特殊空格（U+2005）缩进导致面板整体只读」的兼容性问题，并在关于页「维护」新增一键修复按钮；v1.2.2 起雾凇拼音已有独立控制面板。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.3)
+**v1.2.5 已发布** —— 雾凇拼音拥有独立控制面板，并可一键接入万象语法模型（长句联想与整句准确度显著提升）；安装/卸载增强依赖校验与自动备份，确保「装好即用」。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.5)
 
 ## 功能
 
@@ -23,14 +23,14 @@
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键（点击输入框即自动录制）、菜单标题。
 - **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
-- **📚 词库与同步**：第三方词库包「雾凇拼音（rime-ice）」一键安装/更新/卸载并自动备份；用户词库概览；同步目录与 ID、一键同步。
+- **📚 词库与同步**：第三方词库与语法模型（如万象语法模型）一键安装/更新/卸载并自动备份；用户词库概览；同步目录与 ID、一键同步。
 - **🔧 关于**：运行状态、路径跳转、恢复默认、YAML 预览、版本更新提醒（含鼠须管本体更新检查）。
 
 > 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
 
 ### 🌳 雾凇拼音独立面板
 
-这是 v1.2.2 的主打能力。在侧边栏点击 🌳 图标即可进入，把雾凇拼音最常见的配置收进一个页面：
+这是本面板的主打能力之一。在侧边栏点击 🌳 图标即可进入，把雾凇拼音最常见的配置收进一个页面（万象语法模型可一键叠加其上，见「词库与同步」）：
 
 ![雾凇拼音独立面板](docs/assets/rime-ice-panel.png)
 
@@ -94,7 +94,8 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 ## 项目关系
 
 - [rime/squirrel](https://github.com/rime/squirrel) —— 鼠须管输入法本体。
-- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) —— 雾凇拼音（常用的 Rime 配置集，可在本面板「词库与同步」中一键安装）。
+- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) —— 雾凇拼音（本面板已为其提供独立的 🌳 雾凇拼音控制面板）。
+- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) —— 万象语法模型（本地语言模型，可叠加在雾凇拼音之上显著提升长句联想与整句准确度；在本面板「词库与同步」中一键安装）。
 - [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) —— 本控制面板（第三方独立项目）。
 
 ## 关于作者
@@ -136,7 +137,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## Latest version
 
-**v1.2.3 is out** — fixes a compatibility bug where configs with special-space (U+2005) indentation made the whole panel read-only, and adds a one-click repair button under About → Maintenance; since v1.2.2 Rime Ice has its own dedicated panel. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/1.2.3)
+**v1.2.5 is out** — Rime Ice has its own dedicated panel and can install the Wanxiang Grammar Model in one click (much better long-sentence prediction); install/uninstall now enforce dependency checks and automatic backups so it "just works". [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.5)
 
 ## Features
 
@@ -145,14 +146,14 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys (click the box to capture), menu title.
 - **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
-- **📚 Dictionary & sync**: third-party package **Rime Ice (雾凇拼音)** with one-click install/update/uninstall and automatic backup; user dictionary overview; sync dir & ID and one-click sync.
+- **📚 Dictionary & sync**: third-party dictionaries and grammar models (e.g., Wanxiang Grammar Model) with one-click install/update/uninstall and automatic backup; user dictionary overview; sync dir & ID and one-click sync.
 - **🔧 About**: running status, path jump, restore defaults, YAML preview, and update checks (including Squirrel itself).
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.
 
 ### 🌳 Rime Ice dedicated panel
 
-The headline feature of v1.2.2. Click the 🌳 icon in the sidebar to open a single page for the most common Rime Ice settings:
+One of the panel's headline features. Click the 🌳 icon in the sidebar to open a single page for the most common Rime Ice settings (the Wanxiang Grammar Model can be layered on top — see "Dictionary & sync"):
 
 ![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png)
 
@@ -189,7 +190,8 @@ So even if this panel has a bug, at worst it only affects the patch files; unins
 ## Related Projects
 
 - [rime/squirrel](https://github.com/rime/squirrel) — the Squirrel input method itself.
-- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) — Rime Ice (a popular Rime configuration set, installable in one click from this panel's "Dictionary & sync").
+- [iDvel/rime-ice](https://github.com/iDvel/rime-ice) — Rime Ice (this panel provides a dedicated 🌳 Rime Ice control panel).
+- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) — Wanxiang Grammar Model (a local grammar model that layers on top of Rime Ice for better long-sentence prediction; installable in one click from this panel's "Dictionary & sync").
 - [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) — this control panel (a third-party, independent project).
 
 ## About the Author
