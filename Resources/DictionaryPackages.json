@@ -13,5 +13,21 @@
     "defaultSchema": "rime_ice",
     "homepage": "https://github.com/iDvel/rime-ice",
     "author": "iDvel"
+  },
+  {
+    "id": "wanxiang-grammar",
+    "name": "万象语法模型 (wanxiang grammar)",
+    "name_en": "Wanxiang Grammar Model",
+    "description": "本地语言模型（约 200MB），叠加在雾凇拼音之上，显著提升长句联想与整句准确度。只放一个 .gram 文件并启用一行配置，不影响你现有的词库。",
+    "description_en": "A local grammar model (~200MB) layered on top of Rime Ice to improve long-sentence prediction. Drops in a single .gram file plus one config line; your dictionaries stay untouched.",
+    "sourceURL": "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram",
+    "releaseAsset": "wanxiang-lts-zh-hans.gram",
+    "repoOwner": "amzxyz",
+    "repoName": "RIME-LMDG",
+    "branch": "",
+    "defaultSchema": "",
+    "homepage": "https://github.com/amzxyz/RIME-LMDG",
+    "author": "amzxyz",
+    "type": "grammar"
   }
 ]

@@ -31,6 +31,18 @@ struct DictionaryPackage: Identifiable, Codable {
   let defaultSchema: String
   let homepage: String
   let author: String
+  /// 包类型："dictionary"（默认，整包 zip）或 "grammar"（单文件语言模型）。
+  /// 语法模型不走整包解压流程，而是下载单个 .gram 文件 + 写 default.custom.yaml 的 grammar 段。
+  let type: String?
+
+  /// 是否语法模型包（万象语法模型等）
+  var isGrammar: Bool { type == "grammar" }
+
+  /// 语法模型的语言名（由 releaseAsset 去掉 .gram 后缀得到，如 wanxiang-lts-zh-hans）
+  var grammarLanguage: String {
+    let asset = releaseAsset ?? "wanxiang-lts-zh-hans.gram"
+    return asset.replacingOccurrences(of: ".gram", with: "")
+  }
 
   /// 更新检查所用的 GitHub API 地址；缺少仓库信息时为 nil
   var updateCheckAPIURL: URL? {
@@ -177,6 +189,11 @@ enum DictionaryPackageManager {
   static func install(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
     guard environment.isInstalled else { throw PackageManagerError.squirrelNotInstalled }
 
+    // 语法模型（万象等）：单文件 .gram + default.custom.yaml 的 grammar 段，走独立分支
+    if pkg.isGrammar {
+      return try await installGrammar(pkg: pkg, environment: environment)
+    }
+
     let fm = FileManager.default
     let rime = rimeDir()
     try fm.createDirectory(at: rime, withIntermediateDirectories: true)
@@ -250,6 +267,136 @@ enum DictionaryPackageManager {
     return manifest
   }
 
+  // MARK: - 语法模型（万象等）
+
+  /// 下载语法模型单文件（.gram）。release 固定为 LTS tag，不走 latest，
+  /// 候选地址优先 CNB 大陆镜像，其次原始 URL 与其镜像。
+  private static func downloadGrammarAsset(pkg: DictionaryPackage) async throws -> URL {
+    let asset = pkg.releaseAsset ?? "wanxiang-lts-zh-hans.gram"
+    let original = pkg.sourceURL
+    var candidates: [String] = []
+    // CNB 镜像（万象官方大陆镜像，路径固定为 model/）
+    let cnb = "https://cnb.cool/amzxyz/rime-wanxiang/-/releases/download/model/\(asset)"
+    candidates.append(cnb)
+    candidates.append(original)
+    candidates.append(contentsOf: GitHubMirrorFetch.candidateURLs(for: original))
+
+    let dest = FileManager.default.temporaryDirectory
+      .appending(path: "squirrel-panel-\(UUID().uuidString)-\(asset)")
+    var lastURL = original
+    for urlString in candidates {
+      lastURL = urlString
+      do {
+        try await GitHubMirrorFetch.download(from: urlString, to: dest, timeout: 120)
+        return dest
+      } catch {
+        continue
+      }
+    }
+    throw PackageManagerError.downloadFailed(lastURL)
+  }
+
+  /// 在 default.custom.yaml 的 patch 下写入 grammar/language，启用语法模型。
+  private static func applyGrammarPatch(language: String) throws {
+    let fileURL = rimeDir().appending(path: "default.custom.yaml")
+    let patch = CustomYAMLFile(fileURL: fileURL)
+    patch.load()
+    patch.set(language, forPath: "grammar/language")
+    try patch.save()
+  }
+
+  /// 安装语法模型：下载 .gram → 复制到 Rime 目录 → 写 grammar 配置 → 部署 → 写清单
+  private static func installGrammar(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
+    let fm = FileManager.default
+    let rime = rimeDir()
+    try fm.createDirectory(at: rime, withIntermediateDirectories: true)
+    try fm.createDirectory(at: manifestsDir(), withIntermediateDirectories: true)
+
+    let asset = pkg.releaseAsset ?? "wanxiang-lts-zh-hans.gram"
+    let language = pkg.grammarLanguage
+
+    let fileURL = try await downloadGrammarAsset(pkg: pkg)
+    let dst = rime.appending(path: asset)
+    try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try? fm.removeItem(at: dst)
+    try fm.copyItem(at: fileURL, to: dst)
+
+    try applyGrammarPatch(language: language)
+
+    try SquirrelBridge.deploy(environment: environment)
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+    let manifest = PackageManifest(
+      id: pkg.id,
+      addedFiles: [asset],
+      backupDir: backupDir(for: pkg.id).path(percentEncoded: false),
+      defaultSchema: "",
+      installedAt: Date(),
+      version: "0.3.0",
+      installedCommit: nil,
+      installedTag: "LTS")
+    let mData = try JSONEncoder().encode(manifest)
+    try mData.write(to: manifestURL(for: pkg.id), options: .atomic)
+
+    try? fm.removeItem(at: fileURL)
+    return manifest
+  }
+
+  /// 更新语法模型：重新下载 .gram（覆盖）→ 幂等重应用 grammar 配置 → 部署 → 更新清单
+  private static func updateGrammar(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
+    let fm = FileManager.default
+    let rime = rimeDir()
+    let asset = pkg.releaseAsset ?? "wanxiang-lts-zh-hans.gram"
+    let language = pkg.grammarLanguage
+
+    let fileURL = try await downloadGrammarAsset(pkg: pkg)
+    let dst = rime.appending(path: asset)
+    try? fm.removeItem(at: dst)
+    try fm.copyItem(at: fileURL, to: dst)
+    try applyGrammarPatch(language: language)
+
+    try SquirrelBridge.deploy(environment: environment)
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+    let mURL = manifestURL(for: pkg.id)
+    guard let data = try? Data(contentsOf: mURL),
+          var manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
+      throw PackageManagerError.notManagedByPanel
+    }
+    manifest.installedAt = Date()
+    let mData = try JSONEncoder().encode(manifest)
+    try mData.write(to: mURL, options: .atomic)
+
+    try? fm.removeItem(at: fileURL)
+    return manifest
+  }
+
+  /// 卸载语法模型：删除 .gram 文件 → 回退 grammar 配置 → 部署 → 删除清单
+  private static func uninstallGrammar(pkg: DictionaryPackage, environment: RimeEnvironment) async throws {
+    let fm = FileManager.default
+    let rime = rimeDir()
+    let mURL = manifestURL(for: pkg.id)
+    guard let data = try? Data(contentsOf: mURL),
+          let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
+      throw PackageManagerError.notManagedByPanel
+    }
+
+    for rel in manifest.addedFiles {
+      let dst = rime.appending(path: rel)
+      try? fm.removeItem(at: dst)
+    }
+
+    let patch = CustomYAMLFile(fileURL: rime.appending(path: "default.custom.yaml"))
+    patch.load()
+    patch.removeGrammarLanguage()
+    try? patch.save()
+
+    try SquirrelBridge.deploy(environment: environment)
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+    try? fm.removeItem(at: mURL)
+  }
+
   // MARK: - 更新
 
   /// 把包内文件复制进 Rime 目录。overwrite=true 时直接覆盖（用于更新，保留首次安装时的原始备份）；
@@ -300,6 +447,11 @@ enum DictionaryPackageManager {
       throw PackageManagerError.notManagedByPanel
     }
     guard environment.isInstalled else { throw PackageManagerError.squirrelNotInstalled }
+
+    // 语法模型（万象等）：重新下载 .gram 文件 + 幂等重应用 grammar 配置
+    if pkg.isGrammar {
+      return try await updateGrammar(pkg: pkg, environment: environment)
+    }
 
     let fm = FileManager.default
     let rime = rimeDir()
@@ -380,6 +532,10 @@ enum DictionaryPackageManager {
     guard let data = try? Data(contentsOf: mURL),
           let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
       throw PackageManagerError.notManagedByPanel
+    }
+    // 语法模型（万象等）：移除 .gram 文件 + 回退 grammar 配置，走独立分支
+    if pkg.isGrammar {
+      return try await uninstallGrammar(pkg: pkg, environment: environment)
     }
     let fm = FileManager.default
     let rime = rimeDir()

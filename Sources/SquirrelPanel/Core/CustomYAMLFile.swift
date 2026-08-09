@@ -253,6 +253,15 @@ final class CustomYAMLFile {
     }
   }
 
+  /// 卸载语法模型时移除 `grammar/language`；若该 grammar 节点因此变空则一并删除，
+  /// 避免残留空节点。不影响用户手动添加的其它 grammar 子配置（若存在则保留）。
+  func removeGrammarLanguage() {
+    set(nil, forPath: "grammar/language")
+    if let g = patch["grammar"] as? [String: Any], g.isEmpty {
+      patch.removeValue(forKey: "grammar")
+    }
+  }
+
   // MARK: - 序列化
 
   private static let header = """
