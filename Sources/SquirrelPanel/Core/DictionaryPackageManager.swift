@@ -70,6 +70,7 @@ struct PackageManifest: Codable {
   var version: String
   var installedCommit: String?      // 安装时锁定的上游最新 commit，用于更新比对
   var installedTag: String?         // release asset 包记录 release tag，用于更新比对
+  var installedSize: Int? = nil      // 语法模型：安装时记录的远程 .gram 文件字节数，用于更新比对
 }
 
 enum PackageStatus {
@@ -296,6 +297,18 @@ enum DictionaryPackageManager {
     throw PackageManagerError.downloadFailed(lastURL)
   }
 
+  /// 构造语法模型的候选下载地址（CNB 镜像优先，其次原始 URL 与其镜像）。
+  private static func grammarCandidateURLs(pkg: DictionaryPackage) -> [String] {
+    let asset = pkg.releaseAsset ?? "wanxiang-lts-zh-hans.gram"
+    let cnb = "https://cnb.cool/amzxyz/rime-wanxiang/-/releases/download/model/\(asset)"
+    return [cnb, pkg.sourceURL] + GitHubMirrorFetch.candidateURLs(for: pkg.sourceURL)
+  }
+
+  /// 获取远程 .gram 文件大小（用于「有更新」判定）。全部候选失败返回 nil。
+  static func grammarContentLength(pkg: DictionaryPackage) async -> Int? {
+    await GitHubMirrorFetch.contentLength(forURLs: grammarCandidateURLs(pkg: pkg))
+  }
+
   /// 在 rime_ice.custom.yaml 的 patch 下写入 grammar/language，启用语法模型。
   /// 语法模型属于方案级配置，放在 default.custom.yaml 不会生效；
   /// 同时清理旧位置（v1.2.3 测试版误写入 default.custom.yaml）的遗留键。
@@ -307,6 +320,9 @@ enum DictionaryPackageManager {
     let schemaPatch = CustomYAMLFile(fileURL: schemaFile)
     schemaPatch.load()
     schemaPatch.set(language, forPath: "grammar/language")
+    // 启用 octagram 所需的 collocation prism。若目标方案 schema 本身未声明 grammar 段，
+    // 此 custom patch 会创建该段，使 octagram 真正加载 wanxiang 模型。
+    schemaPatch.set("rime_ice.prism", forPath: "grammar/collocation_prism")
     try schemaPatch.save()
 
     // 兼容清理：若旧位置有同名键，一并移除
@@ -340,6 +356,13 @@ enum DictionaryPackageManager {
     try SquirrelBridge.deploy(environment: environment)
     try? await Task.sleep(nanoseconds: 2_000_000_000)
 
+    let installedSize: Int?
+    if let attrs = try? fm.attributesOfItem(atPath: dst.path(percentEncoded: false)),
+       let size = attrs[FileAttributeKey.size] as? UInt64 {
+      installedSize = Int(size)
+    } else {
+      installedSize = nil
+    }
     let manifest = PackageManifest(
       id: pkg.id,
       addedFiles: [asset],
@@ -348,9 +371,10 @@ enum DictionaryPackageManager {
       installedAt: Date(),
       version: "0.3.0",
       installedCommit: nil,
-      installedTag: "LTS")
+      installedTag: "LTS",
+      installedSize: installedSize)
     let mData = try JSONEncoder().encode(manifest)
-    try mData.write(to: manifestURL(for: pkg.id), options: .atomic)
+    try mData.write(to: manifestURL(for: pkg.id), options: [.atomic])
 
     try? fm.removeItem(at: fileURL)
     return manifest
@@ -378,8 +402,12 @@ enum DictionaryPackageManager {
       throw PackageManagerError.notManagedByPanel
     }
     manifest.installedAt = Date()
+    if let attrs = try? fm.attributesOfItem(atPath: dst.path(percentEncoded: false)),
+       let size = attrs[FileAttributeKey.size] as? UInt64 {
+      manifest.installedSize = Int(size)
+    }
     let mData = try JSONEncoder().encode(manifest)
-    try mData.write(to: mURL, options: .atomic)
+    try mData.write(to: mURL, options: [.atomic])
 
     try? fm.removeItem(at: fileURL)
     return manifest

@@ -145,9 +145,16 @@ final class UpdateCenter: ObservableObject {
   }
 
   private static func computeUpdateState(for pkg: DictionaryPackage, status: PackageStatus) async -> PackageUpdateState {
-    // 语法模型（如万象）：LTS 为固定 tag，无法用版本比对判断更新；且对固定模型无自动更新价值，
-    // 直接返回 .notApplicable，UI 不显示任何「更新/手动更新/检查更新」入口。
-    if pkg.type == "grammar" { return .notApplicable }
+    // 语法模型（如万象）：文件固定 LTS tag，但 .gram 可能原地更新（大小变化）；
+    // 以远程文件大小与安装时记录的大小比对，判断是否有更新，模式与词库包一致。
+    if pkg.type == "grammar" {
+      guard case .installed(let manifest) = status else { return .notApplicable }
+      if let remote = await DictionaryPackageManager.grammarContentLength(pkg: pkg),
+         let local = manifest.installedSize, local > 0 {
+        return remote == local ? .upToDate : .available
+      }
+      return .unknown
+    }
     guard case .installed(let manifest) = status else { return .notApplicable }
     do {
       if isReleaseAssetPackage(pkg) {

@@ -94,6 +94,29 @@ enum GitHubMirrorFetch {
     throw lastError ?? URLError(.cannotConnectToHost)
   }
 
+  /// 用 HEAD 请求获取远程文件大小（Content-Length），自动按候选 URL fallback。
+  /// 用于语法模型（固定 LTS tag）的「有更新」判定：比对远程 .gram 大小与本地记录。
+  /// - Returns: 第一个成功响应的 Content-Length（字节）；全部失败返回 nil。
+  static func contentLength(forURLs urls: [String], timeout: TimeInterval = 20) async -> Int? {
+    for urlString in urls {
+      guard let url = URL(string: urlString) else { continue }
+      var req = URLRequest(url: url, timeoutInterval: timeout)
+      req.httpMethod = "HEAD"
+      req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+      do {
+        let (_, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...399).contains(http.statusCode) else { continue }
+        if let lenStr = http.allHeaderFields["Content-Length"] as? String,
+           let len = Int(lenStr), len > 0 {
+          return len
+        }
+      } catch {
+        continue
+      }
+    }
+    return nil
+  }
+
   /// 专门获取 GitHub Release 最新版本信息。
   /// 先尝试 GitHub Release API（直连+镜像），再尝试镜像 release 页面并从 final URL 解析 tag。
   /// - Returns: (tag_name, html_url, 实际请求的 URL)
