@@ -421,6 +421,7 @@
 "package.button.homepage" = "项目主页";
 "package.log.install" = "正在安装 %@";
 "package.log.downloading" = "正在下载词库包…";
+"package.log.downloading.grammar" = "正在下载模型包…";
 "package.log.installed" = "安装完成，共写入 %@ 个文件，并已重新部署。";
 "package.log.uninstall" = "正在卸载 %@";
 "package.log.removing" = "正在移除词库包文件并还原备份…";

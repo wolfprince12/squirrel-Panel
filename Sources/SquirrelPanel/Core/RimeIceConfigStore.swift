@@ -169,7 +169,8 @@ final class RimeIceConfigStore: ObservableObject {
   /// 面板全局托管，这里保留它是为了清掉 v1.2.0 遗留的方案级覆盖（方案级会压过全局）。
   static let managedIceKeys: Set<String> = [
     "switches", "menu/page_size", "traditionalize/opencc_config",
-    "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra"
+    "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra",
+    "grammar"
   ]
 
   /// 托管的 translators 条目

@@ -460,6 +460,7 @@
 "package.button.homepage" = "專案首頁";
 "package.log.install" = "正在安裝 %@";
 "package.log.downloading" = "正在下載詞庫包…";
+"package.log.downloading.grammar" = "正在下載模型包…";
 "package.log.installed" = "安裝完成，共寫入 %@ 個檔案，並已重新部署。";
 "package.log.uninstall" = "正在解除安裝 %@";
 "package.log.removing" = "正在移除詞庫包檔案並還原備份…";

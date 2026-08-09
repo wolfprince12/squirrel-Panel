@@ -102,11 +102,18 @@ struct PackageManagerSection: View {
     }
   }
 
+  /// 根据包类型返回下载中的提示文案：语法模型 vs 普通词库包。
+  private func downloadingText(for pkg: DictionaryPackage) -> String {
+    pkg.isGrammar
+      ? String(localized: "package.log.downloading.grammar")
+      : String(localized: "package.log.downloading")
+  }
+
   private func install(_ pkg: DictionaryPackage) {
     busyID = pkg.id
     setProgressLog(
       title: String(format: String(localized: "package.log.install"), pkg.name),
-      text: String(localized: "package.log.downloading")
+      text: downloadingText(for: pkg)
     )
     Task {
       do {
@@ -154,7 +161,7 @@ struct PackageManagerSection: View {
     busyID = pkg.id
     setProgressLog(
       title: String(format: String(localized: "package.log.update"), pkg.name),
-      text: String(localized: "package.log.downloading")
+      text: downloadingText(for: pkg)
     )
     Task {
       do {

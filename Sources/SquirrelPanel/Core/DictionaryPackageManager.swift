@@ -296,13 +296,27 @@ enum DictionaryPackageManager {
     throw PackageManagerError.downloadFailed(lastURL)
   }
 
-  /// 在 default.custom.yaml 的 patch 下写入 grammar/language，启用语法模型。
+  /// 在 rime_ice.custom.yaml 的 patch 下写入 grammar/language，启用语法模型。
+  /// 语法模型属于方案级配置，放在 default.custom.yaml 不会生效；
+  /// 同时清理旧位置（v1.2.3 测试版误写入 default.custom.yaml）的遗留键。
   private static func applyGrammarPatch(language: String) throws {
-    let fileURL = rimeDir().appending(path: "default.custom.yaml")
-    let patch = CustomYAMLFile(fileURL: fileURL)
-    patch.load()
-    patch.set(language, forPath: "grammar/language")
-    try patch.save()
+    let rime = rimeDir()
+
+    // 正确位置：方案级补丁
+    let schemaFile = rime.appending(path: "rime_ice.custom.yaml")
+    let schemaPatch = CustomYAMLFile(fileURL: schemaFile)
+    schemaPatch.load()
+    schemaPatch.set(language, forPath: "grammar/language")
+    try schemaPatch.save()
+
+    // 兼容清理：若旧位置有同名键，一并移除
+    let defaultFile = rime.appending(path: "default.custom.yaml")
+    let defaultPatch = CustomYAMLFile(fileURL: defaultFile)
+    defaultPatch.load()
+    if defaultPatch.string(forPath: "grammar/language") != nil {
+      defaultPatch.set(nil, forPath: "grammar/language")
+      try? defaultPatch.save()
+    }
   }
 
   /// 安装语法模型：下载 .gram → 复制到 Rime 目录 → 写 grammar 配置 → 部署 → 写清单
@@ -386,10 +400,17 @@ enum DictionaryPackageManager {
       try? fm.removeItem(at: dst)
     }
 
-    let patch = CustomYAMLFile(fileURL: rime.appending(path: "default.custom.yaml"))
-    patch.load()
-    patch.removeGrammarLanguage()
-    try? patch.save()
+    // 移除方案级配置
+    let schemaPatch = CustomYAMLFile(fileURL: rime.appending(path: "rime_ice.custom.yaml"))
+    schemaPatch.load()
+    schemaPatch.removeGrammarLanguage()
+    try? schemaPatch.save()
+
+    // 兼容清理旧位置
+    let defaultPatch = CustomYAMLFile(fileURL: rime.appending(path: "default.custom.yaml"))
+    defaultPatch.load()
+    defaultPatch.removeGrammarLanguage()
+    try? defaultPatch.save()
 
     try SquirrelBridge.deploy(environment: environment)
     try? await Task.sleep(nanoseconds: 2_000_000_000)

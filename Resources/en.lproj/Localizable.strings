@@ -421,6 +421,7 @@
 "package.button.homepage" = "Homepage";
 "package.log.install" = "Installing %@";
 "package.log.downloading" = "Downloading package…";
+"package.log.downloading.grammar" = "Downloading model…";
 "package.log.installed" = "Installed; wrote %@ files and deployed.";
 "package.log.uninstall" = "Uninstalling %@";
 "package.log.removing" = "Removing package files and restoring backups…";
