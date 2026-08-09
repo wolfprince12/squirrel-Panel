@@ -30,9 +30,13 @@
 
 ### 🌳 雾凇拼音独立面板
 
-这是本面板的主打能力之一。在侧边栏点击 🌳 图标即可进入，把雾凇拼音最常见的配置收进一个页面（万象语法模型可一键叠加其上，见「词库与同步」）：
+这是本面板的主打能力之一。在侧边栏点击 🌳 图标即可进入，把雾凇拼音最常见的配置收进一个页面：
 
-![雾凇拼音独立面板](docs/assets/rime-ice-panel.png)
+- 直接安装、更新、卸载**雾凇拼音**方案；
+- 一键叠加 **万象语法模型**（本地 `.gram` 语言模型），显著提升长句联想与整句准确度；
+- 三态控制简繁、Emoji、中英混输等出厂开关，以及 Lua 滤镜、模糊音等高级选项。
+
+![雾凇拼音独立面板](docs/assets/rime-ice-panel.png?v=1.2.5)
 
 面板分为五大区块：
 
@@ -153,9 +157,13 @@ All changes are written as Rime-standard `*.custom.yaml` patches — they never 
 
 ### 🌳 Rime Ice dedicated panel
 
-One of the panel's headline features. Click the 🌳 icon in the sidebar to open a single page for the most common Rime Ice settings (the Wanxiang Grammar Model can be layered on top — see "Dictionary & sync"):
+One of the panel's headline features. Click the 🌳 icon in the sidebar to open a single page for the most common Rime Ice settings:
 
-![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png)
+- Install, update, and uninstall **Rime Ice** directly.
+- Layer the **Wanxiang Grammar Model** (a local `.gram` language model) in one click for much better long-sentence prediction and whole-sentence accuracy.
+- Toggle built-in switches (simplification/traditional, Emoji, mixed CN/EN, etc.) and access Lua filters / fuzzy pinyin options without hand-editing YAML.
+
+![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png?v=1.2.5)
 
 The panel is organized into five sections:
 
