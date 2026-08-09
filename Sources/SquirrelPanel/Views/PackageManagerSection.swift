@@ -36,14 +36,17 @@ struct PackageManagerSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
+      let wanxiangInstalled = statuses["wanxiang-grammar"]?.isInstalled == true
       ForEach(packages) { pkg in
         let rimeIceMissing = pkg.isGrammar && !rimeIceInstalled
+        let rimeIceBlocked = pkg.id == "rime-ice" && wanxiangInstalled
         PackageCard(
           pkg: pkg,
           status: statuses[pkg.id] ?? .notInstalled,
           updateState: updateCenter.dictionaryUpdateStates[pkg.id] ?? .notApplicable,
           busy: busyID == pkg.id,
           disabledInstallReason: rimeIceMissing ? String(localized: "package.hint.needsRimeIce") : nil,
+          disabledUninstallReason: rimeIceBlocked ? String(localized: "package.hint.uninstallRimeIceNeedsGrammar") : nil,
           onInstall: { install(pkg) },
           onUninstall: { uninstall(pkg) },
           onUpdate: { update(pkg) },
@@ -198,6 +201,8 @@ struct PackageCard: View {
   let busy: Bool
   /// 非 nil 时禁用「安装 / 纳入管理」按钮并展示原因（如：语法模型需先安装雾凇）。
   let disabledInstallReason: String?
+  /// 非 nil 时禁用「卸载」按钮并展示原因（如：卸载雾凇前须先卸载万象语法模型）。
+  let disabledUninstallReason: String?
   let onInstall: () -> Void
   let onUninstall: () -> Void
   let onUpdate: () -> Void
@@ -273,6 +278,10 @@ struct PackageCard: View {
             }
             Button("package.button.uninstall", action: onUninstall)
               .controlSize(.small)
+              .disabled(disabledUninstallReason != nil)
+            if let reason = disabledUninstallReason {
+              Text(reason).font(.caption2).foregroundStyle(.secondary)
+            }
           case .external:
             Button("package.button.manage", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)

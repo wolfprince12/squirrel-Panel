@@ -473,4 +473,6 @@
 "package.error.notManaged" = "該詞庫包不是由本面板安裝的，無法在此解除安裝。";
 "package.error.updateCheck" = "檢查更新失敗：%@";
 "package.error.grammarRequiresRimeIce" = "安裝語法模型前需先安裝霧凇拼音（rime-ice）";
+"package.error.grammarMustBeUninstalledFirst" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";
 "package.hint.needsRimeIce" = "請先安裝霧凇拼音（rime-ice）後再安裝語法模型";
+"package.hint.uninstallRimeIceNeedsGrammar" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";

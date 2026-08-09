@@ -85,6 +85,7 @@ enum PackageManagerError: LocalizedError {
   case notManagedByPanel
   case squirrelNotInstalled
   case grammarRequiresRimeIce
+  case grammarMustBeUninstalledFirst
   case updateCheckFailed(String)
   case commandFailed(String, Int32)
 
@@ -95,6 +96,7 @@ enum PackageManagerError: LocalizedError {
     case .notManagedByPanel: return String(localized: "package.error.notManaged")
     case .squirrelNotInstalled: return String(localized: "error.squirrelNotInstalled")
     case .grammarRequiresRimeIce: return String(localized: "package.error.grammarRequiresRimeIce")
+    case .grammarMustBeUninstalledFirst: return String(localized: "package.error.grammarMustBeUninstalledFirst")
     case .updateCheckFailed(let m): return String(format: String(localized: "package.error.updateCheck"), m)
     case .commandFailed(let c, let code): return String(format: String(localized: "error.commandFailed"), c, code)
     }
@@ -143,6 +145,13 @@ enum DictionaryPackageManager {
   static func isRimeIceInstalled() -> Bool {
     let schemaFile = rimeDir().appending(path: "rime_ice.schema.yaml")
     return FileManager.default.fileExists(atPath: schemaFile.path(percentEncoded: false))
+  }
+
+  /// 查询注册表中某个 id 的包是否处于「已由本面板安装」状态。
+  static func isPackageInstalled(id: String, environment: RimeEnvironment) -> Bool {
+    guard let pkg = loadRegistry().first(where: { $0.id == id }) else { return false }
+    if case .installed = status(of: pkg, environment: environment) { return true }
+    return false
   }
 
   // MARK: - 状态
@@ -605,6 +614,14 @@ enum DictionaryPackageManager {
     guard let data = try? Data(contentsOf: mURL),
           let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
       throw PackageManagerError.notManagedByPanel
+    }
+    // 雾凇拼音（rime_ice）作为万象语法模型的挂载点与配置载体：
+    // 若万象仍安装就卸载雾凇，会导致 rime_ice.custom.yaml 与 .gram 注入脱节，模型残留失效。
+    // 因此强制要求先卸载万象语法模型，再卸载雾凇拼音。
+    if pkg.id == "rime-ice" {
+      guard !isPackageInstalled(id: "wanxiang-grammar", environment: environment) else {
+        throw PackageManagerError.grammarMustBeUninstalledFirst
+      }
     }
     // 语法模型（万象等）：移除 .gram 文件 + 回退 grammar 配置，走独立分支
     if pkg.isGrammar {
