@@ -145,9 +145,9 @@ final class UpdateCenter: ObservableObject {
   }
 
   private static func computeUpdateState(for pkg: DictionaryPackage, status: PackageStatus) async -> PackageUpdateState {
-    // 语法模型（如万象）：LTS tag 不随更新变化，asset 可能原地更新，无法用版本比对判断。
-    // 仅提供手动更新入口（.unknown），避免被误判为「有更新」。
-    if pkg.type == "grammar" { return .unknown }
+    // 语法模型（如万象）：LTS 为固定 tag，无法用版本比对判断更新；且对固定模型无自动更新价值，
+    // 直接返回 .notApplicable，UI 不显示任何「更新/手动更新/检查更新」入口。
+    if pkg.type == "grammar" { return .notApplicable }
     guard case .installed(let manifest) = status else { return .notApplicable }
     do {
       if isReleaseAssetPackage(pkg) {

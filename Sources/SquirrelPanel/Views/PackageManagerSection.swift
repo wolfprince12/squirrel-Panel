@@ -273,7 +273,7 @@ struct PackageCard: View {
             Button("package.button.install", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)
           }
-          if status.isInstalled {
+          if status.isInstalled && !pkg.isGrammar {
             if updateState.isChecking {
               Button("package.button.checking", action: {})
                 .controlSize(.small)
