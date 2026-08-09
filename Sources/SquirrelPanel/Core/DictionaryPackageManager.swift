@@ -84,6 +84,7 @@ enum PackageManagerError: LocalizedError {
   case extractFailed(String)
   case notManagedByPanel
   case squirrelNotInstalled
+  case grammarRequiresRimeIce
   case updateCheckFailed(String)
   case commandFailed(String, Int32)
 
@@ -93,6 +94,7 @@ enum PackageManagerError: LocalizedError {
     case .extractFailed(let m): return String(format: String(localized: "package.error.extract"), m)
     case .notManagedByPanel: return String(localized: "package.error.notManaged")
     case .squirrelNotInstalled: return String(localized: "error.squirrelNotInstalled")
+    case .grammarRequiresRimeIce: return String(localized: "package.error.grammarRequiresRimeIce")
     case .updateCheckFailed(let m): return String(format: String(localized: "package.error.updateCheck"), m)
     case .commandFailed(let c, let code): return String(format: String(localized: "error.commandFailed"), c, code)
     }
@@ -133,6 +135,14 @@ enum DictionaryPackageManager {
   }
   private static func manifestURL(for id: String) -> URL {
     manifestsDir().appending(path: "\(id).json")
+  }
+
+  /// 语法模型（万象等）依赖雾凇拼音（rime_ice）方案才能生效：
+  /// 面板写入的是 `rime_ice.custom.yaml` 的 grammar 段，且 octagram 加载模型需要 `rime_ice.prism`。
+  /// 若 `rime_ice.schema.yaml` 不存在，说明雾凇未安装，语法模型没有挂载点，安装无意义。
+  static func isRimeIceInstalled() -> Bool {
+    let schemaFile = rimeDir().appending(path: "rime_ice.schema.yaml")
+    return FileManager.default.fileExists(atPath: schemaFile.path(percentEncoded: false))
   }
 
   // MARK: - 状态
@@ -337,6 +347,11 @@ enum DictionaryPackageManager {
 
   /// 安装语法模型：下载 .gram → 复制到 Rime 目录 → 写 grammar 配置 → 部署 → 写清单
   private static func installGrammar(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
+    // 语法模型必须挂载在雾凇（rime_ice）方案上；雾凇未安装则直接拒绝，避免装了不生效。
+    guard Self.isRimeIceInstalled() else {
+      throw PackageManagerError.grammarRequiresRimeIce
+    }
+
     let fm = FileManager.default
     let rime = rimeDir()
     try fm.createDirectory(at: rime, withIntermediateDirectories: true)
@@ -344,6 +359,15 @@ enum DictionaryPackageManager {
 
     let asset = pkg.releaseAsset ?? "wanxiang-lts-zh-hans.gram"
     let language = pkg.grammarLanguage
+
+    // 安装前先备份「将被修改的文件」：rime_ice.custom.yaml。
+    // 即便后续 save() 也会留 .bak，这里显式兜底，确保端用户无需手动修复即可回退。
+    let schemaFile = rime.appending(path: "rime_ice.custom.yaml")
+    if fm.fileExists(atPath: schemaFile.path(percentEncoded: false)) {
+      let bak = schemaFile.appendingPathExtension("bak")
+      try? fm.removeItem(at: bak)
+      try? fm.copyItem(at: schemaFile, to: bak)
+    }
 
     let fileURL = try await downloadGrammarAsset(pkg: pkg)
     let dst = rime.appending(path: asset)
@@ -428,16 +452,16 @@ enum DictionaryPackageManager {
       try? fm.removeItem(at: dst)
     }
 
-    // 移除方案级配置
+    // 移除方案级配置（grammar/language 与 grammar/collocation_prism 一并清掉，避免残留）
     let schemaPatch = CustomYAMLFile(fileURL: rime.appending(path: "rime_ice.custom.yaml"))
     schemaPatch.load()
-    schemaPatch.removeGrammarLanguage()
+    schemaPatch.removeGrammar()
     try? schemaPatch.save()
 
     // 兼容清理旧位置
     let defaultPatch = CustomYAMLFile(fileURL: rime.appending(path: "default.custom.yaml"))
     defaultPatch.load()
-    defaultPatch.removeGrammarLanguage()
+    defaultPatch.removeGrammar()
     try? defaultPatch.save()
 
     try SquirrelBridge.deploy(environment: environment)

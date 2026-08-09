@@ -253,10 +253,13 @@ final class CustomYAMLFile {
     }
   }
 
-  /// 卸载语法模型时移除 `grammar/language`；若该 grammar 节点因此变空则一并删除，
-  /// 避免残留空节点。不影响用户手动添加的其它 grammar 子配置（若存在则保留）。
-  func removeGrammarLanguage() {
+  /// 卸载语法模型时移除本面板注入的全部 grammar 内容：
+  /// `grammar/language` 与 `grammar/collocation_prism`（后者是 octagram 加载模型所必需）。
+  /// 若该 grammar 节点因此变空则一并删除，避免残留空节点或孤立的 prism 引用。
+  /// 不影响用户手动添加的其它 grammar 子配置（若存在则保留）。
+  func removeGrammar() {
     set(nil, forPath: "grammar/language")
+    set(nil, forPath: "grammar/collocation_prism")
     if let g = patch["grammar"] as? [String: Any], g.isEmpty {
       patch.removeValue(forKey: "grammar")
     }

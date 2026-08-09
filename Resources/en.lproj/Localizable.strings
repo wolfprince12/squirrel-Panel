@@ -433,6 +433,8 @@
 "package.error.extract" = "Extraction failed: %@";
 "package.error.notManaged" = "This package was not installed by the panel and cannot be uninstalled here.";
 "package.error.updateCheck" = "Update check failed: %@";
+"package.error.grammarRequiresRimeIce" = "Rime-ice (雾凇拼音) must be installed before the grammar model";
+"package.hint.needsRimeIce" = "Install Rime-ice (雾凇拼音) before installing the grammar model";
 
 /* v0.3.3 additions */
 "dictionary.message.saved" = "Sync settings saved";

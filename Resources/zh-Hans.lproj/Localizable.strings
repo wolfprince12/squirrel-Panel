@@ -433,6 +433,8 @@
 "package.error.extract" = "解压失败：%@";
 "package.error.notManaged" = "该词库包不是由本面板安装的，无法在此卸载。";
 "package.error.updateCheck" = "检查更新失败：%@";
+"package.error.grammarRequiresRimeIce" = "安装语法模型前需先安装雾凇拼音（rime-ice）";
+"package.hint.needsRimeIce" = "请先安装雾凇拼音（rime-ice）后再安装语法模型";
 
 /* v0.3.3 新增 */
 "dictionary.message.saved" = "同步设置已保存";

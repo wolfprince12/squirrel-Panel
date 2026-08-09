@@ -26,6 +26,8 @@ struct PackageManagerSection: View {
 
   @State private var packages: [DictionaryPackage] = []
   @State private var statuses: [String: PackageStatus] = [:]
+  /// 雾凇拼音（rime_ice）是否已安装；语法模型依赖它，缺失时禁用语法模型安装按钮。
+  @State private var rimeIceInstalled = true
   @State private var busyID: String? = nil
   @State private var logText: String = ""
   @State private var logTitle: String = ""
@@ -35,11 +37,13 @@ struct PackageManagerSection: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       ForEach(packages) { pkg in
+        let rimeIceMissing = pkg.isGrammar && !rimeIceInstalled
         PackageCard(
           pkg: pkg,
           status: statuses[pkg.id] ?? .notInstalled,
           updateState: updateCenter.dictionaryUpdateStates[pkg.id] ?? .notApplicable,
           busy: busyID == pkg.id,
+          disabledInstallReason: rimeIceMissing ? String(localized: "package.hint.needsRimeIce") : nil,
           onInstall: { install(pkg) },
           onUninstall: { uninstall(pkg) },
           onUpdate: { update(pkg) },
@@ -75,6 +79,7 @@ struct PackageManagerSection: View {
       st[p.id] = DictionaryPackageManager.status(of: p, environment: store.environment)
     }
     statuses = st
+    rimeIceInstalled = DictionaryPackageManager.isRimeIceInstalled()
   }
 
   // MARK: - 日志与自动消失
@@ -191,6 +196,8 @@ struct PackageCard: View {
   let status: PackageStatus
   let updateState: PackageUpdateState
   let busy: Bool
+  /// 非 nil 时禁用「安装 / 纳入管理」按钮并展示原因（如：语法模型需先安装雾凇）。
+  let disabledInstallReason: String?
   let onInstall: () -> Void
   let onUninstall: () -> Void
   let onUpdate: () -> Void
@@ -269,9 +276,17 @@ struct PackageCard: View {
           case .external:
             Button("package.button.manage", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)
+              .disabled(disabledInstallReason != nil)
+            if let reason = disabledInstallReason {
+              Text(reason).font(.caption2).foregroundStyle(.secondary)
+            }
           case .notInstalled:
             Button("package.button.install", action: onInstall)
               .controlSize(.small).buttonStyle(.borderedProminent)
+              .disabled(disabledInstallReason != nil)
+            if let reason = disabledInstallReason {
+              Text(reason).font(.caption2).foregroundStyle(.secondary)
+            }
           }
           if status.isInstalled {
             if updateState.isChecking {
