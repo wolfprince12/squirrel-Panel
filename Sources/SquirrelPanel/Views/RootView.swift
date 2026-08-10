@@ -123,6 +123,8 @@ struct RootView: View {
           case .about: AboutPage(showingResetAlert: $showingResetAlert)
           }
         }
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.16), value: selection)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
 
