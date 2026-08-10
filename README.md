@@ -14,7 +14,7 @@
 
 ## 最新版本
 
-**v1.2.5 已发布** —— 雾凇拼音拥有独立控制面板，并可一键接入万象语法模型（长句联想与整句准确度显著提升）；安装/卸载增强依赖校验与自动备份，确保「装好即用」。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.5)
+**v1.2.6 已发布** —— 修复英文（及繁体中文）系统语言下界面无法完整显示的问题：原本采用 `NavigationSplitView` 的侧边栏在英文长文案/虚拟机环境下布局计算错误，只渲染出后几项导航，界面看似损坏；现已彻底改为显式 `HStack` 两栏布局，侧边栏七项导航稳定全部显示，并新增面板切换淡入过渡消除黏手感。感谢用户 **theoisthewalrus** 反馈，已在英语、简体中文、繁体中文三种系统语言环境下全部测试通过。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.6)
 
 ## 功能
 
@@ -36,7 +36,7 @@
 - 一键叠加 **万象语法模型**（本地 `.gram` 语言模型），显著提升长句联想与整句准确度；
 - 三态控制简繁、Emoji、中英混输等出厂开关，以及 Lua 滤镜、模糊音等高级选项。
 
-![雾凇拼音独立面板](docs/assets/rime-ice-panel.png?v=1.2.5)
+![雾凇拼音独立面板](docs/assets/rime-ice-panel.png?v=1.2.6)
 
 面板分为五大区块：
 
@@ -141,7 +141,7 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## Latest version
 
-**v1.2.5 is out** — Rime Ice has its own dedicated panel and can install the Wanxiang Grammar Model in one click (much better long-sentence prediction); install/uninstall now enforce dependency checks and automatic backups so it "just works". [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.5)
+**v1.2.6 is out** — fixes an issue where the UI failed to fully display under English (and Traditional Chinese) system languages: the `NavigationSplitView` sidebar miscalculated its layout under long English text / virtualized environments, rendering only the last few nav items and making the app look broken. It has been fully rewritten as an explicit `HStack` two-column layout — all seven sidebar items now render reliably — with a fade transition added to panel switching to remove the laggy feel. Thanks to user **theoisthewalrus** for the report; verified across English, Simplified Chinese, and Traditional Chinese system languages. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.6)
 
 ## Features
 
@@ -163,7 +163,7 @@ One of the panel's headline features. Click the 🌳 icon in the sidebar to open
 - Layer the **Wanxiang Grammar Model** (a local `.gram` language model) in one click for much better long-sentence prediction and whole-sentence accuracy.
 - Toggle built-in switches (simplification/traditional, Emoji, mixed CN/EN, etc.) and access Lua filters / fuzzy pinyin options without hand-editing YAML.
 
-![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png?v=1.2.5)
+![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png?v=1.2.6)
 
 The panel is organized into five sections:
 
