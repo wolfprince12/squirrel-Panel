@@ -61,44 +61,75 @@ struct RootView: View {
   @State private var showingResetAlert = false
 
   var body: some View {
-    NavigationSplitView {
-      List(PanelSection.allCases, selection: $selection) { section in
-        NavigationLink(value: section) {
-          Label {
-            Text(section.title)
-          } icon: {
-            Image(systemName: section.symbol)
-              .foregroundStyle(section.tint)
+    // 不再使用 NavigationSplitView：在 macOS + 英文系统 + PD 虚拟机环境下，
+    // NavigationSplitView 的 sidebar 列会出现折叠/初始偏移 bug，只渲染后几项。
+    // 改用显式 HStack 固定 sidebar 宽度，彻底消除 SwiftUI 自动分栏布局的不确定性。
+    HStack(spacing: 0) {
+      // MARK: Sidebar
+      VStack(spacing: 0) {
+        ScrollView(.vertical, showsIndicators: true) {
+          VStack(spacing: 2) {
+            ForEach(PanelSection.allCases) { section in
+              Button(action: { selection = section }) {
+                HStack(spacing: 10) {
+                  Image(systemName: section.symbol)
+                    .foregroundStyle(section.tint)
+                    .frame(width: 20, alignment: .center)
+                  Text(section.title)
+                    .lineLimit(1)
+                  Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+              .background(
+                RoundedRectangle(cornerRadius: 6)
+                  .fill(selection == section ? Color.accentColor.opacity(0.2) : Color.clear)
+              )
+              .foregroundStyle(selection == section ? .primary : .secondary)
+            }
           }
+          .padding(.horizontal, 8)
+          .padding(.vertical, 8)
         }
-      }
-      .navigationSplitViewColumnWidth(196)
-      .safeAreaInset(edge: .bottom) {
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
         Text("footer.hint")
           .font(.caption2)
           .foregroundStyle(.secondary)
           .padding(.horizontal, 12)
-          .padding(.bottom, 10)
+          .padding(.vertical, 10)
           .fixedSize(horizontal: false, vertical: true)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(Color(nsColor: .windowBackgroundColor))
       }
-    } detail: {
-      Group {
-        switch selection {
-        case .appearance: AppearancePage()
-        case .schemas: SchemaPage()
-    case .riceIce: RimeIcePage()
-        case .behavior: BehaviorPage()
-        case .appOptions: AppOptionsPage()
-        case .dictionary: DictionaryPage()
-        case .about: AboutPage(showingResetAlert: $showingResetAlert)
-        }
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .frame(width: 220)
       .background(Color(nsColor: .windowBackgroundColor))
-      .safeAreaInset(edge: .top, spacing: 0) { banners }
-      .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+
+      // MARK: Detail
+      VStack(spacing: 0) {
+        banners
+
+        Group {
+          switch selection {
+          case .appearance: AppearancePage()
+          case .schemas: SchemaPage()
+          case .riceIce: RimeIcePage()
+          case .behavior: BehaviorPage()
+          case .appOptions: AppOptionsPage()
+          case .dictionary: DictionaryPage()
+          case .about: AboutPage(showingResetAlert: $showingResetAlert)
+          }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+
+        footer
+      }
     }
-    .navigationTitle("app.name")
+    .frame(minWidth: 880, minHeight: 620)
     .onAppear { updateCenter.checkAllOnLaunch() }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
     .alert("alert.resetTitle", isPresented: $showingResetAlert) {

@@ -32,8 +32,8 @@ struct SquirrelPanelApp: App {
         .environmentObject(store)
         .environmentObject(iceStore)
         .environmentObject(updateCenter)
-        .frame(minWidth: 880, minHeight: 620)
     }
+    .defaultSize(width: 960, height: 860)
     .windowResizability(.contentMinSize)
     .commands {
       CommandGroup(replacing: .newItem) {}
@@ -52,13 +52,65 @@ struct SquirrelPanelApp: App {
   }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+  /// 窗口尺寸兜底常量。SwiftUI `Window` + `NavigationSplitView` 在英文内容触发下
+  /// 会出现首次启动时窗口被压缩到远小于 `minWidth/minHeight` 的 bug（PD 虚拟机尤其明显）。
+  /// 这里在 AppKit 层强制最小尺寸与默认尺寸，避免 SwiftUI 布局引擎计算错误。
+  private let mainWindowMinSize = NSSize(width: 880, height: 620)
+  private let mainWindowDefaultSize = NSSize(width: 960, height: 860)
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
+
+    // SwiftUI Window scene 创建的 NSWindow 在此时已可用；取第一个并设置委托。
+    if let window = NSApp.windows.first {
+      window.delegate = self
+      enforceMainWindowSize(window: window)
+    } else {
+      // 若窗口尚未创建，延迟一帧再取。
+      DispatchQueue.main.async { [weak self] in
+        if let window = NSApp.windows.first {
+          window.delegate = self
+          self?.enforceMainWindowSize(window: window)
+        }
+      }
+    }
+
+    // 某些 autosave/布局计算会在启动后几帧内把窗口压小，追加多次兜底。
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+      if let window = NSApp.windows.first { self?.enforceMainWindowSize(window: window) }
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+      if let window = NSApp.windows.first { self?.enforceMainWindowSize(window: window) }
+    }
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     true
+  }
+
+  func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+    NSSize(
+      width: max(frameSize.width, mainWindowMinSize.width),
+      height: max(frameSize.height, mainWindowMinSize.height)
+    )
+  }
+
+  private func enforceMainWindowSize(window: NSWindow) {
+    window.minSize = mainWindowMinSize
+
+    // 若当前帧异常小（如 SwiftUI autosave/calculation 出错），重置为默认尺寸。
+    let frame = window.frame
+    if frame.width < mainWindowMinSize.width || frame.height < mainWindowMinSize.height {
+      let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+      let newFrame = NSRect(
+        x: screenFrame.midX - mainWindowDefaultSize.width / 2,
+        y: screenFrame.midY - mainWindowDefaultSize.height / 2,
+        width: mainWindowDefaultSize.width,
+        height: mainWindowDefaultSize.height
+      )
+      window.setFrame(newFrame, display: true, animate: false)
+    }
   }
 }
