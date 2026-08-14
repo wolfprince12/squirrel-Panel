@@ -14,12 +14,14 @@
 
 ## 最新版本
 
-**v1.2.6 已发布** —— 修复英文（及繁体中文）系统语言下界面无法完整显示的问题：原本采用 `NavigationSplitView` 的侧边栏在英文长文案/虚拟机环境下布局计算错误，只渲染出后几项导航，界面看似损坏；现已彻底改为显式 `HStack` 两栏布局，侧边栏七项导航稳定全部显示，并新增面板切换淡入过渡消除黏手感。感谢用户 **theoisthewalrus** 反馈，已在英语、简体中文、繁体中文三种系统语言环境下全部测试通过。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.6)
+**v1.3.1 已发布** —— 调整了更新升级策略，检查更新速度大为提升：雾凇拼音、鼠须管输入法、鼠须管控制面板三者的更新检查，现在与万象语法模型一致，走「国内镜像优先 + 轻量 HEAD 请求」链路，告别此前依赖被墙的 GitHub API 导致的 5–20 秒等待。
+
+**v1.3.0** 是一次大版本更新：整个软件 UI 完全重构，配色方案卡片新增动态悬停效果，并在作者专属配色方案之外，新增「用户自定义配色方案」功能（可创建多套命名配色、实时预览、导入导出，并在外观面板中确认展示）。[查看发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.3.1)
 
 ## 功能
 
 - **🌳 雾凇拼音独立面板**：侧边栏新增专属入口，集中控制雾凇拼音的包管理、基础开关、词库与短语、语言与拼音、高级滤镜等，无需手改 YAML。
-- **🎨 外观**：配色方案、字体、候选窗布局、实时预览。
+- **🎨 外观**：配色方案（含用户自定义配色）、字体、候选窗布局、实时预览与动态悬停效果。
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键（点击输入框即自动录制）、菜单标题。
 - **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
@@ -27,6 +29,14 @@
 - **🔧 关于**：运行状态、路径跳转、恢复默认、YAML 预览、版本更新提醒（含鼠须管本体更新检查）。
 
 > 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；应用前会自动生成 `.bak` 备份。
+
+### 🎨 外观与配色
+
+- 系统内置配色方案一键预览与切换，候选窗、字体、布局实时可见。
+- 新增 **用户自定义配色方案**：在编辑器里创建多套命名配色（含作者、颜色空间设定），实时预览、保存、导入/导出；外观面板只展示你「确认采用」的那一套。
+- 配色卡片新增动态悬停效果；深色模式配色下拉分为「系统配色 / Mr大狼专属配色 / 用户自定义方案」三组，结构清晰。
+
+![外观面板](docs/v1.3.0-screenshot-1.png?v=1.3.0)
 
 ### 🌳 雾凇拼音独立面板
 
@@ -141,12 +151,14 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## Latest version
 
-**v1.2.6 is out** — fixes an issue where the UI failed to fully display under English (and Traditional Chinese) system languages: the `NavigationSplitView` sidebar miscalculated its layout under long English text / virtualized environments, rendering only the last few nav items and making the app look broken. It has been fully rewritten as an explicit `HStack` two-column layout — all seven sidebar items now render reliably — with a fade transition added to panel switching to remove the laggy feel. Thanks to user **theoisthewalrus** for the report; verified across English, Simplified Chinese, and Traditional Chinese system languages. [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.2.6)
+**v1.3.1 is out** — we adjusted the update strategy and update checks are now much faster: the checks for Rime Ice, the Squirrel input method, and Squirrel Panel itself now use the same "mirror-first + lightweight HEAD request" path as the Wanxiang Grammar Model, doing away with the 5–20s waits caused by the blocked GitHub API.
+
+**v1.3.0** was a major release: the entire UI was rebuilt, color-scheme cards gained a hover animation, and a new **user-custom color scheme** feature was added alongside the author's signature schemes (create multiple named schemes, live-preview, import/export, and confirm which one to show in the Appearance panel). [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.3.1)
 
 ## Features
 
 - **🌳 Rime Ice dedicated panel**: a new sidebar entry to centrally manage Rime Ice — package management, basic switches, lexicon & phrases, language & pinyin, advanced filters — all without hand-editing YAML.
-- **🎨 Appearance**: color schemes, fonts, candidate window layout, live preview.
+- **🎨 Appearance**: color schemes (including user-custom schemes), fonts, candidate window layout, live preview with hover animation.
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys (click the box to capture), menu title.
 - **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
@@ -154,6 +166,14 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 - **🔧 About**: running status, path jump, restore defaults, YAML preview, and update checks (including Squirrel itself).
 
 All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and a `.bak` backup is created automatically before applying.
+
+### 🎨 Appearance & color schemes
+
+- One-click preview and switching of built-in color schemes, with the candidate window, fonts, and layout shown live.
+- New **user-custom color schemes**: create multiple named schemes (with author and color-space settings) in the editor, preview them live, save, import/export; the Appearance panel shows only the scheme you "confirmed".
+- Color-scheme cards now have a hover animation; the dark-mode scheme dropdown is grouped into "System / Mr大狼's schemes / User-custom" for a clear structure.
+
+![Appearance panel](docs/v1.3.0-screenshot-1.png?v=1.3.0)
 
 ### 🌳 Rime Ice dedicated panel
 
