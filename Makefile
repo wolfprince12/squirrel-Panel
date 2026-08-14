@@ -52,8 +52,7 @@ dmg: release
 	@mkdir -p "$(DIST)/dmg-staging"
 	@cp -R "$(BUNDLE)" "$(DIST)/dmg-staging/"
 	@ln -sf /Applications "$(DIST)/dmg-staging/Applications"
-	@osacompile -o "$(DIST)/dmg-staging/Fix.app" tools/fix.applescript
-	@codesign --force --sign - "$(DIST)/dmg-staging/Fix.app" 2>/dev/null || true
+	@cp tools/fix.command "$(DIST)/dmg-staging/fix.command"
 	@cp tools/appdmg.json "$(DIST)/dmg-staging/appdmg.json"
 	@cd "$(DIST)/dmg-staging" && \
 	  NODE_PATH=/Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules \
