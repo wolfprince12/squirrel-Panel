@@ -48,6 +48,19 @@ enum GitHubMirrorFetch {
     return result
   }
 
+  /// 生成候选 URL 列表：镜像前缀在前、原始 URL 在后。
+  /// 国内用户优先命中快速镜像，避免直连 api.github.com 长时间超时——与万象语法模型
+  /// 用 CNB 大陆镜像优先同款思路。
+  static func mirrorFirstCandidates(for original: String) -> [String] {
+    guard isGitHubURL(original) else { return [original] }
+    var result: [String] = []
+    for prefix in mirrorPrefixes {
+      result.append(mirroredURL(original, prefix: prefix))
+    }
+    result.append(original)
+    return result
+  }
+
   /// 使用 GET 请求获取数据，自动按候选 URL fallback。
   /// - Returns: (原始数据, 最终响应, 实际使用的 URL)
   /// - Throws: 所有候选 URL 都失败时，抛出最后一个错误；没有任何候选时抛出 invalidURL。
@@ -117,18 +130,28 @@ enum GitHubMirrorFetch {
     return nil
   }
 
-  /// 专门获取 GitHub Release 最新版本信息。
-  /// 先尝试 GitHub Release API（直连+镜像），再尝试镜像 release 页面并从 final URL 解析 tag。
-  /// - Returns: (tag_name, html_url, 实际请求的 URL)
+  /// 专门获取 GitHub Release 最新版本信息（优化版，与万象语法模型的 HEAD 检查同思路）：
+  /// 1) 先以 HEAD 请求 releases/latest 重定向页，从 302 Location / 最终 URL 直接解析 tag——
+  ///    不下载 JSON 正文，国内镜像优先，秒级返回；
+  /// 2) 失败再回退到 Releases API（JSON，镜像优先）；
+  /// 3) 仍失败再回退到 release 页面 GET（镜像优先）。
   static func fetchLatestRelease(repo: String) async throws -> (tag: String, htmlURL: String?, usedURL: String) {
+    let pageURL = "https://github.com/\(repo)/releases/latest"
     let apiURL = "https://api.github.com/repos/\(repo)/releases/latest"
+    let fastTimeout: TimeInterval = 8
 
-    // 1) 尝试 API（直连 + 镜像）
-    let apiCandidates = candidateURLs(for: apiURL)
+    // 1) HEAD 快速路径：国内镜像优先，仅取重定向后的 tag，不下载正文。
+    for urlString in mirrorFirstCandidates(for: pageURL) {
+      if let tag = try? await headReleaseTag(from: urlString, timeout: fastTimeout) {
+        return (tag, "https://github.com/\(repo)/releases/tag/\(tag)", urlString)
+      }
+    }
+
+    // 2) API 回退：镜像优先，解析 JSON 中的 tag_name。
     var lastError: Error?
-    for urlString in apiCandidates {
+    for urlString in mirrorFirstCandidates(for: apiURL) {
       guard let url = URL(string: urlString) else { continue }
-      var req = URLRequest(url: url, timeoutInterval: 20)
+      var req = URLRequest(url: url, timeoutInterval: fastTimeout)
       req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
       req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
       do {
@@ -148,21 +171,17 @@ enum GitHubMirrorFetch {
       }
     }
 
-    // 2) API 全部失败时，尝试 release 页面（仅镜像，因为直连失败才来这）
-    let releasePage = "https://github.com/\(repo)/releases/latest"
-    let pageCandidates = candidateURLs(for: releasePage)
-    for urlString in pageCandidates {
+    // 3) release 页面 GET 回退（镜像优先）。
+    for urlString in mirrorFirstCandidates(for: pageURL) {
       guard let url = URL(string: urlString) else { continue }
-      var req = URLRequest(url: url, timeoutInterval: 20)
+      var req = URLRequest(url: url, timeoutInterval: fastTimeout)
       req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
-      // 允许跟随重定向
       do {
         let (_, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
               let finalURL = response.url?.absoluteString else {
           continue
         }
-        // GitHub release latest 会 302 到 /releases/tag/<tag>；镜像通常保留这个结构
         if let tag = parseTagFromReleaseURL(finalURL) {
           return (tag, finalURL, urlString)
         }
@@ -172,6 +191,29 @@ enum GitHubMirrorFetch {
     }
 
     throw lastError ?? GitHubMirrorFetchError.unexpectedResponse
+  }
+
+  /// HEAD 请求 releases/latest 重定向页，从最终 URL（或其 302 Location）解析出 tag。
+  /// 与万象语法模型用 HEAD 取 Content-Length 同为「只读数头部、不下正文」的轻量检查。
+  private static func headReleaseTag(from urlString: String, timeout: TimeInterval) async throws -> String? {
+    guard let url = URL(string: urlString) else { return nil }
+    var req = URLRequest(url: url, timeoutInterval: timeout)
+    req.httpMethod = "HEAD"
+    req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
+    let (_, response) = try await URLSession.shared.data(for: req)
+    guard let http = response as? HTTPURLResponse else { return nil }
+    // 302 重定向：部分代理会保留 Location 头
+    if (300...399).contains(http.statusCode),
+       let loc = http.allHeaderFields["Location"] as? String,
+       let tag = parseTagFromReleaseURL(loc) {
+      return tag
+    }
+    // URLSession 默认自动跟随重定向，最终 URL 即 /releases/tag/<tag>
+    if let finalURL = response.url?.absoluteString,
+       let tag = parseTagFromReleaseURL(finalURL) {
+      return tag
+    }
+    return nil
   }
 
   /// 从 release 页面 final URL 中解析 tag，例如：
@@ -196,12 +238,12 @@ enum GitHubMirrorFetch {
   static func fetchLatestCommit(owner: String, repo: String, branch: String) async throws -> (sha: String, date: Date?, usedURL: String) {
     let apiURL = "https://api.github.com/repos/\(owner)/\(repo)/commits?sha=\(branch)&per_page=1"
 
-    // 1) 尝试 API（直连 + 镜像）
+    // 1) 尝试 API（镜像优先 + 直连兜底）
     var apiLastError: Error?
-    let apiCandidates = candidateURLs(for: apiURL)
+    let apiCandidates = mirrorFirstCandidates(for: apiURL)
     for urlString in apiCandidates {
       guard let url = URL(string: urlString) else { continue }
-      var req = URLRequest(url: url, timeoutInterval: 20)
+      var req = URLRequest(url: url, timeoutInterval: 8)
       req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
       req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
       do {
@@ -230,10 +272,10 @@ enum GitHubMirrorFetch {
     // 2) API 全部失败时，尝试 commits 页面 HTML：最新 commit SHA 会出现在页面链接中。
     // 注意：/commit/{branch} 会被 CDN 缓存并返回旧提交，/commits/{branch} 才是分支提交列表。
     let commitPage = "https://github.com/\(owner)/\(repo)/commits/\(branch)"
-    let pageCandidates = candidateURLs(for: commitPage)
+    let pageCandidates = mirrorFirstCandidates(for: commitPage)
     for urlString in pageCandidates {
       guard let url = URL(string: urlString) else { continue }
-      var req = URLRequest(url: url, timeoutInterval: 20)
+      var req = URLRequest(url: url, timeoutInterval: 8)
       req.setValue("SquirrelPanel/1.0.0", forHTTPHeaderField: "User-Agent")
       do {
         let (data, response) = try await URLSession.shared.data(for: req)
