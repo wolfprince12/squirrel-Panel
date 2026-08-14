@@ -14,14 +14,28 @@ struct AppearancePage: View {
       VStack(alignment: .leading, spacing: 20) {
         CandidatePreview()
 
+        // 开发者（大狼）专属签名配色：独立模块，不混入总色卡网格
+        SettingsGroup("appearance.scheme.developer.title") {
+          Text("appearance.scheme.developer.hint")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 2)
+          DeveloperSchemeGrid()
+        }
+
         SettingsGroup("appearance.scheme.title") {
           ColorSchemeGrid()
           Toggle("appearance.scheme.followSystem", isOn: $store.followSystemAppearance)
             .padding(.top, 4)
           if store.followSystemAppearance {
             Picker("appearance.scheme.dark", selection: $store.colorSchemeDarkID) {
-              ForEach(store.colorSchemes) { scheme in
+              ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) }) { scheme in
                 Text(scheme.name).tag(scheme.id)
+              }
+              Divider()
+              ForEach(DeveloperColorSchemes.all) { scheme in
+                let info = DeveloperColorSchemes.info(for: scheme)
+                Text(info.name).tag(info.id)
               }
             }
           }
@@ -88,8 +102,25 @@ struct ColorSchemeGrid: View {
 
   var body: some View {
     LazyVGrid(columns: columns, spacing: 10) {
-      ForEach(store.colorSchemes) { scheme in
+      ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) }) { scheme in
         SchemeSwatch(scheme: scheme, isSelected: scheme.id == store.colorSchemeID)
+          .onTapGesture { store.colorSchemeID = scheme.id }
+      }
+    }
+  }
+}
+
+/// 开发者（大狼）专属配色的独立展示网格，点击即套用
+struct DeveloperSchemeGrid: View {
+  @EnvironmentObject private var store: SettingsStore
+
+  private let columns = [GridItem(.adaptive(minimum: 148), spacing: 10)]
+
+  var body: some View {
+    LazyVGrid(columns: columns, spacing: 10) {
+      ForEach(DeveloperColorSchemes.all) { scheme in
+        let info = DeveloperColorSchemes.info(for: scheme)
+        SchemeSwatch(scheme: info, isSelected: info.id == store.colorSchemeID, isDeveloper: true)
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
     }
@@ -99,6 +130,7 @@ struct ColorSchemeGrid: View {
 struct SchemeSwatch: View {
   let scheme: RimeColorSchemeInfo
   let isSelected: Bool
+  var isDeveloper: Bool = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -129,7 +161,13 @@ struct SchemeSwatch: View {
           .font(.caption)
           .lineLimit(1)
           .truncationMode(.middle)
-        if scheme.isCustom {
+        if isDeveloper {
+          Text("appearance.scheme.developer.badge")
+            .font(.system(size: 9))
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(Color.accentColor.opacity(0.22)))
+        } else if scheme.isCustom {
           Text("appearance.scheme.custom")
             .font(.system(size: 9))
             .padding(.horizontal, 4)

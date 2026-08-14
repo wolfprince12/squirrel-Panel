@@ -144,6 +144,9 @@
 "appearance.preview.title" = "Candidate Window Preview";
 "appearance.scheme.title" = "Color Scheme";
 "appearance.scheme.custom" = "Custom";
+"appearance.scheme.developer.title" = "Dawolf's Color Schemes";
+"appearance.scheme.developer.hint" = "Signature color schemes designed by the developer. Click to apply.";
+"appearance.scheme.developer.badge" = "Author";
 "appearance.font.title" = "Font";
 "appearance.font.candidate" = "Candidate Font";
 "appearance.font.comment" = "Comment Font";

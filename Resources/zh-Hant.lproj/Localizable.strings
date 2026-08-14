@@ -144,6 +144,9 @@
 "appearance.preview.title" = "候選窗預覽";
 "appearance.scheme.title" = "配色方案";
 "appearance.scheme.custom" = "自訂";
+"appearance.scheme.developer.title" = "大狼的配色方案";
+"appearance.scheme.developer.hint" = "由開發者設計的簽名配色，點擊即可套用。";
+"appearance.scheme.developer.badge" = "作者";
 "appearance.font.title" = "字型";
 "appearance.font.candidate" = "候選字型";
 "appearance.font.comment" = "註釋字型";

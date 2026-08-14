@@ -583,6 +583,22 @@ final class SettingsStore: ObservableObject {
       let defaultSet = compileDefaultPatch()
       for (key, value) in squirrelSet { squirrelPatch.set(value?.yamlObject, forPath: key) }
       for (key, value) in defaultSet { defaultPatch.set(value?.yamlObject, forPath: key) }
+      // 开发者（大狼）专属配色：把当前正在使用（浅色，或跟随系统时的深色）的开发者方案
+      // 定义注入 squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
+      // 未使用的开发者方案注入定义则清理，保持补丁干净、避免无用的孤立预设。
+      var activeDevIDs = Set([colorSchemeID])
+      if followSystemAppearance {
+        activeDevIDs.insert(colorSchemeDarkID)
+      }
+      activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
+      for id in activeDevIDs {
+        if let def = DeveloperColorSchemes.presetDefinition(for: id) {
+          squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
+        }
+      }
+      for id in DeveloperColorSchemes.ids.subtracting(activeDevIDs) {
+        squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
+      }
       try squirrelPatch.save()
       try defaultPatch.save()
       baselineSquirrel = squirrelSet
@@ -721,6 +737,11 @@ final class SettingsStore: ObservableObject {
   }
 
   var currentScheme: RimeColorSchemeInfo {
-    colorSchemes.first { $0.id == colorSchemeID } ?? .native
+    // 开发者（大狼）专属方案不在总目录 colorSchemes 中，需单独解析，
+    // 否则选中时此处回退为 .native，顶部预览无法反映专属配色。
+    if let dev = DeveloperColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
+      return DeveloperColorSchemes.info(for: dev)
+    }
+    return colorSchemes.first { $0.id == colorSchemeID } ?? .native
   }
 }

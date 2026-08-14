@@ -1,0 +1,50 @@
+[
+  {
+    "id": "dawolf_daylight",
+    "name": "只给白天 / First Light",
+    "author": "Mr大狼",
+    "colors": {
+      "text_color": "0x606060",
+      "back_color": "0xECECEC",
+      "candidate_text_color": "0x000000",
+      "hilited_text_color": "0x000000",
+      "hilited_candidate_text_color": "0xFFFFFF",
+      "hilited_candidate_back_color": "0x6EC800",
+      "comment_text_color": "0x5A5A5A",
+      "hilited_comment_text_color": "0x000000"
+    }
+  },
+  {
+    "id": "dawolf_latenight",
+    "name": "深夜一人 / Nocturne",
+    "author": "Mr大狼",
+    "colors": {
+      "back_color": "0x000000",
+      "text_color": "0xE8E8E8",
+      "candidate_text_color": "0xD0D0D0",
+      "comment_text_color": "0x9A9A9A",
+      "hilited_text_color": "0xFFFFFF",
+      "hilited_candidate_text_color": "0x0E2A12",
+      "hilited_candidate_back_color": "0xCCEDC7",
+      "hilited_comment_text_color": "0x444444",
+      "border_color": "0x2A2A2A"
+    }
+  },
+  {
+    "id": "dawolf_gentle",
+    "name": "淡淡心情 / Blush Whisper",
+    "author": "Mr大狼",
+    "colors": {
+      "back_color": "0xFFF0F5",
+      "text_color": "0x222222",
+      "label_color": "0x222222",
+      "hilited_text_color": "0x222222",
+      "comment_text_color": "0x222222",
+      "hilited_comment_text_color": "0x222222",
+      "candidate_text_color": "0x222222",
+      "hilited_candidate_back_color": "0xCF7FA0",
+      "hilited_candidate_text_color": "0xF8F6ED",
+      "border_color": "0xF2C6D8"
+    }
+  }
+]
