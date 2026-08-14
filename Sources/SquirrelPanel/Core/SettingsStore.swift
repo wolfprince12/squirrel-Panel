@@ -84,6 +84,7 @@ final class SettingsStore: ObservableObject {
   @Published var inlinePreedit = true
   @Published var inlineCandidate = false
   @Published var translucency = false
+  @Published var shadow = false
   @Published var showPaging = false
   @Published var memorizeSize = true
   @Published var mutualExclusive = false
@@ -221,6 +222,7 @@ final class SettingsStore: ObservableObject {
     inlinePreedit = flag("style/inline_preedit", true)
     inlineCandidate = flag("style/inline_candidate", false)
     translucency = flag("style/translucency", false)
+    shadow = flag("style/shadow", false)
     showPaging = flag("style/show_paging", false)
     memorizeSize = flag("style/memorize_size", true)
     mutualExclusive = flag("style/mutual_exclusive", false)
@@ -484,10 +486,18 @@ final class SettingsStore: ObservableObject {
     put(&set, "style/line_spacing", .double(lineSpacing), defaultValue: defaults["style/line_spacing"])
     put(&set, "style/spacing", .double(preeditSpacing), defaultValue: defaults["style/spacing"])
     put(&set, "style/alpha", .double(alpha), defaultValue: defaults["style/alpha"])
-    put(&set, "style/candidate_format", .string(candidateFormat), defaultValue: defaults["style/candidate_format"])
+    // 候选格式保护：若用户输入不包含候选词占位符（[candidate] 或 %@），
+    // 鼠须管会把所有候选渲染成同一固定字符串，导致输入法"假死"。
+    // 此处强制回退到安全默认值，杜绝破坏性写入。
+    let safeCandidateFormat = candidateFormat.contains("[candidate]") || candidateFormat.contains("%@")
+      ? candidateFormat
+      : "[label]. [candidate] [comment]"
+    put(&set, "style/candidate_format", .string(safeCandidateFormat), defaultValue: defaults["style/candidate_format"])
     put(&set, "style/inline_preedit", .bool(inlinePreedit), defaultValue: defaults["style/inline_preedit"])
     put(&set, "style/inline_candidate", .bool(inlineCandidate), defaultValue: defaults["style/inline_candidate"])
     put(&set, "style/translucency", .bool(translucency), defaultValue: defaults["style/translucency"])
+    // 阴影：仅当用户开启时才写入，关闭时回落出厂（不落盘）
+    set["style/shadow"] = shadow ? .bool(true) : PatchValue?.none
     put(&set, "style/show_paging", .bool(showPaging), defaultValue: defaults["style/show_paging"])
     put(&set, "style/memorize_size", .bool(memorizeSize), defaultValue: defaults["style/memorize_size"])
     put(&set, "style/mutual_exclusive", .bool(mutualExclusive), defaultValue: defaults["style/mutual_exclusive"])
@@ -583,22 +593,41 @@ final class SettingsStore: ObservableObject {
       let defaultSet = compileDefaultPatch()
       for (key, value) in squirrelSet { squirrelPatch.set(value?.yamlObject, forPath: key) }
       for (key, value) in defaultSet { defaultPatch.set(value?.yamlObject, forPath: key) }
-      // 开发者（大狼）专属配色：把当前正在使用（浅色，或跟随系统时的深色）的开发者方案
-      // 定义注入 squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
-      // 未使用的开发者方案注入定义则清理，保持补丁干净、避免无用的孤立预设。
+      // 开发者（大狼）专属配色与用户自定义配色：把当前正在使用的方案定义注入
+      // squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
+      // 未使用的方案定义则清理，保持补丁干净、避免无用的孤立预设。
       var activeDevIDs = Set([colorSchemeID])
       if followSystemAppearance {
         activeDevIDs.insert(colorSchemeDarkID)
       }
       activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
+      let customIDs = UserColorSchemes.ids
+      let allowedPresetIDs = activeDevIDs.union(customIDs)
+      // 清理 preset_color_schemes 残留：用户可能用扁平写法（preset_color_schemes/<id>）
+      // 或嵌套写法，两种都要扫描；只保留当前激活的开发者/用户方案，其余全部摘除。
+      let presetPrefix = "preset_color_schemes/"
+      var existingPresetIDs = Set<String>()
+      if let nested = squirrelPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
+        existingPresetIDs.formUnion(nested.keys)
+      }
+      for key in squirrelPatch.topLevelKeys where key.hasPrefix(presetPrefix) {
+        let id = String(key.dropFirst(presetPrefix.count))
+        if !id.isEmpty { existingPresetIDs.insert(id) }
+      }
+      for id in existingPresetIDs where !allowedPresetIDs.contains(id) {
+        squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
+      }
       for id in activeDevIDs {
         if let def = DeveloperColorSchemes.presetDefinition(for: id) {
           squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
         }
       }
-      for id in DeveloperColorSchemes.ids.subtracting(activeDevIDs) {
-        squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
+      for id in customIDs {
+        if let def = UserColorSchemes.presetDefinition(for: id) {
+          squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
+        }
       }
+      UserColorSchemes.managedIDs = customIDs
       try squirrelPatch.save()
       try defaultPatch.save()
       baselineSquirrel = squirrelSet
@@ -737,10 +766,13 @@ final class SettingsStore: ObservableObject {
   }
 
   var currentScheme: RimeColorSchemeInfo {
-    // 开发者（大狼）专属方案不在总目录 colorSchemes 中，需单独解析，
-    // 否则选中时此处回退为 .native，顶部预览无法反映专属配色。
+    // 开发者（大狼）专属方案与用户自定义方案都不在总目录 colorSchemes 中，
+    // 需单独解析；否则选中时回退为 .native，顶部预览与实际配色不符。
     if let dev = DeveloperColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
       return DeveloperColorSchemes.info(for: dev)
+    }
+    if let custom = UserColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
+      return UserColorSchemes.info(for: custom)
     }
     return colorSchemes.first { $0.id == colorSchemeID } ?? .native
   }

@@ -83,6 +83,36 @@ final class CustomYAMLFile {
 
   // MARK: - 载入
 
+  /// 在解析前，把「键名以 _color 结尾」且未加引号的 `0x` 十六进制颜色字面量补上双引号。
+  /// 这样 Yams 会把它作为字符串保留，重写出盘时仍以 `"0x..."` 形式落盘，
+  /// 鼠须管可正常识别，彻底避免被改写成十进制整数。
+  ///
+  /// 仅匹配 `_color:` 键（Rime 全部颜色键均以 _color 结尾），不会误伤其它整数；
+  /// 对于已经是 `"0x..."`（带引号）的值，由于 `0x` 前存在引号，模式不匹配，不会被重复处理。
+  /// 支持 Rime 允许的下划线分隔写法（如 `0xee_fa_3a_0a`）。
+  private static func quoteHexColorLiterals(_ text: String) -> String {
+    // 匹配行首缩进 + 以 _color 结尾的键 + 冒号 + 空白 + 0x 十六进制字面量（允许下划线分隔）
+    let pattern = #"^((\s*[\w\-]+_color\s*:\s*)(0x[0-9A-Fa-f][0-9A-Fa-f_]*[0-9A-Fa-f]))"#
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else {
+      return text
+    }
+    let ns = text as NSString
+    let matches = regex.matches(in: text, range: NSRange(location: 0, length: ns.length))
+    // 从后往前替换，避免前面的替换改变后续 match 的偏移量
+    var result = text
+    for match in matches.reversed() {
+      // 捕获组：0=整体 1=前缀+值 2=前缀 3=值
+      guard match.numberOfRanges >= 4,
+            let fullRange = Range(match.range(at: 1), in: result),
+            let valueRange = Range(match.range(at: 3), in: result) else { continue }
+      let prefix = String(result[fullRange.lowerBound..<valueRange.lowerBound])
+      let value = String(result[valueRange])
+      let replacement = prefix + "\"" + value + "\""
+      result.replaceSubrange(fullRange.lowerBound..<fullRange.upperBound, with: replacement)
+    }
+    return result
+  }
+
   func load() {
     root = [:]
     patch = [:]
@@ -96,11 +126,18 @@ final class CustomYAMLFile {
       // 某些第三方配置集（如旧版 rime-settings）用 U+2005 做缩进，会让 Yams 直接报「无法解析」→
       // 文件进入只读 → 整个面板按钮变灰。只动行首缩进，绝不碰引号内 / 值里的特殊空格（如 candidate_format）。
       let text = CustomYAMLFile.normalizeIndentation(raw)
+      // 关键修复（GitHub issue：手写 0x 颜色被改写成十进制）：
+      // YAML 1.1 会把 `0x6EC800` 这类十六进制字面量在解析阶段直接识别为整数（7251968），
+      // 重新写出时这个 Int 被序列化为十进制，鼠须管无法识别 → 颜色失效。
+      // 这里在解析前，把「键名以 _color 结尾」的未加引号 0x 值补上引号，让 Yams 将其保留为
+      // 字符串；重写出盘时仍以 "0x..." 形式落盘（Rime 同样认带引号的颜色字符串）。
+      // 仅作用于 _color 键，不碰其它整数，误伤面极小；已带引号的值不会被重复处理（幂等）。
+      let protected = Self.quoteHexColorLiterals(text)
       if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         state = .loaded
         return
       }
-      guard let object = try Yams.load(yaml: text) else {
+      guard let object = try Yams.load(yaml: protected) else {
         state = .loaded
         return
       }
@@ -287,7 +324,10 @@ final class CustomYAMLFile {
     }
     if output.isEmpty { return Self.header }
     let body = try Yams.dump(object: output, width: -1, allowUnicode: true, sortKeys: true)
-    return Self.header + body
+    // 再保险：无论 Yams 把 0x 字符串写成带引号还是裸写，这里统一把 _color 键下的
+    // 十六进制颜色值补成带引号形式，确保重写出盘后仍是 "0x..."，鼠须管可正常识别。
+    let safeBody = Self.quoteHexColorLiterals(body)
+    return Self.header + safeBody
   }
 
   /// 写入磁盘：先备份，再原子替换

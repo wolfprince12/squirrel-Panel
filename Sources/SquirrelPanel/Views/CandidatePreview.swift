@@ -37,7 +37,12 @@ private enum FormatSegment: Equatable {
   }
 }
 
-struct CandidatePreview: View {
+/// 候选窗的实时预览（可复用）。给定一个配色方案，按当前全局样式（圆角、边框、字体、
+/// candidate_format 等）绘制候选窗，让用户在写进配置之前就能看到效果。
+/// 外观页与用户自定义配色编辑器共用同一实现。
+struct CandidatePanel: View {
+  let scheme: RimeColorSchemeInfo
+  var height: CGFloat = 168
   @EnvironmentObject private var store: SettingsStore
 
   private static let samples: [(label: String, text: String, comment: String)] = [
@@ -48,15 +53,13 @@ struct CandidatePreview: View {
     ("5", "數序館", "")
   ]
 
-  private var scheme: RimeColorSchemeInfo { store.currentScheme }
-
   var body: some View {
     ZStack {
       CheckerboardBackground()
       panel
         .padding(20)
     }
-    .frame(height: 168)
+    .frame(height: height)
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -157,6 +160,15 @@ struct CandidatePreview: View {
       return .system(size: size)
     }
     return .custom(name, fixedSize: size)
+  }
+}
+
+/// 外观页顶部使用的候选窗预览，使用当前生效的配色方案。
+struct CandidatePreview: View {
+  @EnvironmentObject private var store: SettingsStore
+
+  var body: some View {
+    CandidatePanel(scheme: store.currentScheme)
   }
 }
 

@@ -78,26 +78,7 @@ struct AboutPage: View {
   private var updateCard: some View {
     SettingsGroup("about.header.update") {
       HStack(spacing: 12) {
-        switch updateCenter.appUpdateState {
-        case .idle:
-          Image(systemName: "arrow.up.circle")
-            .foregroundStyle(.secondary)
-            .font(.title3)
-        case .checking:
-          ProgressView().controlSize(.small)
-        case .upToDate:
-          Image(systemName: "checkmark.circle.fill")
-            .foregroundStyle(.green)
-            .font(.title3)
-        case .available:
-          Image(systemName: "arrow.up.circle.fill")
-            .foregroundStyle(.orange)
-            .font(.title3)
-        case .failed:
-          Image(systemName: "exclamationmark.circle")
-            .foregroundStyle(.secondary)
-            .font(.title3)
-        }
+        updateStatusIcon(state: updateCenter.appUpdateState)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(updateStatusText)
@@ -134,6 +115,32 @@ struct AboutPage: View {
     }
   }
 
+  @ViewBuilder
+  private func updateStatusIcon(state: UpdateCheckState) -> some View {
+    switch state {
+    case .checking:
+      ProgressView()
+        .controlSize(.small)
+        .frame(width: 30, height: 30)
+    default:
+      let (name, tint): (String, Color) = {
+        switch state {
+        case .idle: return ("arrow.up.circle", .secondary)
+        case .upToDate: return ("checkmark.circle.fill", .green)
+        case .available: return ("arrow.up.circle.fill", .orange)
+        case .failed: return ("exclamationmark.circle", .red)
+        default: return ("questionmark.circle", .secondary)
+        }
+      }()
+      Image(systemName: name)
+        .font(.callout)
+        .foregroundStyle(tint)
+        .frame(width: 30, height: 30)
+        .background(tint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+  }
+
   private var updateStatusText: LocalizedStringKey {
     switch updateCenter.appUpdateState {
     case .idle: return "about.update.idle"
@@ -149,26 +156,7 @@ struct AboutPage: View {
   private var squirrelUpdateCard: some View {
     SettingsGroup("about.header.squirrelUpdate") {
       HStack(spacing: 12) {
-        switch updateCenter.squirrelUpdateState {
-        case .idle:
-          Image(systemName: "arrow.up.circle")
-            .foregroundStyle(.secondary)
-            .font(.title3)
-        case .checking:
-          ProgressView().controlSize(.small)
-        case .upToDate:
-          Image(systemName: "checkmark.circle.fill")
-            .foregroundStyle(.green)
-            .font(.title3)
-        case .available:
-          Image(systemName: "arrow.up.circle.fill")
-            .foregroundStyle(.orange)
-            .font(.title3)
-        case .failed:
-          Image(systemName: "exclamationmark.circle")
-            .foregroundStyle(.secondary)
-            .font(.title3)
-        }
+        updateStatusIcon(state: updateCenter.squirrelUpdateState)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(squirrelUpdateStatusText)
@@ -296,22 +284,35 @@ struct AboutPage: View {
 
   private var statusCard: some View {
     SettingsGroup("about.header.status") {
-      InfoRow(label: String(localized: "about.panel.version"), value: "v\(panelVersion)")
+      StatusRow(
+        icon: "hammer.fill",
+        tint: .secondary,
+        label: String(localized: "about.panel.version"),
+        value: "v\(panelVersion)")
       Divider()
-      InfoRow(label: String(localized: "about.squirrel.installed"),
-              value: store.environment.isInstalled
-                ? String(format: String(localized: "about.squirrel.version"), store.environment.version ?? String(localized: "generic.unknown"))
-                : String(localized: "about.squirrel.notInstalled"))
+      StatusRow(
+        icon: store.environment.isInstalled ? "checkmark.circle.fill" : "xmark.circle.fill",
+        tint: store.environment.isInstalled ? .green : .red,
+        label: String(localized: "about.squirrel.installed"),
+        value: store.environment.isInstalled
+          ? String(format: String(localized: "about.squirrel.version"), store.environment.version ?? String(localized: "generic.unknown"))
+          : String(localized: "about.squirrel.notInstalled"))
       Divider()
-      InfoRow(label: String(localized: "about.squirrel.process"),
-              value: store.environment.isRunning
-                ? String(localized: "about.squirrel.running")
-                : String(localized: "about.squirrel.notRunning"))
+      StatusRow(
+        icon: store.environment.isRunning ? "checkmark.circle.fill" : "xmark.circle.fill",
+        tint: store.environment.isRunning ? .green : .orange,
+        label: String(localized: "about.squirrel.process"),
+        value: store.environment.isRunning
+          ? String(localized: "about.squirrel.running")
+          : String(localized: "about.squirrel.notRunning"))
       Divider()
-      InfoRow(label: String(localized: "about.userDir"),
-              value: store.environment.isUserDirectoryReady
-                ? String(localized: "about.userDir.ready")
-                : String(localized: "about.userDir.notReady"))
+      StatusRow(
+        icon: store.environment.isUserDirectoryReady ? "folder.badge.person.crop" : "folder.badge.exclamationmark",
+        tint: store.environment.isUserDirectoryReady ? .green : .orange,
+        label: String(localized: "about.userDir"),
+        value: store.environment.isUserDirectoryReady
+          ? String(localized: "about.userDir.ready")
+          : String(localized: "about.userDir.notReady"))
     }
   }
 
@@ -333,51 +334,41 @@ struct AboutPage: View {
 
   private var maintenanceCard: some View {
     SettingsGroup("about.header.maintenance") {
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("about.reload.title")
-          Text("about.reload.subtitle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        Spacer()
-        Button("about.reload.button") { store.reload() }
-      }
+      MaintenanceRow(
+        icon: "arrow.clockwise",
+        tint: .blue,
+        title: String(localized: "about.reload.title"),
+        subtitle: String(localized: "about.reload.subtitle"),
+        actionTitle: String(localized: "about.reload.button"),
+        action: { store.reload() })
       Divider()
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("about.reset.title")
-          Text("about.reset.subtitle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        Spacer()
-        Button("about.reset.button", role: .destructive) { showingResetAlert = true }
-          .disabled(!store.canWrite)
-      }
+      MaintenanceRow(
+        icon: "gobackward",
+        tint: .orange,
+        title: String(localized: "about.reset.title"),
+        subtitle: String(localized: "about.reset.subtitle"),
+        actionTitle: String(localized: "about.reset.button"),
+        isDestructive: true,
+        action: { showingResetAlert = true })
+      .disabled(!store.canWrite)
       Divider()
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("about.squirrelReset.title")
-          Text("about.squirrelReset.subtitle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        Spacer()
-        Button("about.squirrelReset.button", role: .destructive) { showingSquirrelResetAlert = true }
-          .disabled(!store.environment.isInstalled)
-      }
+      MaintenanceRow(
+        icon: "exclamationmark.triangle.fill",
+        tint: .red,
+        title: String(localized: "about.squirrelReset.title"),
+        subtitle: String(localized: "about.squirrelReset.subtitle"),
+        actionTitle: String(localized: "about.squirrelReset.button"),
+        isDestructive: true,
+        action: { showingSquirrelResetAlert = true })
+      .disabled(!store.environment.isInstalled)
       Divider()
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("about.fixWhitespace.title")
-          Text("about.fixWhitespace.subtitle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        Spacer()
-        Button("about.fixWhitespace.button") { store.fixWhitespaceInConfigFiles() }
-      }
+      MaintenanceRow(
+        icon: "text.alignleft",
+        tint: .teal,
+        title: String(localized: "about.fixWhitespace.title"),
+        subtitle: String(localized: "about.fixWhitespace.subtitle"),
+        actionTitle: String(localized: "about.fixWhitespace.button"),
+        action: { store.fixWhitespaceInConfigFiles() })
     }
   }
 
@@ -488,6 +479,70 @@ private struct InfoRow: View {
       Text(label)
       Spacer()
       Text(value).foregroundStyle(.secondary)
+    }
+  }
+}
+
+private struct StatusRow: View {
+  let icon: String
+  let tint: Color
+  let label: String
+  let value: String
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: icon)
+        .font(.caption2)
+        .foregroundStyle(tint)
+        .frame(width: 22, height: 22)
+        .background(tint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+      Text(label)
+
+      Spacer()
+
+      Text(value)
+        .foregroundStyle(.secondary)
+    }
+  }
+}
+
+private struct MaintenanceRow: View {
+  let icon: String
+  let tint: Color
+  let title: String
+  let subtitle: String
+  let actionTitle: String
+  var isDestructive: Bool = false
+  let action: () -> Void
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: icon)
+        .font(.caption)
+        .foregroundStyle(tint)
+        .frame(width: 28, height: 28)
+        .background(tint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+        Text(subtitle)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
+      Spacer()
+
+      if isDestructive {
+        Button(actionTitle, role: .destructive, action: action)
+          .controlSize(.small)
+      } else {
+        Button(actionTitle, action: action)
+          .controlSize(.small)
+      }
     }
   }
 }

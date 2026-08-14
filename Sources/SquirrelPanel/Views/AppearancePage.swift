@@ -8,6 +8,12 @@ import AppKit
 
 struct AppearancePage: View {
   @EnvironmentObject private var store: SettingsStore
+  @State private var showSchemeEditor = false
+  /// 自定义模块当前展示的「用户确认方案」快照。
+  /// confirmedScheme() 是读盘静态函数：编辑器点「使用此方案」只改了磁盘注册表，
+  /// SwiftUI 收不到状态变更通知、不会重绘。因此必须用 @State 持有快照，
+  /// 并在弹窗关闭时重新读盘刷新，否则模块预览会停留在旧方案。
+  @State private var confirmedScheme: UserColorScheme? = UserColorSchemes.confirmedScheme()
 
   var body: some View {
     ScrollView {
@@ -23,19 +29,45 @@ struct AppearancePage: View {
           DeveloperSchemeGrid()
         }
 
+        // 用户自定义配色：只展示「用户确认采用的」那一套方案，与全局选择完全独立
+        SettingsGroup("appearance.scheme.custom.title") {
+          HStack(alignment: .center, spacing: 16) {
+            if let scheme = confirmedScheme {
+              let info = UserColorSchemes.info(for: scheme)
+              let isActive = store.colorSchemeID == scheme.id
+              CustomSchemeCard(scheme: info, isActive: isActive) {
+                store.colorSchemeID = scheme.id
+              }
+            } else {
+              CustomEmptyState()
+            }
+            Spacer(minLength: 0)
+            editorButton
+          }
+          .padding(.trailing, 140)
+        }
+
         SettingsGroup("appearance.scheme.title") {
           ColorSchemeGrid()
           Toggle("appearance.scheme.followSystem", isOn: $store.followSystemAppearance)
             .padding(.top, 4)
           if store.followSystemAppearance {
             Picker("appearance.scheme.dark", selection: $store.colorSchemeDarkID) {
-              ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) }) { scheme in
-                Text(scheme.name).tag(scheme.id)
+              Section("appearance.scheme.group.system") {
+                ForEach(systemDarkSchemes) { scheme in
+                  Text(scheme.name).tag(scheme.id)
+                }
               }
-              Divider()
-              ForEach(DeveloperColorSchemes.all) { scheme in
-                let info = DeveloperColorSchemes.info(for: scheme)
-                Text(info.name).tag(info.id)
+              Section("appearance.scheme.group.developer") {
+                ForEach(DeveloperColorSchemes.all) { scheme in
+                  Text(scheme.name).tag(scheme.id)
+                }
+              }
+              Section("appearance.scheme.group.custom") {
+                if let confirmed = confirmedScheme {
+                  let info = UserColorSchemes.info(for: confirmed)
+                  Text(info.name).tag(info.id)
+                }
               }
             }
           }
@@ -90,7 +122,42 @@ struct AppearancePage: View {
       }
       .padding(20)
     }
+    .onAppear { confirmedScheme = UserColorSchemes.confirmedScheme() }
+    .onChange(of: showSchemeEditor) { isShowing in
+      // 弹窗关闭（确认/保存/编辑自定义方案后）重新读盘刷新模块展示，
+      // 否则 SwiftUI 不会因磁盘注册表变更而重绘，预览会停留在旧方案。
+      if !isShowing {
+        confirmedScheme = UserColorSchemes.confirmedScheme()
+      }
+    }
+    .sheet(isPresented: $showSchemeEditor) {
+      UserColorSchemeEditor()
+        .environmentObject(store)
+    }
   }
+
+  /// 深色模式配色下拉列表中的「系统配色」分组：仅含内置方案。
+  private var systemDarkSchemes: [RimeColorSchemeInfo] {
+    store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }
+  }
+
+  private var editorButton: some View {
+    Button(action: { showSchemeEditor = true }) {
+      Label {
+        Text("appearance.scheme.custom.open")
+          .font(.system(size: 13, weight: .semibold))
+      } icon: {
+        Image(systemName: "paintbrush.fill")
+          .font(.system(size: 16, weight: .semibold))
+      }
+    }
+    .buttonStyle(.borderedProminent)
+    .controlSize(.large)
+    .frame(minWidth: 150, minHeight: 48)
+    .clipShape(Capsule())
+    .help("appearance.scheme.custom.open")
+  }
+
 }
 
 // MARK: - 配色色卡
@@ -102,7 +169,9 @@ struct ColorSchemeGrid: View {
 
   var body: some View {
     LazyVGrid(columns: columns, spacing: 10) {
-      ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) }) { scheme in
+      // 系统配色网格：只含内置方案，绝不混入用户自定义方案。
+      // 自定义方案仅在「深色模式配色」下拉列表中单独显示（见 darkModeSchemes）。
+      ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }) { scheme in
         SchemeSwatch(scheme: scheme, isSelected: scheme.id == store.colorSchemeID)
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
@@ -131,6 +200,8 @@ struct SchemeSwatch: View {
   let scheme: RimeColorSchemeInfo
   let isSelected: Bool
   var isDeveloper: Bool = false
+
+  @State private var isHovering = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -188,7 +259,65 @@ struct SchemeSwatch: View {
                       lineWidth: isSelected ? 2.5 : 0.5)
     )
     .contentShape(Rectangle())
+    .onHover { hovering in
+      withAnimation(.easeInOut(duration: 0.12)) {
+        isHovering = hovering
+      }
+    }
+    .scaleEffect(isHovering && !isSelected ? 1.02 : 1.0)
+    .shadow(color: .black.opacity(isHovering ? 0.10 : 0.04),
+            radius: isHovering ? 6 : 2,
+            y: isHovering ? 3 : 1)
     .help(scheme.author.map { String(format: String(localized: "appearance.scheme.author"), $0) } ?? scheme.id)
+  }
+}
+
+// MARK: - 用户自定义配色模块组件
+
+/// 自定义方案模块中的单卡：本身就是可点选主体，选中态用「使用中」角标表达，
+/// 不再额外堆叠按钮。
+private struct CustomSchemeCard: View {
+  let scheme: RimeColorSchemeInfo
+  let isActive: Bool
+  let action: () -> Void
+
+  var body: some View {
+    SchemeSwatch(scheme: scheme, isSelected: isActive)
+      .frame(width: 180)
+      .overlay(alignment: .topTrailing) {
+        if isActive {
+          Text("appearance.scheme.custom.active")
+            .font(.system(size: 9, weight: .semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.accentColor))
+            .foregroundStyle(.white)
+            .padding(6)
+        }
+      }
+      .contentShape(Rectangle())
+      .onTapGesture(perform: action)
+      .help("appearance.scheme.custom.tapToSelect")
+  }
+}
+
+private struct CustomEmptyState: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 10) {
+        Image(systemName: "paintbrush")
+          .font(.title3)
+          .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("appearance.scheme.custom.empty.title")
+            .font(.callout.weight(.medium))
+          Text("appearance.scheme.custom.empty.subtitle")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+    .padding(.vertical, 8)
   }
 }
 
@@ -236,9 +365,8 @@ struct SettingsGroup<Content: View>: View {
     VStack(alignment: .leading, spacing: 8) {
       Text(title)
         .font(.caption)
-        .fontWeight(.medium)
+        .fontWeight(.semibold)
         .foregroundStyle(.secondary)
-        .textCase(.uppercase)
         .padding(.leading, 2)
       VStack(alignment: .leading, spacing: 10) {
         content

@@ -85,12 +85,16 @@ final class RimeIceRegressionTests: XCTestCase {
 
   /// 「恢复默认」白名单必须覆盖 compileIcePatch() 实际写入的全部键，
   /// 否则重置会留下清不掉的残留。
+  ///
+  /// 注意：用「超集」而非「相等」。白名单还包含由语法模型包安装器写入的 `grammar`
+  /// （octagram v1.3.0，重置时一并清掉），它不在 compileIcePatch() 的产出里。
   func testManagedIceKeysCoverEveryWrittenPath() {
     let written: Set<String> = [
       "switches", "menu/page_size", "traditionalize/opencc_config",
       "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra"
     ]
-    XCTAssertEqual(RimeIceConfigStore.managedIceKeys, written)
+    XCTAssertTrue(RimeIceConfigStore.managedIceKeys.isSuperset(of: written),
+                  "managedIceKeys 未覆盖 compileIcePatch() 写入的键：\(written.subtracting(RimeIceConfigStore.managedIceKeys))")
   }
 
   // MARK: - ③ 模糊音规则表识别边界

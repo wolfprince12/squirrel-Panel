@@ -80,29 +80,27 @@ enum ColorSchemeCatalog {
       }
     }
 
-    // 2. 用户在 squirrel.custom.yaml 里自定义的方案
+    // 2. 用户在 squirrel.custom.yaml 里对内置方案的覆盖
+    // 用户自定义配色（新 id）由 UserColorSchemes 独立管理，不进入系统配色选择列表。
     if let userPatch {
-      for key in userPatch.topLevelKeys where key.hasPrefix("preset_color_schemes/") {
-        let id = String(key.dropFirst("preset_color_schemes/".count))
-        guard !id.contains("/"), let body = userPatch.value(forPath: key) as? [String: Any] else { continue }
-        guard let scheme = parse(id: id, body: body, isCustom: true) else { continue }
-        if let index = result.firstIndex(where: { $0.id == id }) {
-          result[index] = scheme
-        } else {
-          result.append(scheme)
-        }
-        seen.insert(id)
-      }
       if let nested = userPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
         for (id, body) in nested {
-          guard let body = body as? [String: Any],
-                let scheme = parse(id: id, body: body, isCustom: true) else { continue }
+          guard seen.contains(id), // 只接受对内置/已加载方案的覆盖，不添加新的自定义 id
+                let body = body as? [String: Any],
+                let scheme = parse(id: id, body: body, isCustom: false) else { continue }
           if let index = result.firstIndex(where: { $0.id == id }) {
             result[index] = scheme
-          } else {
-            result.append(scheme)
           }
-          seen.insert(id)
+        }
+      }
+      // 兼容扁平写法 preset_color_schemes/<id>，同样只覆盖内置 id
+      for key in userPatch.topLevelKeys where key.hasPrefix("preset_color_schemes/") {
+        let id = String(key.dropFirst("preset_color_schemes/".count))
+        guard seen.contains(id), !id.contains("/"),
+              let body = userPatch.value(forPath: key) as? [String: Any] else { continue }
+        guard let scheme = parse(id: id, body: body, isCustom: false) else { continue }
+        if let index = result.firstIndex(where: { $0.id == id }) {
+          result[index] = scheme
         }
       }
     }

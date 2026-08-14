@@ -70,25 +70,11 @@ struct RootView: View {
         ScrollView(.vertical, showsIndicators: true) {
           VStack(spacing: 2) {
             ForEach(PanelSection.allCases) { section in
-              Button(action: { selection = section }) {
-                HStack(spacing: 10) {
-                  Image(systemName: section.symbol)
-                    .foregroundStyle(section.tint)
-                    .frame(width: 20, alignment: .center)
-                  Text(section.title)
-                    .lineLimit(1)
-                  Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
-              .background(
-                RoundedRectangle(cornerRadius: 6)
-                  .fill(selection == section ? Color.accentColor.opacity(0.2) : Color.clear)
+              SidebarItem(
+                section: section,
+                isSelected: selection == section,
+                action: { selection = section }
               )
-              .foregroundStyle(selection == section ? .primary : .secondary)
             }
           }
           .padding(.horizontal, 8)
@@ -142,11 +128,57 @@ struct RootView: View {
     }
   }
 
+  // MARK: - 侧边栏项目
+
+  private struct SidebarItem: View {
+    let section: PanelSection
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+      Button(action: action) {
+        HStack(spacing: 10) {
+          Image(systemName: section.symbol)
+            .foregroundStyle(isSelected ? section.tint : section.tint.opacity(0.8))
+            .frame(width: 20, alignment: .center)
+          Text(section.title)
+            .lineLimit(1)
+          Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+        .background(
+          RoundedRectangle(cornerRadius: 6)
+            .fill(isSelected
+                  ? section.tint.opacity(0.12)
+                  : (isHovering ? Color.primary.opacity(0.06) : Color.clear))
+        )
+        .overlay(alignment: .leading) {
+          if isSelected {
+            RoundedRectangle(cornerRadius: 1.5)
+              .fill(section.tint)
+              .frame(width: 3)
+              .padding(.vertical, 6)
+          }
+        }
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(isSelected ? .primary : .secondary)
+      .onHover { hovering in
+        withAnimation(.easeInOut(duration: 0.12)) {
+          isHovering = hovering
+        }
+      }
+    }
+  }
+
   // MARK: - 顶部提示条
 
   @ViewBuilder
   private var banners: some View {
-    VStack(spacing: 0) {
+    VStack(spacing: 8) {
       if !store.environment.isInstalled {
         Banner(kind: .warning,
                text: String(localized: "banner.squirrelNotInstalled"),
@@ -165,6 +197,8 @@ struct RootView: View {
         Banner(kind: .error, text: error, action: nil)
       }
     }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
   }
 
   // MARK: - 底部操作栏
@@ -226,17 +260,34 @@ struct Banner: View {
   }
 
   var body: some View {
-    HStack(spacing: 8) {
-      Image(systemName: symbol).foregroundStyle(tint)
-      Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
+    HStack(spacing: 12) {
+      Image(systemName: symbol)
+        .font(.callout)
+        .foregroundStyle(tint)
+        .frame(width: 26, height: 26)
+        .background(tint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+      Text(text)
+        .font(.callout)
+        .fixedSize(horizontal: false, vertical: true)
+
       Spacer()
+
       if let action {
-        Button(action.0, action: action.1).controlSize(.small)
+        Button(action.0, action: action.1)
+          .controlSize(.small)
       }
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 9)
-    .background(tint.opacity(0.10))
-    .overlay(alignment: .bottom) { Divider() }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 10)
+    .background(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .fill(tint.opacity(0.08))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .strokeBorder(tint.opacity(0.18), lineWidth: 0.5)
+    )
   }
 }
