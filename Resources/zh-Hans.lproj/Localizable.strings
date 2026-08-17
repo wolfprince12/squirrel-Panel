@@ -2,7 +2,7 @@
 "app.name" = "鼠须管控制面板";
 "nav.appearance" = "外观";
 "nav.schemas" = "输入方案";
-"nav.riceIce" = "雾凇拼音";
+"nav.riceIce" = "雾凇与万象";
 "nav.behavior" = "按键与行为";
 "nav.appOptions" = "应用适配";
 "nav.dictionary" = "词库与同步";
@@ -37,11 +37,11 @@
 "riceice.reset" = "恢复雾凇默认";
 "riceice.maintenance.title" = "维护";
 "riceice.emergencyReset" = "恢复雾凇拼音全部默认";
-"riceice.emergencyReset.hint" = "一键删除 rime_ice.custom.yaml（含你手写的非托管键）并把开关记忆回落出厂，让雾凇拼音完全回到初始状态。操作前会自动生成 .bak 备份。";
+"riceice.emergencyReset.hint" = "删除 rime_ice.custom.yaml（含手写的非托管键）并将开关记忆恢复为出厂值，使雾凇拼音完全回到初始状态。操作前会自动生成 .bak 备份。";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失败：%@";
 
 /* RimeIcePage — 词库与短语 */
-"riceice.lexicon.title" = "词库与短语";
+"riceice.lexicon.title" = "词库";
 "riceice.lexicon.hint" = "关掉不需要的词库可以让候选更干净、部署更快。改动写入 rime_ice.custom.yaml 的 engine/translators、engine/filters 与 schema/dependencies。";
 "riceice.lexicon.meltEng" = "英文输入（melt_eng）";
 "riceice.lexicon.meltEng.detail" = "中英混输的英文词库。关闭后一并摘除依赖 melt_eng，以及「英文自动大写」「降低英语单词排序」两个滤镜。";
@@ -254,10 +254,10 @@
 "about.userDir.ready" = "已就绪";
 "about.userDir.notReady" = "尚未创建";
 "about.reload.title" = "重新读取配置";
-"about.reload.subtitle" = "如果你在外部编辑过 YAML，用它刷新界面。";
+"about.reload.subtitle" = "在外部编辑 YAML 后，用此按钮刷新面板显示。";
 "about.reload.button" = "重新读取";
 "about.reset.title" = "恢复默认设置";
-"about.reset.subtitle" = "移除控制面板写入的全部配置项，保留你手写的条目。";
+"about.reset.subtitle" = "移除控制面板写入的全部配置项，保留手写的非托管条目。";
 "about.reset.button" = "恢复默认";
 "about.description" = "鼠须管控制面板是一个独立的第三方工具，用于图形化配置 Rime 输入法引擎的 macOS 前端「鼠须管」(Squirrel)。";
 "about.disclaimer" = "本项目不隶属于 RIME 官方，也不会修改鼠须管本体。所有改动都以标准的 Rime 补丁文件形式写入用户目录，随时可以手动编辑或删除。";
@@ -375,6 +375,7 @@
 "dictionary.sync.idPlaceholder" = "这台设备的标识";
 "dictionary.sync.dirPlaceholder" = "留空则使用 ~/Library/Rime/sync";
 "dictionary.save" = "保存同步设置";
+"dictionary.saveAndDeploy" = "保存并重新部署";
 "dictionary.syncNowData" = "立即同步用户数据";
 "dictionary.message.syncStarted" = "已发起同步";
 "dictionary.maintenance.title" = "维护";
@@ -469,10 +470,10 @@
 "about.squirrelUpdate.check" = "检查更新";
 "about.squirrelUpdate.retry" = "重试";
 "about.squirrelReset.title" = "恢复鼠须管默认设置";
-"about.squirrelReset.subtitle" = "删除所有 custom.yaml 补丁文件，让鼠须管完全回到初始状态。操作前会自动生成 .bak 备份。";
+"about.squirrelReset.subtitle" = "删除所有 custom.yaml 补丁文件，使鼠须管完全回到初始状态。操作前会自动生成 .bak 备份。";
 "about.squirrelReset.button" = "恢复鼠须管默认";
 "about.fixWhitespace.title" = "修复配置缩进空白字符";
-"about.fixWhitespace.subtitle" = "某些第三方配置用特殊空格（如 U+2005）做缩进，会让整个面板变成只读。此操作仅把行首缩进的特殊空格替换为普通空格，并自动备份，不改变你的其它配置。";
+"about.fixWhitespace.subtitle" = "某些第三方配置使用特殊空格（如 U+2005）做缩进，会导致面板变为只读。此操作仅替换行首缩进的特殊空格为普通空格，并自动备份，不影响其它配置。";
 "about.fixWhitespace.button" = "修复缩进空白";
 "alert.squirrelResetTitle" = "恢复鼠须管默认设置？";
 "alert.squirrelResetMessage" = "将删除所有 *.custom.yaml 文件（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠须管会完全回到安装后的初始状态。操作前会自动生成 .bak 备份。";
@@ -480,6 +481,90 @@
 "alert.iceEmergencyResetTitle" = "恢复雾凇拼音全部默认？";
 "alert.iceEmergencyResetMessage" = "将删除 rime_ice.custom.yaml（含你手写的所有配置），并把相关开关记忆回落出厂。鼠须管会重新部署以应用此变更。操作前会自动生成 .bak 备份。";
 "alert.iceEmergencyReset" = "恢复全部默认";
+
+/* MaintenancePage（维护面板） */
+"nav.maintenance" = "维护";
+"maintenance.title" = "维护";
+"maintenance.hint" = "用于恢复配置、修复异常或重新加载配置。涉及删除或重置的操作会先自动备份。";
+"maintenance.fix.title" = "维护";
+"diagnose.title" = "部署 YAML 错误诊断";
+"diagnose.hint" = "重新运行一次部署，精确捕获配置文件中的 YAML 语法错误，定位到文件、行号与列号，便于排查「改了不生效」的问题。";
+"diagnose.running" = "正在运行部署并捕获错误…";
+"diagnose.button.run" = "运行部署诊断";
+"diagnose.duration" = "耗时 %@ 毫秒";
+"diagnose.clean" = "未发现 YAML 解析错误，配置文件语法正常。";
+"diagnose.found" = "发现 %d 处 YAML 解析错误";
+"diagnose.lineCol" = "第 %@ 行，第 %@ 列";
+"diagnose.fixHint" = "打开文件，检查对应行的缩进、引号与括号是否匹配。";
+"diagnose.rawLog" = "详细日志";
+"diagnose.logEmpty" = "（未捕获到构建日志输出）";
+
+/* DictionaryPage — 用户动态词频 */
+"dictionary.freq.title" = "用户动态词频";
+"dictionary.freq.hint" = "读取各方案的学习词库（文字 / 编码 / 频次），可搜索、按频次排序、导出备份，也能直接调整某条词的权重（写回 userdb）。忘记误记的词请在鼠须管里用 Shift+Delete。";
+"dictionary.freq.schema" = "方案";
+"dictionary.freq.noSchema" = "（无可用方案）";
+"dictionary.freq.load" = "载入词频";
+"dictionary.freq.search" = "搜索词语或编码";
+"dictionary.freq.sort" = "排序";
+"dictionary.freq.sort.weightDesc" = "频次高→低";
+"dictionary.freq.sort.weightAsc" = "频次低→高";
+"dictionary.freq.sort.wordAsc" = "词语 A→Z";
+"dictionary.freq.sort.wordDesc" = "词语 Z→A";
+"dictionary.freq.word" = "词语";
+"dictionary.freq.code" = "编码";
+"dictionary.freq.weight" = "频次";
+"dictionary.freq.apply" = "应用词频调整";
+"dictionary.freq.cancel" = "放弃改动";
+"dictionary.freq.export" = "导出词频表";
+"dictionary.freq.capped" = "仅显示频次最高的 %d 条（共 %d 条），搜索可缩小范围。";
+"dictionary.freq.empty" = "本机暂无可导出的用户词库。安装并启用雾凇拼音等方案、正常使用一段时间后，这里会列出它们的学习记录。";
+"dictionary.freq.noData" = "该方案尚未记录任何用户词。";
+"dictionary.freq.applied" = "词频已写回用户词库";
+"dictionary.freq.exported" = "词频表已导出";
+
+/* DictionaryPage — iCloud 同步引导 */
+"dictionary.icloud.use" = "使用 iCloud 云盘";
+"dictionary.icloud.hint" = "将同步目录指向 iCloud 云盘中的 RimeSync 文件夹，并在安装标识为空时自动生成唯一标识。多台 Mac 需使用不同标识，保存后自动重新部署以生效。";
+"dictionary.icloud.applied" = "已把同步目录指向 iCloud 云盘并保存";
+"dictionary.icloud.filled" = "已填入 iCloud 同步目录，点击「保存」后应用";
+
+// 可编辑用户词库（图形化编辑）
+"dictionary.files.title" = "用户词库文件";
+"dictionary.files.hint" = "这些是你手写维护的词库文件，可图形化增删改。保存后会自动重新部署，无需停止输入法。";
+"dictionary.files.empty" = "没有发现可编辑的用户词库文件";
+"dictionary.files.phrase.title" = "自定义短语";
+"dictionary.files.phrase.hint" = "用于补充常用词、品牌名、邮箱或手机号等。输入中文后拼音会自动生成，也可手动指定编码。保存前会自动生成 .bak 备份。";
+"dictionary.files.phrase.desc" = "常用词与品牌名，支持中文、英文与符号";
+"dictionary.files.dict.title" = "方案词库配置";
+"dictionary.files.dict.hint" = "词库挂载配置文件，通常用于追加少量字母或数字直输条目。中文主词库由系统文件提供，不在此处编辑。";
+"dictionary.files.dict.descCJK" = "含 %d 条自定义词条";
+"dictionary.files.dict.descAgg" = "主要挂载系统词库；可追加字母 / 数字直输条目";
+"dictionary.edit" = "编辑";
+"dictionary.editor.count" = "共 %d 条";
+"dictionary.learning.title" = "学习词库";
+"dictionary.learning.hint" = "输入法在使用过程中自动记录的词库（leveldb 格式）。当前面板不提供图形化编辑；如需删除误记词条，可在输入时按 Shift+Delete。";
+"dictionary.editor.dirtyHint" = "有未保存的改动";
+"dictionary.editor.cancel" = "取消";
+"dictionary.editor.close" = "关闭";
+"dictionary.editor.save" = "保存";
+"dictionary.editor.addWord" = "新词（中文）";
+"dictionary.editor.add" = "添加";
+"dictionary.editor.addHint" = "输入中文后，拼音编码会自动生成";
+"dictionary.editor.search" = "搜索";
+"dictionary.editor.sort" = "排序";
+"dictionary.editor.weight" = "权重";
+"dictionary.editor.sort.wordAsc" = "按词语升序";
+"dictionary.editor.sort.wordDesc" = "按词语降序";
+"dictionary.editor.sort.codeAsc" = "按编码升序";
+"dictionary.editor.saved" = "已保存并重新部署";
+"dictionary.editor.discardConfirm" = "放弃未保存的改动？";
+"dictionary.editor.discard" = "放弃";
+"dictionary.editor.word" = "词语";
+"dictionary.editor.code" = "编码";
+"dictionary.editor.empty" = "该词库暂无可编辑条目";
+"dictionary.editor.legend" = "词语：候选栏中显示的文字；编码：输入时使用的拼音或自定义码（新增中文将自动生成拼音）；权重：排序优先级，数值越大越靠前，可留空。";
+"dictionary.editor.infoDictAggregator" = "本文件主要用于挂载系统词库，通常只包含少量字母或数字直输条目。如需添加中文词条，请在「自定义短语」中进行编辑。";
 
 // 用户自定义配色方案
 "appearance.scheme.custom.title" = "用户自定义配色";

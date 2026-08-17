@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, riceIce, behavior, appOptions, dictionary, about
+  case appearance, schemas, riceIce, dictionary, behavior, appOptions, maintenance, about
 
   var id: String { rawValue }
 
@@ -18,6 +18,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return "nav.behavior"
     case .appOptions: return "nav.appOptions"
     case .dictionary: return "nav.dictionary"
+    case .maintenance: return "nav.maintenance"
     case .about: return "nav.about"
     }
   }
@@ -30,6 +31,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return "keyboard"
     case .appOptions: return "square.grid.2x2"
     case .dictionary: return "externaldrive"
+    case .maintenance: return "wrench.and.screwdriver"
     case .about: return "info.circle"
     }
   }
@@ -42,6 +44,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .behavior: return .indigo
     case .appOptions: return .blue
     case .dictionary: return .pink
+    case .maintenance: return .purple
     case .about: return .gray
     }
   }
@@ -58,7 +61,6 @@ struct RootView: View {
   @EnvironmentObject private var updateCenter: UpdateCenter
   @State private var selection: PanelSection = .appearance
   @State private var showingYAML = false
-  @State private var showingResetAlert = false
 
   var body: some View {
     // 不再使用 NavigationSplitView：在 macOS + 英文系统 + PD 虚拟机环境下，
@@ -106,7 +108,8 @@ struct RootView: View {
           case .behavior: BehaviorPage()
           case .appOptions: AppOptionsPage()
           case .dictionary: DictionaryPage()
-          case .about: AboutPage(showingResetAlert: $showingResetAlert)
+          case .maintenance: MaintenancePage()
+          case .about: AboutPage()
           }
         }
         .transition(.opacity)
@@ -120,12 +123,6 @@ struct RootView: View {
     .frame(minWidth: 880, minHeight: 620)
     .onAppear { updateCenter.checkAllOnLaunch() }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
-    .alert("alert.resetTitle", isPresented: $showingResetAlert) {
-      Button("alert.cancel", role: .cancel) {}
-      Button("alert.reset", role: .destructive) { store.resetManagedSettings() }
-    } message: {
-      Text("alert.resetMessage")
-    }
   }
 
   // MARK: - 侧边栏项目

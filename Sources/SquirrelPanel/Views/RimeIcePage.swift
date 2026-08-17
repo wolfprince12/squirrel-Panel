@@ -6,7 +6,7 @@
 //  上半部分是包管理（安装/卸载/更新/检查更新），从「输入方案」面板迁移而来；
 //  下半部分是雾凇拼音专属配置管理——
 //    · 基础开关（Phase B）：6 个三态开关（候选词数归「按键与行为」面板全局管理，本面板不碰）
-//    · 词库与短语（Phase C）：英文/中英混合词/部件拆字/Emoji 词库 + 自定义短语编辑器
+//    · 词库（Phase C）：英文/中英混合词/部件拆字/Emoji 词库开关（自定义短语已移至「词库与同步」面板）
 //    · 语言与拼音（Phase D）：繁体类型 + 全拼↔双拼切换 + 双拼编码原样显示
 //    · 高级（Phase E）：Lua 滤镜开关 + 模糊音规则多选 + 直接编辑 rime_ice.custom.yaml
 //
@@ -22,9 +22,6 @@ struct RimeIcePage: View {
   @State private var rawText = ""
   @State private var rawError: String?
   @State private var rawMessage: String?
-
-  // 急救按钮二次确认
-  @State private var showingEmergencyResetAlert = false
 
   var body: some View {
     ScrollView {
@@ -44,45 +41,8 @@ struct RimeIcePage: View {
           advancedSection
         }
         .disabled(!ice.isInstalled)
-
-        // 维护区：与配置区并列，不受 `.disabled(!ice.isInstalled)` 影响——
-        // 急救按钮在「装好却配乱了」的场景下也必须可点，未安装则 rime_ice.custom.yaml
-        // 根本不存在，resetAllRimeIceConfigs 内部 guard 自行短路。
-        maintenanceSection
       }
       .padding(20)
-    }
-    .alert("alert.iceEmergencyResetTitle", isPresented: $showingEmergencyResetAlert) {
-      Button("alert.cancel", role: .cancel) {}
-      Button("alert.iceEmergencyReset", role: .destructive) {
-        ice.resetAllRimeIceConfigs()
-      }
-    } message: {
-      Text("alert.iceEmergencyResetMessage")
-    }
-  }
-
-  // MARK: - 维护 / 急救
-
-  /// 急救保险区：一键把雾凇拼音**所有**配置恢复到出厂默认
-  /// （删除 rime_ice.custom.yaml + save_options 回落出厂，落盘部署一气呵成），
-  /// 用于「鼠标点错了什么把 rime-ice 搞乱了」的救场，与「关于」页还原鼠须管配置同级。
-  private var maintenanceSection: some View {
-    SettingsGroup("riceice.maintenance.title") {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("riceice.emergencyReset.hint")
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-
-        HStack {
-          Spacer()
-          Button("riceice.emergencyReset", role: .destructive) {
-            showingEmergencyResetAlert = true
-          }
-          .controlSize(.small)
-        }
-      }
     }
   }
 
@@ -189,122 +149,8 @@ struct RimeIcePage: View {
         toggleRow(title: "riceice.lexicon.emojiDict",
                   detail: "riceice.lexicon.emojiDict.detail",
                   isOn: $ice.enableEmojiDict)
-
-        Divider().padding(.vertical, 2)
-        phraseEditor
       }
     }
-  }
-
-  private var phraseEditor: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("riceice.phrase.title")
-        .font(.callout)
-        .fontWeight(.medium)
-      Text("riceice.phrase.hint")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-
-      if let phraseSaveError = ice.phraseSaveError {
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-          Text(phraseSaveError).fixedSize(horizontal: false, vertical: true)
-        }
-        .font(.caption)
-        .foregroundStyle(.red)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(
-          RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color.red.opacity(0.1))
-        )
-      }
-
-      HStack(spacing: 8) {
-        Text("riceice.phrase.word").frame(maxWidth: .infinity, alignment: .leading)
-        Text("riceice.phrase.code").frame(width: 120, alignment: .leading)
-        Text("riceice.phrase.weight").frame(width: 72, alignment: .leading)
-        Color.clear.frame(width: 22, height: 1)
-      }
-      .font(.caption)
-      .foregroundStyle(.secondary)
-
-      if ice.phrases.entryCount == 0 {
-        Text("riceice.phrase.empty")
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.vertical, 8)
-      } else {
-        ScrollView {
-          VStack(spacing: 6) {
-            ForEach(ice.phrases.lines.filter(\.isEntry)) { line in
-              phraseRow(id: line.id)
-            }
-          }
-          .padding(.vertical, 2)
-        }
-        .frame(height: min(CGFloat(ice.phrases.entryCount) * 32 + 8, 220))
-        .background(
-          RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color(nsColor: .textBackgroundColor).opacity(0.6))
-        )
-      }
-
-      HStack(spacing: 10) {
-        Button {
-          ice.phrases.addEntry()
-        } label: {
-          Label("riceice.phrase.add", systemImage: "plus")
-        }
-        .controlSize(.small)
-
-        Spacer()
-
-        Text(ice.phrases.fileURL.path(percentEncoded: false))
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          .truncationMode(.middle)
-
-        Button("riceice.phrase.save") {
-          ice.phraseSaveError = nil
-          settings.apply()
-        }
-        .controlSize(.small)
-        .disabled(!ice.phrases.isDirty)
-      }
-    }
-  }
-
-  private func phraseRow(id: UUID) -> some View {
-    let line = phraseBinding(id: id)
-    return HStack(spacing: 8) {
-      TextField("riceice.phrase.word", text: line.word)
-        .textFieldStyle(.roundedBorder)
-        .frame(maxWidth: .infinity)
-      TextField("riceice.phrase.code", text: line.code)
-        .textFieldStyle(.roundedBorder)
-        .frame(width: 120)
-      TextField("riceice.phrase.weight", text: line.weight)
-        .textFieldStyle(.roundedBorder)
-        .frame(width: 72)
-      Button {
-        ice.phrases.removeEntry(id: id)
-      } label: {
-        Image(systemName: "minus.circle")
-      }
-      .buttonStyle(.borderless)
-      .help("riceice.phrase.delete")
-      .frame(width: 22)
-    }
-  }
-
-  private func phraseBinding(id: UUID) -> Binding<PhraseLine> {
-    Binding(
-      get: { ice.phrases.lines.first(where: { $0.id == id }) ?? PhraseLine(id: id) },
-      set: { newValue in ice.phrases.update(newValue) }
-    )
   }
 
   // MARK: - 语言与拼音（Phase D）

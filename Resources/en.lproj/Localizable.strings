@@ -2,7 +2,7 @@
 "app.name" = "Squirrel Panel";
 "nav.appearance" = "Appearance";
 "nav.schemas" = "Schemas";
-"nav.riceIce" = "Rime-ice";
+"nav.riceIce" = "Rime-ice & Wanxiang";
 "nav.behavior" = "Behavior";
 "nav.appOptions" = "App Options";
 "nav.dictionary" = "Dictionary";
@@ -37,11 +37,11 @@
 "riceice.reset" = "Reset Rime-ice";
 "riceice.maintenance.title" = "Maintenance";
 "riceice.emergencyReset" = "Restore all Rime-ice defaults";
-"riceice.emergencyReset.hint" = "One tap deletes rime_ice.custom.yaml (including your hand-written, unmanaged keys) and reverts switch memory to factory, bringing Rime-ice fully back to its initial state. A .bak backup is created automatically.";
+"riceice.emergencyReset.hint" = "Delete rime_ice.custom.yaml (including manually added unmanaged keys) and revert switcher memory to factory defaults, returning Rime-ice to its initial state. A .bak backup is created automatically.";
 "error.parse.riceice" = "rime_ice.custom.yaml parsing failed: %@";
 
 /* RimeIcePage — Lexicon & Phrases */
-"riceice.lexicon.title" = "Lexicons & Phrases";
+"riceice.lexicon.title" = "Lexicons";
 "riceice.lexicon.hint" = "Turning off unused lexicons keeps candidates clean and deployment fast. Changes are written to engine/translators, engine/filters and schema/dependencies in rime_ice.custom.yaml.";
 "riceice.lexicon.meltEng" = "English input (melt_eng)";
 "riceice.lexicon.meltEng.detail" = "English lexicon for mixed Chinese/English typing. Turning it off also removes the melt_eng dependency plus the “auto capitalise” and “demote English words” filters.";
@@ -254,10 +254,10 @@
 "about.userDir.ready" = "Ready";
 "about.userDir.notReady" = "Not created";
 "about.reload.title" = "Reload Configuration";
-"about.reload.subtitle" = "Refresh the panel after editing YAML externally.";
+"about.reload.subtitle" = "Refresh the panel display after editing YAML externally.";
 "about.reload.button" = "Reload";
 "about.reset.title" = "Reset to Defaults";
-"about.reset.subtitle" = "Remove all settings written by this panel, preserving your manual patches.";
+"about.reset.subtitle" = "Remove all settings written by this panel, preserving manually written unmanaged entries.";
 "about.reset.button" = "Reset";
 "about.description" = "Squirrel Panel is an independent third-party tool for graphically configuring the Rime input method engine's macOS frontend, Squirrel.";
 "about.disclaimer" = "This project is not affiliated with the RIME project and does not modify Squirrel itself. All changes are written as standard Rime patch files in the user directory and can be manually edited or removed at any time.";
@@ -375,6 +375,7 @@
 "dictionary.sync.idPlaceholder" = "This device's identifier";
 "dictionary.sync.dirPlaceholder" = "Leave empty to use ~/Library/Rime/sync";
 "dictionary.save" = "Save Sync Settings";
+"dictionary.saveAndDeploy" = "Save & Redeploy";
 "dictionary.syncNowData" = "Sync User Data Now";
 "dictionary.message.syncStarted" = "Sync initiated";
 "dictionary.maintenance.title" = "Maintenance";
@@ -469,10 +470,10 @@
 "about.squirrelUpdate.check" = "Check";
 "about.squirrelUpdate.retry" = "Retry";
 "about.squirrelReset.title" = "Reset Squirrel to Defaults";
-"about.squirrelReset.subtitle" = "Delete all custom.yaml patch files to completely restore Squirrel to its initial state. .bak backups are created automatically.";
+"about.squirrelReset.subtitle" = "Delete all custom.yaml patch files to restore Squirrel to its initial state. .bak backups are created automatically.";
 "about.squirrelReset.button" = "Reset Squirrel";
 "about.fixWhitespace.title" = "Fix indentation whitespace";
-"about.fixWhitespace.subtitle" = "Some third-party configs indent with special spaces (e.g. U+2005), which makes the whole panel read-only. This only replaces special spaces in line-leading indentation with normal spaces, with an automatic backup — your other settings are untouched.";
+"about.fixWhitespace.subtitle" = "Some third-party configs indent with special spaces (e.g. U+2005), which can make the panel read-only. This operation only replaces special spaces at the start of lines with normal spaces, with an automatic backup; other settings are not affected.";
 "about.fixWhitespace.button" = "Fix whitespace";
 "alert.squirrelResetTitle" = "Reset Squirrel to Defaults?";
 "alert.squirrelResetMessage" = "This will delete all *.custom.yaml files (including squirrel.custom.yaml and default.custom.yaml). Squirrel will be completely restored to its initial state. .bak backups are created automatically.";
@@ -480,6 +481,90 @@
 "alert.iceEmergencyResetTitle" = "Restore all Rime-ice defaults?";
 "alert.iceEmergencyResetMessage" = "This will delete rime_ice.custom.yaml (including all your hand-written configuration) and revert related switch memory to factory. Squirrel will re-deploy to apply the change. A .bak backup is created automatically.";
 "alert.iceEmergencyReset" = "Restore all defaults";
+
+/* MaintenancePage */
+"nav.maintenance" = "Maintenance";
+"maintenance.title" = "Maintenance";
+"maintenance.hint" = "Use these tools to reload configuration, fix abnormalities, or restore defaults. Destructive operations create automatic backups first.";
+"maintenance.fix.title" = "Maintenance";
+"diagnose.title" = "Deploy YAML Error Diagnosis";
+"diagnose.hint" = "Run a fresh deploy to precisely capture YAML syntax errors in configuration files, pinpointing the file, line and column for troubleshooting \"changes not taking effect\".";
+"diagnose.running" = "Running deployment and capturing errors…";
+"diagnose.button.run" = "Run Deploy Diagnosis";
+"diagnose.duration" = "Took %@ ms";
+"diagnose.clean" = "No YAML parse errors found; config files are syntactically valid.";
+"diagnose.found" = "Found %d YAML parse error(s)";
+"diagnose.lineCol" = "Line %@, Column %@";
+"diagnose.fixHint" = "Open the file and check indentation, quotes and brackets on the reported line.";
+"diagnose.rawLog" = "Detailed Log";
+"diagnose.logEmpty" = "(No build log output captured)";
+
+/* DictionaryPage — User Dynamic Word Frequency */
+"dictionary.freq.title" = "User Dynamic Word Frequency";
+"dictionary.freq.hint" = "Reads each schema's learned dictionary (text / code / weight). You can search, sort by frequency, export a backup, and adjust an entry's weight (written back to the userdb). To forget a wrongly-learned word, use Shift+Delete in Squirrel.";
+"dictionary.freq.schema" = "Schema";
+"dictionary.freq.noSchema" = "(No schema available)";
+"dictionary.freq.load" = "Load Frequency";
+"dictionary.freq.search" = "Search word or code";
+"dictionary.freq.sort" = "Sort";
+"dictionary.freq.sort.weightDesc" = "Frequency high→low";
+"dictionary.freq.sort.weightAsc" = "Frequency low→high";
+"dictionary.freq.sort.wordAsc" = "Word A→Z";
+"dictionary.freq.sort.wordDesc" = "Word Z→A";
+"dictionary.freq.word" = "Word";
+"dictionary.freq.code" = "Code";
+"dictionary.freq.weight" = "Frequency";
+"dictionary.freq.apply" = "Apply Frequency Changes";
+"dictionary.freq.cancel" = "Discard Changes";
+"dictionary.freq.export" = "Export Frequency Table";
+"dictionary.freq.capped" = "Showing only the top %d by frequency (%d total). Search to narrow down.";
+"dictionary.freq.empty" = "No exportable user dictionaries on this Mac yet. After installing and enabling a schema such as rime-ice and using it for a while, its learning records will appear here.";
+"dictionary.freq.noData" = "This schema has not recorded any user words yet.";
+"dictionary.freq.applied" = "Frequency written back to user dictionary";
+"dictionary.freq.exported" = "Frequency table exported";
+
+/* DictionaryPage — iCloud Sync Guide */
+"dictionary.icloud.use" = "Use iCloud Drive";
+"dictionary.icloud.hint" = "Point the sync directory to the RimeSync folder in iCloud Drive, and auto-generate a unique installation_id when it is empty. Each Mac must use a different installation_id; save to apply and redeploy.";
+"dictionary.icloud.applied" = "Sync directory set to iCloud Drive and saved";
+"dictionary.icloud.filled" = "iCloud sync directory filled in. Click Save to apply.";
+
+// Editable user dictionaries (graphical editor)
+"dictionary.files.title" = "User Dictionary Files";
+"dictionary.files.hint" = "These are the dictionaries you maintain by hand. You can add, edit and delete entries graphically. Saving triggers a redeploy automatically — no need to quit the input method.";
+"dictionary.files.empty" = "No editable user dictionary files found";
+"dictionary.files.phrase.title" = "Custom Phrases";
+"dictionary.files.phrase.hint" = "Add frequently used words, brand names, email addresses or phone numbers. Pinyin is generated automatically after entering Chinese; custom codes are also supported. A .bak backup is created before saving.";
+"dictionary.files.phrase.desc" = "Frequently used words and brand names, supporting Chinese, English and symbols";
+"dictionary.files.dict.title" = "Schema Dictionary Configs";
+"dictionary.files.dict.hint" = "Dictionary-mounting configuration files, typically used to append a few letter or number direct-input entries. The main Chinese dictionary is provided by system files and is not edited here.";
+"dictionary.files.dict.descCJK" = "%d custom entries";
+"dictionary.files.dict.descAgg" = "Mounts system dictionaries; can append letter / number direct-input entries";
+"dictionary.edit" = "Edit";
+"dictionary.editor.count" = "%d entries";
+"dictionary.learning.title" = "Learning Dictionaries";
+"dictionary.learning.hint" = "Dictionaries the input method records automatically during use (leveldb format). The panel does not provide a graphical editor for them; to remove a mis-learned word, press Shift+Delete while typing.";
+"dictionary.editor.dirtyHint" = "Unsaved changes";
+"dictionary.editor.cancel" = "Cancel";
+"dictionary.editor.close" = "Close";
+"dictionary.editor.save" = "Save";
+"dictionary.editor.addWord" = "New word (Chinese)";
+"dictionary.editor.add" = "Add";
+"dictionary.editor.addHint" = "After entering Chinese, the pinyin code is generated automatically";
+"dictionary.editor.search" = "Search";
+"dictionary.editor.sort" = "Sort";
+"dictionary.editor.weight" = "Weight";
+"dictionary.editor.sort.wordAsc" = "Word A→Z";
+"dictionary.editor.sort.wordDesc" = "Word Z→A";
+"dictionary.editor.sort.codeAsc" = "Code A→Z";
+"dictionary.editor.saved" = "Saved and redeployed";
+"dictionary.editor.discardConfirm" = "Discard unsaved changes?";
+"dictionary.editor.discard" = "Discard";
+"dictionary.editor.word" = "Word";
+"dictionary.editor.code" = "Code";
+"dictionary.editor.empty" = "No editable entries in this dictionary";
+"dictionary.editor.legend" = "Word: text shown in the candidate bar · Code: pinyin or custom code used while typing (pinyin is auto-generated for new Chinese words) · Weight: sort priority; larger values appear first, may be empty.";
+"dictionary.editor.infoDictAggregator" = "This file is mainly used to mount system dictionaries and usually contains only a few letter or number direct-input entries. To add Chinese entries, edit them in Custom Phrases.";
 
 // User custom color schemes
 "appearance.scheme.custom.title" = "Custom Color Schemes";

@@ -2,7 +2,7 @@
 "app.name" = "鼠鬚管控制面板";
 "nav.appearance" = "外觀";
 "nav.schemas" = "輸入方案";
-"nav.riceIce" = "霧鬚管";
+"nav.riceIce" = "霧鬚管與萬象";
 "nav.behavior" = "按鍵與行為";
 "nav.appOptions" = "應用適配";
 "nav.dictionary" = "詞庫與同步";
@@ -37,11 +37,11 @@
 "riceice.reset" = "恢復霧凇預設";
 "riceice.maintenance.title" = "維護";
 "riceice.emergencyReset" = "恢復霧凇拼音全部預設";
-"riceice.emergencyReset.hint" = "一鍵刪除 rime_ice.custom.yaml（含你手寫的非託管鍵）並把開關記憶回落出廠，讓霧凇拼音完全回到初始狀態。操作前會自動產生 .bak 備份。";
+"riceice.emergencyReset.hint" = "刪除 rime_ice.custom.yaml（含手寫的非託管鍵）並將開關記憶恢復為出廠值，使霧凇拼音完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失敗：%@";
 
 /* RimeIcePage — 詞庫與短語 */
-"riceice.lexicon.title" = "詞庫與短語";
+"riceice.lexicon.title" = "詞庫";
 "riceice.lexicon.hint" = "關掉不需要的詞庫可讓候選更乾淨、部署更快。變更寫入 rime_ice.custom.yaml 的 engine/translators、engine/filters 與 schema/dependencies。";
 "riceice.lexicon.meltEng" = "英文輸入（melt_eng）";
 "riceice.lexicon.meltEng.detail" = "中英混輸的英文詞庫。關閉後會一併摘除相依項目 melt_eng，以及「英文自動大寫」「降低英語單字排序」兩個濾鏡。";
@@ -255,16 +255,16 @@
 "about.userDir.ready" = "已就緒";
 "about.userDir.notReady" = "尚未建立";
 "about.reload.title" = "重新讀取設定";
-"about.reload.subtitle" = "如果你在外部編輯過 YAML，用它重新整理介面。";
+"about.reload.subtitle" = "在外部編輯 YAML 後，用此按鈕重新整理面板顯示。";
 "about.reload.button" = "重新讀取";
 "about.reset.title" = "還原預設設定";
-"about.reset.subtitle" = "移除控制面板寫入的全部設定項，保留你手寫的項目。";
+"about.reset.subtitle" = "移除控制面板寫入的全部設定項，保留手寫的非受管理項目。";
 "about.reset.button" = "還原預設";
 "about.squirrelReset.title" = "恢復鼠須管預設設定";
-"about.squirrelReset.subtitle" = "刪除所有 custom.yaml 補丁檔案，讓鼠須管完全回到初始狀態。操作前會自動產生 .bak 備份。";
+"about.squirrelReset.subtitle" = "刪除所有 custom.yaml 補丁檔案，使鼠須管完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "about.squirrelReset.button" = "恢復鼠須管預設";
 "about.fixWhitespace.title" = "修復配置縮進空白字元";
-"about.fixWhitespace.subtitle" = "某些第三方配置用特殊空格（如 U+2005）做縮進，會讓整個面板變成唯讀。此操作僅把行首縮進的特殊空格替換為普通空格，並自動備份，不改變你的其它配置。";
+"about.fixWhitespace.subtitle" = "某些第三方配置使用特殊空格（如 U+2005）做縮進，會導致面板變為唯讀。此操作僅替換行首縮進的特殊空格為普通空格，並自動備份，不影響其它配置。";
 "about.fixWhitespace.button" = "修復縮進空白";
 "about.description" = "鼠鬚管控制面板是一個獨立的第三方工具，用於圖形化設定 Rime 輸入法引擎的 macOS 前端「鼠鬚管」(Squirrel)。";
 "about.disclaimer" = "本專案不隸屬於 RIME 官方，也不會修改鼠須管本體。所有變更都以標準的 Rime 補丁檔案形式寫入使用者目錄，隨時可以手動編輯或刪除。";
@@ -405,6 +405,7 @@
 "dictionary.sync.idPlaceholder" = "這台裝置的識別碼";
 "dictionary.sync.dirPlaceholder" = "留空則使用 ~/Library/Rime/sync";
 "dictionary.save" = "儲存同步設定";
+"dictionary.saveAndDeploy" = "儲存並重新部署";
 "dictionary.syncNowData" = "立即同步使用者資料";
 "dictionary.message.syncStarted" = "已發起同步";
 "dictionary.message.saved" = "同步設定已儲存";
@@ -482,6 +483,90 @@
 "package.error.grammarMustBeUninstalledFirst" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";
 "package.hint.needsRimeIce" = "請先安裝霧凇拼音（rime-ice）後再安裝語法模型";
 "package.hint.uninstallRimeIceNeedsGrammar" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";
+
+/* MaintenancePage（維護面板） */
+"nav.maintenance" = "維護";
+"maintenance.title" = "維護";
+"maintenance.hint" = "用於重新載入設定、修復異常或恢復預設。涉及刪除或重置的操作會先自動備份。";
+"maintenance.fix.title" = "維護";
+"diagnose.title" = "部署 YAML 錯誤診斷";
+"diagnose.hint" = "重新執行一次部署，精確捕捉設定檔中的 YAML 語法錯誤，定位到檔案、行號與列號，便於排查「改了不生效」的問題。";
+"diagnose.running" = "正在執行部署並捕捉錯誤…";
+"diagnose.button.run" = "執行部署診斷";
+"diagnose.duration" = "耗時 %@ 毫秒";
+"diagnose.clean" = "未發現 YAML 解析錯誤，設定檔語法正常。";
+"diagnose.found" = "發現 %d 處 YAML 解析錯誤";
+"diagnose.lineCol" = "第 %@ 行，第 %@ 列";
+"diagnose.fixHint" = "開啟檔案，檢查對應行的縮排、引號與括號是否匹配。";
+"diagnose.rawLog" = "詳細日誌";
+"diagnose.logEmpty" = "（未捕捉到建置日誌輸出）";
+
+/* DictionaryPage — 用戶動態詞頻 */
+"dictionary.freq.title" = "用戶動態詞頻";
+"dictionary.freq.hint" = "讀取各方案的學習詞庫（文字 / 編碼 / 頻次），可搜尋、依頻次排序、匯出備份，也能直接調整某條詞的權重（寫回 userdb）。忘記誤記的詞請在鼠須管裡用 Shift+Delete。";
+"dictionary.freq.schema" = "方案";
+"dictionary.freq.noSchema" = "（無可用方案）";
+"dictionary.freq.load" = "載入詞頻";
+"dictionary.freq.search" = "搜尋詞語或編碼";
+"dictionary.freq.sort" = "排序";
+"dictionary.freq.sort.weightDesc" = "頻次高→低";
+"dictionary.freq.sort.weightAsc" = "頻次低→高";
+"dictionary.freq.sort.wordAsc" = "詞語 A→Z";
+"dictionary.freq.sort.wordDesc" = "詞語 Z→A";
+"dictionary.freq.word" = "詞語";
+"dictionary.freq.code" = "編碼";
+"dictionary.freq.weight" = "頻次";
+"dictionary.freq.apply" = "應用詞頻調整";
+"dictionary.freq.cancel" = "放棄改動";
+"dictionary.freq.export" = "匯出詞頻表";
+"dictionary.freq.capped" = "僅顯示頻次最高的 %d 條（共 %d 條），搜尋可縮小範圍。";
+"dictionary.freq.empty" = "本機暫無可匯出的用戶詞庫。安裝並啟用霧凇拼音等方案、正常使用一段時間後，這裡會列出它們的學習記錄。";
+"dictionary.freq.noData" = "該方案尚未記錄任何用戶詞。";
+"dictionary.freq.applied" = "詞頻已寫回用戶詞庫";
+"dictionary.freq.exported" = "詞頻表已匯出";
+
+/* DictionaryPage — iCloud 同步引導 */
+"dictionary.icloud.use" = "使用 iCloud 雲碟";
+"dictionary.icloud.hint" = "將同步目錄指向 iCloud 雲碟中的 RimeSync 資料夾，並在安裝標識為空時自動生成唯一標識。多台 Mac 需使用不同標識，儲存後會自動重新部署以生效。";
+"dictionary.icloud.applied" = "已把同步目錄指向 iCloud 雲碟並儲存";
+"dictionary.icloud.filled" = "已填入 iCloud 同步目錄，點擊「儲存」後應用";
+
+// 可編輯用戶詞庫（圖形化編輯）
+"dictionary.files.title" = "使用者詞庫檔案";
+"dictionary.files.hint" = "這些是你手寫維護的詞庫檔案，可圖形化增刪改。儲存後會自動重新部署，無需停止輸入法。";
+"dictionary.files.empty" = "沒有發現可編輯的使用者詞庫檔案";
+"dictionary.files.phrase.title" = "自訂短語";
+"dictionary.files.phrase.hint" = "用於補充常用詞、品牌名、電子郵件或手機號碼等。輸入中文後拼音會自動生成，也可手動指定編碼。儲存前會自動生成 .bak 備份。";
+"dictionary.files.phrase.desc" = "常用詞與品牌名，支援中文、英文與符號";
+"dictionary.files.dict.title" = "方案詞庫設定";
+"dictionary.files.dict.hint" = "詞庫掛載設定檔，通常用於追加少量字母或數字直輸條目。中文主詞庫由系統檔案提供，不在此處編輯。";
+"dictionary.files.dict.descCJK" = "含 %d 條自訂條目";
+"dictionary.files.dict.descAgg" = "主要掛載系統詞庫；可追加字母 / 數字直輸條目";
+"dictionary.edit" = "編輯";
+"dictionary.editor.count" = "共 %d 條";
+"dictionary.learning.title" = "學習詞庫";
+"dictionary.learning.hint" = "輸入法在使用過程中自動記錄的詞庫（leveldb 格式）。目前面板不提供圖形化編輯；如需刪除誤記詞條，可在輸入時按 Shift+Delete。";
+"dictionary.editor.dirtyHint" = "有未儲存的改動";
+"dictionary.editor.cancel" = "取消";
+"dictionary.editor.close" = "關閉";
+"dictionary.editor.save" = "儲存";
+"dictionary.editor.addWord" = "新詞（中文）";
+"dictionary.editor.add" = "新增";
+"dictionary.editor.addHint" = "輸入中文後，拼音編碼會自動生成";
+"dictionary.editor.search" = "搜尋";
+"dictionary.editor.sort" = "排序";
+"dictionary.editor.weight" = "權重";
+"dictionary.editor.sort.wordAsc" = "依詞語升冪";
+"dictionary.editor.sort.wordDesc" = "依詞語降冪";
+"dictionary.editor.sort.codeAsc" = "依編碼升冪";
+"dictionary.editor.saved" = "已儲存並重新部署";
+"dictionary.editor.discardConfirm" = "放棄未儲存的改動？";
+"dictionary.editor.discard" = "放棄";
+"dictionary.editor.word" = "詞語";
+"dictionary.editor.code" = "編碼";
+"dictionary.editor.empty" = "該詞庫暫無可編輯條目";
+"dictionary.editor.legend" = "詞語：候選欄中顯示的文字；編碼：輸入時使用的拼音或自訂碼（新增中文將自動生成拼音）；權重：排序優先級，數值越大越靠前，可留空。";
+"dictionary.editor.infoDictAggregator" = "本檔案主要用於掛載系統詞庫，通常只包含少量字母或數字直輸條目。如需新增中文條目，請在「自訂短語」中進行編輯。";
 
 // 用戶自定義配色方案
 "appearance.scheme.custom.title" = "用戶自定義配色";

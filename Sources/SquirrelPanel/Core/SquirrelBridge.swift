@@ -11,6 +11,7 @@
 
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 import Yams
 
 enum SquirrelBridge {
@@ -140,6 +141,33 @@ enum SquirrelBridge {
     return String(data: data, encoding: .utf8) ?? ""
   }
 
+  // MARK: - 用户词库（rime_dict_manager）
+
+  /// 调用鼠须管自带的 `rime_dict_manager` 列出 / 导出 / 导入用户词库。
+  /// 该二进制与 Squirrel 同目录（Contents/MacOS/rime_dict_manager），无需链接 librime。
+  /// 返回合并后的标准输出与标准错误文本。退出码非 0 时抛出 PanelError。
+  @discardableResult
+  static func runDictManager(_ arguments: [String], environment: RimeEnvironment) throws -> String {
+    guard let appURL = environment.appURL else { throw PanelError.squirrelNotInstalled }
+    let exec = appURL.appending(path: "Contents/MacOS/rime_dict_manager")
+    let task = Process()
+    task.executableURL = exec
+    task.arguments = arguments
+    let out = Pipe()
+    let err = Pipe()
+    task.standardOutput = out
+    task.standardError = err
+    try task.run()
+    task.waitUntilExit()
+    let text = (String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")
+      + (String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")
+    guard task.terminationStatus == 0 else {
+      throw PanelError.commandFailed("rime_dict_manager " + arguments.joined(separator: " "),
+                                     task.terminationStatus)
+    }
+    return text
+  }
+
   // MARK: - 访达
 
   static func reveal(_ url: URL) {
@@ -147,5 +175,62 @@ enum SquirrelBridge {
       try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path(percentEncoded: false))
+  }
+
+  /// 为指定目录合成「标准文件夹 + 鼠须管控制面板 logo」图标（如 RimeSync 同步目录）。
+  /// 图标直接浮于文件夹正面，无白色底板，带轻微阴影以贴合文件夹透视。
+  /// 此为尽力而为操作：即使图标设置失败，也不影响目录创建与同步配置。
+  static func setFolderIcon(at url: URL) {
+    guard let logoURL = Bundle.main.url(forResource: "AppLogo", withExtension: "png"),
+          let logo = NSImage(contentsOf: logoURL) else { return }
+
+    let folderIcon = NSWorkspace.shared.icon(for: .folder)
+    let px: CGFloat = 1024
+    let logicalSize = NSSize(width: px / 2, height: px / 2)
+
+    guard let bitmap = NSBitmapImageRep(
+      bitmapDataPlanes: nil,
+      pixelsWide: Int(px),
+      pixelsHigh: Int(px),
+      bitsPerSample: 8,
+      samplesPerPixel: 4,
+      hasAlpha: true,
+      isPlanar: false,
+      colorSpaceName: .deviceRGB,
+      bytesPerRow: 0,
+      bitsPerPixel: 0
+    ), let ctx = NSGraphicsContext(bitmapImageRep: bitmap) else { return }
+
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = ctx
+    defer { NSGraphicsContext.restoreGraphicsState() }
+
+    let fullRect = NSRect(x: 0, y: 0, width: px, height: px)
+
+    // 1. 标准蓝色文件夹底图
+    folderIcon.draw(in: fullRect, from: .zero, operation: .copy, fraction: 1.0)
+
+    // 2. 鼠须管控制面板 logo 直接浮于文件夹正面，无白色底板
+    let logoScale: CGFloat = 0.55
+    let logoSize = px * logoScale
+    let logoRect = NSRect(
+      x: (px - logoSize) / 2,
+      y: px * 0.170,
+      width: logoSize,
+      height: logoSize
+    )
+
+    ctx.cgContext.setShadow(
+      offset: CGSize(width: 0, height: -px * 0.018),
+      blur: px * 0.030,
+      color: NSColor.black.withAlphaComponent(0.22).cgColor)
+
+    logo.draw(in: logoRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+
+    ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+
+    let composed = NSImage(size: logicalSize)
+    composed.addRepresentation(bitmap)
+    NSWorkspace.shared.setIcon(composed, forFile: url.path(percentEncoded: false), options: [])
   }
 }

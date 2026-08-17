@@ -9,10 +9,6 @@ import AppKit
 struct AboutPage: View {
   @EnvironmentObject private var store: SettingsStore
   @EnvironmentObject private var updateCenter: UpdateCenter
-  @Binding var showingResetAlert: Bool
-
-  // 恢复鼠须管默认设置
-  @State private var showingSquirrelResetAlert = false
 
   private var panelVersion: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
@@ -29,16 +25,9 @@ struct AboutPage: View {
         promotionSection
         statusCard
         pathsCard
-        maintenanceCard
         projectCard
       }
       .padding(20)
-    }
-    .alert("alert.squirrelResetTitle", isPresented: $showingSquirrelResetAlert) {
-      Button("alert.cancel", role: .cancel) {}
-      Button("alert.squirrelReset", role: .destructive) { store.resetSquirrelDefaults() }
-    } message: {
-      Text("alert.squirrelResetMessage")
     }
   }
 
@@ -330,48 +319,6 @@ struct AboutPage: View {
     }
   }
 
-  // MARK: - 维护
-
-  private var maintenanceCard: some View {
-    SettingsGroup("about.header.maintenance") {
-      MaintenanceRow(
-        icon: "arrow.clockwise",
-        tint: .blue,
-        title: String(localized: "about.reload.title"),
-        subtitle: String(localized: "about.reload.subtitle"),
-        actionTitle: String(localized: "about.reload.button"),
-        action: { store.reload() })
-      Divider()
-      MaintenanceRow(
-        icon: "gobackward",
-        tint: .orange,
-        title: String(localized: "about.reset.title"),
-        subtitle: String(localized: "about.reset.subtitle"),
-        actionTitle: String(localized: "about.reset.button"),
-        isDestructive: true,
-        action: { showingResetAlert = true })
-      .disabled(!store.canWrite)
-      Divider()
-      MaintenanceRow(
-        icon: "exclamationmark.triangle.fill",
-        tint: .red,
-        title: String(localized: "about.squirrelReset.title"),
-        subtitle: String(localized: "about.squirrelReset.subtitle"),
-        actionTitle: String(localized: "about.squirrelReset.button"),
-        isDestructive: true,
-        action: { showingSquirrelResetAlert = true })
-      .disabled(!store.environment.isInstalled)
-      Divider()
-      MaintenanceRow(
-        icon: "text.alignleft",
-        tint: .teal,
-        title: String(localized: "about.fixWhitespace.title"),
-        subtitle: String(localized: "about.fixWhitespace.subtitle"),
-        actionTitle: String(localized: "about.fixWhitespace.button"),
-        action: { store.fixWhitespaceInConfigFiles() })
-    }
-  }
-
   // MARK: - 项目说明
 
   private var projectCard: some View {
@@ -504,45 +451,6 @@ private struct StatusRow: View {
 
       Text(value)
         .foregroundStyle(.secondary)
-    }
-  }
-}
-
-private struct MaintenanceRow: View {
-  let icon: String
-  let tint: Color
-  let title: String
-  let subtitle: String
-  let actionTitle: String
-  var isDestructive: Bool = false
-  let action: () -> Void
-
-  var body: some View {
-    HStack(spacing: 12) {
-      Image(systemName: icon)
-        .font(.caption)
-        .foregroundStyle(tint)
-        .frame(width: 28, height: 28)
-        .background(tint.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-
-      VStack(alignment: .leading, spacing: 2) {
-        Text(title)
-        Text(subtitle)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-
-      Spacer()
-
-      if isDestructive {
-        Button(actionTitle, role: .destructive, action: action)
-          .controlSize(.small)
-      } else {
-        Button(actionTitle, action: action)
-          .controlSize(.small)
-      }
     }
   }
 }
