@@ -66,12 +66,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // SwiftUI Window scene 创建的 NSWindow 在此时已可用；取第一个并设置委托。
     if let window = NSApp.windows.first {
       window.delegate = self
+      configureWindowAppearance(window)
       enforceMainWindowSize(window: window)
     } else {
       // 若窗口尚未创建，延迟一帧再取。
       DispatchQueue.main.async { [weak self] in
         if let window = NSApp.windows.first {
           window.delegate = self
+          self?.configureWindowAppearance(window)
           self?.enforceMainWindowSize(window: window)
         }
       }
@@ -79,10 +81,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 某些 autosave/布局计算会在启动后几帧内把窗口压小，追加多次兜底。
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-      if let window = NSApp.windows.first { self?.enforceMainWindowSize(window: window) }
+      if let window = NSApp.windows.first {
+        self?.configureWindowAppearance(window)
+        self?.enforceMainWindowSize(window: window)
+      }
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-      if let window = NSApp.windows.first { self?.enforceMainWindowSize(window: window) }
+      if let window = NSApp.windows.first {
+        self?.configureWindowAppearance(window)
+        self?.enforceMainWindowSize(window: window)
+      }
     }
   }
 
@@ -95,6 +103,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
       width: max(frameSize.width, mainWindowMinSize.width),
       height: max(frameSize.height, mainWindowMinSize.height)
     )
+  }
+
+  private func configureWindowAppearance(_ window: NSWindow) {
+    // 让侧边栏背景延伸到标题栏区域，消除标题栏与侧边栏之间的视觉断层。
+    // 这是 macOS 11+ 上 System Settings 等原生应用的常见处理方式。
+    window.titlebarAppearsTransparent = true
+    window.backgroundColor = NSColor.windowBackgroundColor
+    window.titleVisibility = .hidden
   }
 
   private func enforceMainWindowSize(window: NSWindow) {
