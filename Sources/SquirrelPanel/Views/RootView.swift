@@ -69,6 +69,9 @@ struct RootView: View {
     HStack(spacing: 0) {
       // MARK: Sidebar
       VStack(spacing: 0) {
+        // 为窗口左上角的红黄绿按钮留出安全距离，避免 sidebar 内容与其重叠。
+        Color(nsColor: .windowBackgroundColor)
+          .frame(height: 26)
         ScrollView(.vertical, showsIndicators: true) {
           VStack(spacing: 2) {
             ForEach(PanelSection.allCases) { section in
@@ -121,6 +124,7 @@ struct RootView: View {
       }
     }
     .frame(minWidth: 880, minHeight: 620)
+    .ignoresSafeArea(.container, edges: .top)
     .onAppear { updateCenter.checkAllOnLaunch() }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
   }
@@ -176,6 +180,9 @@ struct RootView: View {
   @ViewBuilder
   private var banners: some View {
     VStack(spacing: 8) {
+      // 内容区延伸到透明标题栏后，为窗口按钮留出顶部安全距离。
+      Color(nsColor: .windowBackgroundColor)
+        .frame(height: 14)
       if !store.environment.isInstalled {
         Banner(kind: .warning,
                text: String(localized: "banner.squirrelNotInstalled"),

@@ -106,8 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
 
   private func configureWindowAppearance(_ window: NSWindow) {
-    // 让侧边栏背景延伸到标题栏区域，消除标题栏与侧边栏之间的视觉断层。
+    // 让窗口内容延伸到标题栏区域，消除标题栏与内容区之间的视觉断层。
     // 这是 macOS 11+ 上 System Settings 等原生应用的常见处理方式。
+    window.styleMask.insert(.fullSizeContentView)
     window.titlebarAppearsTransparent = true
     window.backgroundColor = NSColor.windowBackgroundColor
     window.titleVisibility = .hidden
