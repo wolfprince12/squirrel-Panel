@@ -106,12 +106,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
 
   private func configureWindowAppearance(_ window: NSWindow) {
-    // 让窗口内容延伸到标题栏区域，消除标题栏与内容区之间的视觉断层。
-    // 这是 macOS 11+ 上 System Settings 等原生应用的常见处理方式。
+    // 采用 macOS 原生「统一工具栏」外观：
+    // - 添加一个空 toolbar 并将 toolbarStyle 设为 .unified，使标题栏与内容区共享同一背景；
+    // - titlebarAppearsTransparent 让内容延伸到标题栏下方；
+    // - titleVisibility 隐藏标题文字，避免与 sidebar 内容冲突。
+    // 这套组合是 System Settings / 新版 Xcode 设置窗的标准做法。
     window.styleMask.insert(.fullSizeContentView)
     window.titlebarAppearsTransparent = true
-    window.backgroundColor = NSColor.windowBackgroundColor
     window.titleVisibility = .hidden
+    window.backgroundColor = NSColor.windowBackgroundColor
+
+    let toolbar = NSToolbar()
+    toolbar.displayMode = .iconOnly
+    toolbar.showsBaselineSeparator = false
+    window.toolbar = toolbar
+    if #available(macOS 11.0, *) {
+      window.toolbarStyle = .unified
+    }
   }
 
   private func enforceMainWindowSize(window: NSWindow) {
