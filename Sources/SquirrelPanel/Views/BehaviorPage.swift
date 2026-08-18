@@ -527,7 +527,7 @@ private struct CandidateKeysEditor: View {
 
   private var rowsList: some View {
     ScrollView {
-      LazyVStack(spacing: 8) {
+      LazyVStack(spacing: 10) {
         if rows.isEmpty {
           emptyState
         } else {
@@ -583,7 +583,7 @@ private struct KeyBindingRowView: View {
   @State private var hovering = false
 
   var body: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 14) {
       Picker("", selection: $row.when) {
         ForEach(WhenOption.all) { opt in
           Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
@@ -598,10 +598,11 @@ private struct KeyBindingRowView: View {
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
         .frame(width: 190)
 
-      Spacer()
+      Spacer(minLength: 0)
 
       Button(action: onDelete) {
         Image(systemName: "minus.circle.fill")
+          .font(.system(size: 15))
       }
       .buttonStyle(.plain)
       .foregroundStyle(.red)
@@ -609,8 +610,8 @@ private struct KeyBindingRowView: View {
       .animation(.easeInOut(duration: 0.12), value: hovering)
       .help("generic.remove")
     }
-    .padding(.horizontal, 6)
-    .padding(.vertical, 2)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 8)
     .onHover { hovering = $0 }
   }
 }

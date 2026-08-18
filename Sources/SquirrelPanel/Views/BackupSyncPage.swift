@@ -554,26 +554,34 @@ private struct CompareSheet: View {
       VStack(spacing: 0) {
         ScrollView {
           LazyVStack(spacing: 0) {
-            ForEach(lines) { line in
-              sideBySideRow(line: line, side: .left)
+            ForEach(Array(lines.enumerated()), id: \.element.id) { idx, line in
+              sideBySideRow(line: line, side: .left, index: idx)
             }
           }
           .font(.system(.caption, design: .monospaced))
         }
+        .background(Color(nsColor: .textBackgroundColor))
       }
       Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
       VStack(spacing: 0) {
         ScrollView {
           LazyVStack(spacing: 0) {
-            ForEach(lines) { line in
-              sideBySideRow(line: line, side: .right)
+            ForEach(Array(lines.enumerated()), id: \.element.id) { idx, line in
+              sideBySideRow(line: line, side: .right, index: idx)
             }
           }
           .font(.system(.caption, design: .monospaced))
         }
+        .background(Color(nsColor: .textBackgroundColor))
       }
     }
     .frame(maxHeight: 440)
+    .overlay(
+      // 内边框，区分内容区与外框
+      RoundedRectangle(cornerRadius: 4)
+        .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+    )
+    .padding(2)
   }
 
   // MARK: - 底部说明
@@ -590,42 +598,52 @@ private struct CompareSheet: View {
   // MARK: - 行渲染
 
   @ViewBuilder
-  private func sideBySideRow(line: SideBySideLine, side: Side) -> some View {
+  private func sideBySideRow(line: SideBySideLine, side: Side, index: Int) -> some View {
     let text = (side == .left) ? line.leftText : line.rightText
     let no = (side == .left) ? line.leftNo : line.rightNo
     let isEmptyLine = text.isEmpty
 
     HStack(spacing: 0) {
-      // 行号（差异行的行号底条更醒目）
+      // 行号 gutter
       Text(no.map { "\($0)" } ?? "")
         .font(.system(.caption2, design: .monospaced))
         .foregroundStyle(.tertiary)
         .frame(width: 40, alignment: .trailing)
         .padding(.horizontal, 8)
+        .padding(.vertical, 3)
         .background(lineNumberBackground(line: line, side: side))
+
+      // 分隔线
+      Rectangle()
+        .fill(Color(nsColor: .separatorColor).opacity(0.5))
+        .frame(width: 1)
 
       // 内容
       Text(text)
         .frame(maxWidth: .infinity, alignment: side == .left ? .trailing : .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
         .opacity(isEmptyLine ? 0 : 1)
     }
-    .background(rowBackground(line: line, side: side))
+    .background(rowBackground(line: line, side: side, index: index))
     .foregroundStyle(foreground(line: line, side: side))
   }
 
   private enum Side { case left, right }
 
+  /// 斑马纹 + 差异高亮
   @ViewBuilder
-  private func rowBackground(line: SideBySideLine, side: Side) -> some View {
+  private func rowBackground(line: SideBySideLine, side: Side, index: Int) -> some View {
     switch line.kind {
     case .equal:
-      Color.clear
+      // 斑马纹：奇偶行交替微底色，打破"一大片死黑"
+      index % 2 == 0
+        ? Color(nsColor: .controlBackgroundColor).opacity(0.4)
+        : Color(nsColor: .textBackgroundColor)
     case .removed:
-      (side == .left ? Color.red : Color.clear).opacity(0.12)
+      (side == .left ? Color.red : Color(nsColor: .textBackgroundColor)).opacity(side == .left ? 0.18 : 0)
     case .added:
-      (side == .right ? Color.green : Color.clear).opacity(0.12)
+      (side == .right ? Color.green : Color(nsColor: .textBackgroundColor)).opacity(side == .right ? 0.18 : 0)
     }
   }
 
@@ -633,11 +651,11 @@ private struct CompareSheet: View {
   private func lineNumberBackground(line: SideBySideLine, side: Side) -> some View {
     switch line.kind {
     case .equal:
-      Color(nsColor: .controlBackgroundColor)
+      Color(nsColor: .controlBackgroundColor).opacity(0.6)
     case .removed:
-      (side == .left ? Color.red : Color(nsColor: .controlBackgroundColor)).opacity(0.25)
+      (side == .left ? Color.red : Color(nsColor: .controlBackgroundColor)).opacity(side == .left ? 0.35 : 0.6)
     case .added:
-      (side == .right ? Color.green : Color(nsColor: .controlBackgroundColor)).opacity(0.25)
+      (side == .right ? Color.green : Color(nsColor: .controlBackgroundColor)).opacity(side == .right ? 0.35 : 0.6)
     }
   }
 
