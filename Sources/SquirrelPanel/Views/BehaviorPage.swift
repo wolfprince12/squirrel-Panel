@@ -161,6 +161,21 @@ private let allSendActions: [SendAction] = [
   .init(id: "inline_ascii", titleKey: "behavior.sendAction.inline_ascii", category: .ascii)
 ]
 
+/// 预分组缓存：把「按键 / 动作」选项按分类各分一次，供每个 Picker 直接复用。
+/// 否则每行的 ForEach 都要对整份清单重复 `filter`（7 行 × 7 类 × 78 项），
+/// 首次打开「按键与行为」面板时是明显的视图构建开销来源。
+private let keyOptionsByCategory: [KeyCategory: [KeyOption]] = {
+  var d: [KeyCategory: [KeyOption]] = [:]
+  for cat in KeyCategory.allCases { d[cat] = allKeyOptions.filter { $0.category == cat } }
+  return d
+}()
+
+private let sendActionsByCategory: [SendCategory: [SendAction]] = {
+  var d: [SendCategory: [SendAction]] = [:]
+  for cat in SendCategory.allCases { d[cat] = allSendActions.filter { $0.category == cat } }
+  return d
+}()
+
 /// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）
 ///
 /// `toggle` 字段为历史数据保留：界面已不再显示「切换」列（避免歧义），
@@ -183,7 +198,7 @@ struct BehaviorPage: View {
   var body: some View {
     @Bindable var store = store
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
+      LazyVStack(alignment: .leading, spacing: 20) {
         SettingsGroup("behavior.candidates.title") {
           HStack {
             Text("behavior.pageSize")
@@ -307,51 +322,8 @@ struct BehaviorPage: View {
         .foregroundStyle(.secondary)
 
         ForEach($keyBindingRows) { $row in
-          HStack(spacing: 6) {
-            Picker("", selection: $row.when) {
-              ForEach(WhenOption.all) { opt in
-                Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
-              }
-            }
-            .labelsHidden()
-            .frame(width: 140)
-
-            Picker("", selection: $row.accept) {
-              ForEach(KeyCategory.allCases) { cat in
-                Section {
-                  ForEach(allKeyOptions.filter { $0.category == cat }) { opt in
-                    Text(opt.name).tag(opt.name)
-                  }
-                } header: {
-                  Text(cat.titleKey)
-                }
-              }
-            }
-            .labelsHidden()
-            .frame(width: 150)
-
-            Picker("", selection: $row.send) {
-              ForEach(SendCategory.allCases) { cat in
-                Section {
-                  ForEach(allSendActions.filter { $0.category == cat }) { action in
-                    Text(action.titleKey).tag(action.id)
-                  }
-                } header: {
-                  Text(cat.titleKey)
-                }
-              }
-            }
-            .labelsHidden()
-            .frame(width: 170)
-
-            Button {
-              keyBindingRows.removeAll { $0.id == row.id }
-            } label: {
-              Image(systemName: "minus.circle.fill")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.red)
-            .help("generic.remove")
+          KeyBindingRowView(row: $row) {
+            keyBindingRows.removeAll { $0.id == row.id }
           }
         }
 
@@ -407,6 +379,59 @@ struct BehaviorPage: View {
         send: (dict["send"] as? String) ?? "",
         toggle: (dict["toggle"] as? String) ?? ""
       )
+    }
+  }
+}
+
+/// 候选窗按键编辑器的一行（独立子视图，便于 SwiftUI 按行差分，缩小重绘范围）
+private struct KeyBindingRowView: View {
+  @Binding var row: KeyBindingRow
+  let onDelete: () -> Void
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Picker("", selection: $row.when) {
+        ForEach(WhenOption.all) { opt in
+          Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
+        }
+      }
+      .labelsHidden()
+      .frame(width: 140)
+
+      Picker("", selection: $row.accept) {
+        ForEach(KeyCategory.allCases) { cat in
+          Section {
+            ForEach(keyOptionsByCategory[cat] ?? []) { opt in
+              Text(opt.name).tag(opt.name)
+            }
+          } header: {
+            Text(cat.titleKey)
+          }
+        }
+      }
+      .labelsHidden()
+      .frame(width: 150)
+
+      Picker("", selection: $row.send) {
+        ForEach(SendCategory.allCases) { cat in
+          Section {
+            ForEach(sendActionsByCategory[cat] ?? []) { action in
+              Text(action.titleKey).tag(action.id)
+            }
+          } header: {
+            Text(cat.titleKey)
+          }
+        }
+      }
+      .labelsHidden()
+      .frame(width: 170)
+
+      Button(action: onDelete) {
+        Image(systemName: "minus.circle.fill")
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.red)
+      .help("generic.remove")
     }
   }
 }
