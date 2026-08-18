@@ -27,14 +27,5 @@ jobs:
           file "dist/Squirrel Panel.app/Contents/MacOS/SquirrelPanel"
           plutil -lint "dist/Squirrel Panel.app/Contents/Info.plist"
 
-      - name: Zip artifact
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          ditto -c -k --keepParent "dist/Squirrel Panel.app" "Squirrel-Panel.zip"
-
-      - name: Upload release asset
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: Squirrel-Panel.zip
-          generate_release_notes: true
+      # 注：DMG 与发布说明由本地 `gh release create` 创建并只挂 DMG，
+      # 不在 CI 自动上传 zip / 自动生成说明，以遵守「GitHub Release 只挂 DMG」约定。

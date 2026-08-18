@@ -14,7 +14,18 @@
 
 ## 最新版本
 
-**v1.3.2 已发布** —— 专注于「词库编辑」与「同步功能」升级，并新增独立的**维护面板**，把所有维护与修复类操作集中在一处：
+**v1.4.0 已发布** —— 一次以「求稳」为核心的大版本重构：在稳定的基础上做功能整合与创新。
+
+- **🧭 面板重新规划功能划分**：九个功能面板重新梳理，结构更清晰、入口更顺手。
+- **🎨 外观面板升级**：新增更多字体控制能力，候选窗观感可调项更丰富。
+- **📚 词库与标点面板（新整合）**：词库编辑与标点设置合二为一，并新增**标点映射编辑**功能模块。
+- **⌨️ 按键与行为面板**：新增全新**候选窗按键编辑**面板，可自定义各类快捷键——这可能是很多朋友一直盼望的功能。
+- **🪲 备份与同步面板（新整合）**：同步功能全面升级，并**新增备份功能**。
+- **☁️ iCloud 云盘备份彩蛋**：选择用 iCloud 云盘做备份，会有小惊喜哦！
+
+[查看 v1.4.0 发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
+
+**v1.3.2** —— 专注于「词库编辑」与「同步功能」升级，并新增独立的**维护面板**，把所有维护与修复类操作集中在一处：
 
 - **📚 词库图形化编辑**：`custom_phrase.txt` 与用户级 `*.dict.yaml` 现在可以直接在面板里增删改查。输入中文即可自动生成拼音编码，权重、搜索、排序、备份一应俱全，不再需要手写编码。
 - **🌐 同步升级**：一键将同步目录指向 iCloud 云盘，并自动为 `RimeSync` 文件夹设置鼠须管控制面板图标；同步目录展示与选择器均已优化。
@@ -191,7 +202,18 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 ## Latest version
 
-**v1.3.2 is out** — focused on dictionary editing and sync upgrades, plus a new dedicated **Maintenance** panel that centralizes all repair/reset/diagnostic actions.
+**v1.4.0 is out** — a major "stability-first" release that reorganizes the panels and adds features on a solid foundation.
+
+- **🧭 Reorganized panels**: the nine panels are re-planned for a clearer structure and more intuitive entry points.
+- **🎨 Appearance upgrade**: more font-control options, richer candidate-window tuning.
+- **📚 Dictionary & punctuation panel (newly merged)**: dictionary editing and punctuation settings are combined, with a new **punctuation mapping editor**.
+- **⌨️ Key & behavior panel**: brand-new **candidate-window key editor** lets you customize all kinds of shortcuts — a long-requested feature.
+- **🪲 Backup & sync panel (newly merged)**: sync is fully upgraded, and **backup** is now built in.
+- **☁️ iCloud Drive backup easter egg**: choose iCloud Drive as your backup location for a little surprise!
+
+[Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
+
+**v1.3.2** — focused on dictionary editing and sync upgrades, plus a new dedicated **Maintenance** panel that centralizes all repair/reset/diagnostic actions.
 
 - **📚 Graphical dictionary editor**: `custom_phrase.txt` and user-level `*.dict.yaml` can now be edited visually. Type Chinese and the pinyin code is generated automatically; weight, search, sort, and `.bak` backups are all included.
 - **🌐 Sync upgrades**: one-click sync-directory setup in iCloud Drive, with an automatic Squirrel Panel folder icon applied to the `RimeSync` folder; the sync path field and picker are also improved.
