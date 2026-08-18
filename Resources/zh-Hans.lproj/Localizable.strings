@@ -715,6 +715,8 @@
 
 /* Behavior — 候选窗按键（P2：key_bindings 编辑器） */
 "behavior.candidateKeys.title" = "候选窗按键";
+"behavior.candidateKeys.edit" = "编辑候选窗按键";
+"behavior.candidateKeys.count" = "已配置 %d 条";
 "behavior.candidateKeys.hint" = "候选窗与编辑过程的按键绑定（写入 squirrel.custom.yaml 的 key_bindings）。留空则使用鼠须管默认键位。";
 "behavior.candidateKeys.when" = "时机";
 "behavior.candidateKeys.accept" = "按键";

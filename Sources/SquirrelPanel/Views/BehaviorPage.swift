@@ -293,10 +293,8 @@ struct KeyBindingRow: Identifiable, Hashable {
 
 struct BehaviorPage: View {
   @Environment(SettingsStore.self) private var store
-  /// 候选窗按键绑定的镜像行（编辑时只改本地镜像，防抖后写回 store）
-  @State private var keyBindingRows: [KeyBindingRow] = []
-  /// 防抖提交任务：避免每输入一个字符就写回 store 触发全局重编译级联
-  @State private var commitTask: Task<Void, Never>?
+  /// 候选窗按键编辑器（二级窗口）的显示开关
+  @State private var showingCandidateKeysEditor = false
 
   var body: some View {
     @Bindable var store = store
@@ -370,26 +368,12 @@ struct BehaviorPage: View {
       }
       .padding(20)
     }
-    .onAppear(perform: load)
-    .onDisappear {
-      commitTask?.cancel()
-      commitKeyBindings()
-    }
-    .onChange(of: keyBindingRows) { _, _ in scheduleCommit() }
-  }
-
-  /// 防抖写回：编辑期间只改本地镜像，停顿 300ms 后才写回 store。
-  /// 避免每敲一个字符就触发一次全局补丁重编译（面板「黏手」的主要来源）。
-  private func scheduleCommit() {
-    commitTask?.cancel()
-    commitTask = Task { @MainActor in
-      try? await Task.sleep(nanoseconds: 300_000_000)
-      guard !Task.isCancelled else { return }
-      commitKeyBindings()
+    .sheet(isPresented: $showingCandidateKeysEditor) {
+      CandidateKeysEditor()
     }
   }
 
-  // MARK: - 候选窗按键（重设计：下拉选单 + 常驻表格 + 移除切换列）
+  // MARK: - 候选窗按键（概览 + 二级窗口编辑）
 
   private var candidateKeysSection: some View {
     SettingsGroup("behavior.candidateKeys.title") {
@@ -399,90 +383,131 @@ struct BehaviorPage: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
 
-        HStack {
+        HStack(spacing: 10) {
           Button {
-            loadDefaultPreset()
+            showingCandidateKeysEditor = true
           } label: {
-            Label("behavior.candidateKeys.preset", systemImage: "square.and.arrow.down")
+            Label("behavior.candidateKeys.edit", systemImage: "keyboard.badge.ellipsis")
           }
+          .buttonStyle(.borderedProminent)
           .controlSize(.small)
           Spacer()
+          Text(String(format: String(localized: "behavior.candidateKeys.count"),
+                      store.candidateKeyBindings.count))
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
+      }
+    }
+  }
+}
 
-        // 表头（始终显示）
-        HStack(spacing: 6) {
-          Text(LocalizedStringKey("behavior.candidateKeys.when"))
-            .font(.caption.weight(.medium))
-            .frame(width: 140, alignment: .leading)
-          Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-            .font(.caption.weight(.medium))
-            .frame(width: 150, alignment: .leading)
-          Text(LocalizedStringKey("behavior.candidateKeys.send"))
-            .font(.caption.weight(.medium))
-            .frame(width: 170, alignment: .leading)
-          Spacer()
-        }
-        .foregroundStyle(.secondary)
+/// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）→ 键值表
+private func rowsToBindings(_ rows: [KeyBindingRow]) -> [[String: Any]] {
+  rows.compactMap { row in
+    let accept = row.accept.trimmingCharacters(in: .whitespaces)
+    guard !accept.isEmpty else { return nil }
+    var dict: [String: Any] = [
+      "when": row.when.isEmpty ? "paging" : row.when,
+      "accept": accept
+    ]
+    if !row.send.trimmingCharacters(in: .whitespaces).isEmpty {
+      dict["send"] = row.send.trimmingCharacters(in: .whitespaces)
+    }
+    // 保留历史 toggle 绑定（界面已不暴露该列，但已存在配置不能丢）
+    if !row.toggle.trimmingCharacters(in: .whitespaces).isEmpty {
+      dict["toggle"] = row.toggle.trimmingCharacters(in: .whitespaces)
+    }
+    return dict
+  }
+}
 
-        ForEach($keyBindingRows) { $row in
-          KeyBindingRowView(row: $row) {
-            keyBindingRows.removeAll { $0.id == row.id }
-          }
-        }
+/// 键值表 → 候选窗按键绑定的一行
+private func bindingsToRows(_ bindings: [[String: Any]]) -> [KeyBindingRow] {
+  bindings.map { dict in
+    KeyBindingRow(
+      when: (dict["when"] as? String) ?? "paging",
+      accept: (dict["accept"] as? String) ?? "",
+      send: (dict["send"] as? String) ?? "",
+      toggle: (dict["toggle"] as? String) ?? ""
+    )
+  }
+}
 
+/// 候选窗按键编辑器（二级窗口）：主面板只留概览，编辑在 sheet 中进行，
+/// 让「按键与行为」面板打开时不再构建大量下拉选项，彻底消除切换延迟。
+private struct CandidateKeysEditor: View {
+  @Environment(SettingsStore.self) private var store
+  @Environment(\.dismiss) private var dismiss
+  @State private var rows: [KeyBindingRow] = []
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      // 标题栏
+      HStack {
+        Text("behavior.candidateKeys.title")
+          .font(.headline)
+        Spacer()
+        Button("common.close") { dismiss() }
+          .keyboardShortcut(.cancelAction)
+          .controlSize(.small)
+      }
+
+      // 操作行
+      HStack(spacing: 8) {
         Button {
-          keyBindingRows.append(KeyBindingRow())
+          rows = bindingsToRows(defaultCandidateBindings)
+        } label: {
+          Label("behavior.candidateKeys.preset", systemImage: "square.and.arrow.down")
+        }
+        .controlSize(.small)
+        Button {
+          rows.append(KeyBindingRow())
         } label: {
           Label("behavior.candidateKeys.add", systemImage: "plus")
         }
         .controlSize(.small)
+        Spacer()
+        Text(String(format: String(localized: "behavior.candidateKeys.count"), rows.count))
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
-    }
-  }
 
-  // MARK: - 候选窗按键：镜像行 ↔ Store
-
-  private func load() {
-    keyBindingRows = Self.bindingsToRows(store.candidateKeyBindings)
-  }
-
-  private func commitKeyBindings() {
-    store.candidateKeyBindings = Self.rowsToBindings(keyBindingRows)
-  }
-
-  /// 重置为常用候选窗预设（覆盖当前编辑内容）
-  private func loadDefaultPreset() {
-    keyBindingRows = Self.bindingsToRows(defaultCandidateBindings)
-  }
-
-  private static func rowsToBindings(_ rows: [KeyBindingRow]) -> [[String: Any]] {
-    rows.compactMap { row in
-      let accept = row.accept.trimmingCharacters(in: .whitespaces)
-      guard !accept.isEmpty else { return nil }
-      var dict: [String: Any] = [
-        "when": row.when.isEmpty ? "paging" : row.when,
-        "accept": accept
-      ]
-      if !row.send.trimmingCharacters(in: .whitespaces).isEmpty {
-        dict["send"] = row.send.trimmingCharacters(in: .whitespaces)
+      // 表头
+      HStack(spacing: 6) {
+        Text(LocalizedStringKey("behavior.candidateKeys.when"))
+          .font(.caption.weight(.medium))
+          .frame(width: 140, alignment: .leading)
+        Text(LocalizedStringKey("behavior.candidateKeys.accept"))
+          .font(.caption.weight(.medium))
+          .frame(width: 150, alignment: .leading)
+        Text(LocalizedStringKey("behavior.candidateKeys.send"))
+          .font(.caption.weight(.medium))
+          .frame(width: 170, alignment: .leading)
+        Spacer()
       }
-      // 保留历史 toggle 绑定（界面已不暴露该列，但已存在配置不能丢）
-      if !row.toggle.trimmingCharacters(in: .whitespaces).isEmpty {
-        dict["toggle"] = row.toggle.trimmingCharacters(in: .whitespaces)
-      }
-      return dict
-    }
-  }
+      .foregroundStyle(.secondary)
 
-  private static func bindingsToRows(_ bindings: [[String: Any]]) -> [KeyBindingRow] {
-    bindings.map { dict in
-      KeyBindingRow(
-        when: (dict["when"] as? String) ?? "paging",
-        accept: (dict["accept"] as? String) ?? "",
-        send: (dict["send"] as? String) ?? "",
-        toggle: (dict["toggle"] as? String) ?? ""
-      )
+      // 表格（编辑主区）
+      ScrollView {
+        LazyVStack(spacing: 6) {
+          ForEach($rows) { $row in
+            KeyBindingRowView(row: $row) {
+              rows.removeAll { $0.id == row.id }
+            }
+          }
+        }
+      }
+
+      Text("behavior.candidateKeys.hint")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
+    .padding(16)
+    .frame(width: 640, height: 480)
+    .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
+    .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
   }
 }
 

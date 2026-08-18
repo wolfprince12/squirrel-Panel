@@ -715,6 +715,8 @@
 
 /* Behavior — Candidate Window Keys (P2: key_bindings editor) */
 "behavior.candidateKeys.title" = "Candidate Window Keys";
+"behavior.candidateKeys.edit" = "Edit Candidate Keys";
+"behavior.candidateKeys.count" = "%d configured";
 "behavior.candidateKeys.hint" = "Key bindings for the candidate window and editing (written to key_bindings in squirrel.custom.yaml). Leave empty to use Squirrel defaults.";
 "behavior.candidateKeys.when" = "When";
 "behavior.candidateKeys.accept" = "Key";
