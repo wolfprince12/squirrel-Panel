@@ -456,6 +456,7 @@ private func bindingsToRows(_ bindings: [[String: Any]]) -> [KeyBindingRow] {
 
 /// 候选窗按键编辑器（二级窗口）：主面板只留概览，编辑在 sheet 中进行，
 /// 让「按键与行为」面板打开时不再构建大量下拉选项，彻底消除切换延迟。
+/// UI 原则：克制 > 堆砌；层次 > 装饰；用空间和对比建立层次，不用边框堆。
 private struct CandidateKeysEditor: View {
   @Environment(SettingsStore.self) private var store
   @Environment(\.dismiss) private var dismiss
@@ -464,14 +465,24 @@ private struct CandidateKeysEditor: View {
   var body: some View {
     VStack(spacing: 0) {
       header
-      Divider()
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
       toolbar
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+      Divider()
       columnHeaders
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
       rowsList
       Divider()
       footer
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
     .frame(width: 620, height: 480)
+    .background(Color(nsColor: .windowBackgroundColor))
     .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
     .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
   }
@@ -479,25 +490,20 @@ private struct CandidateKeysEditor: View {
   // MARK: - 标题栏
 
   private var header: some View {
-    HStack(spacing: 10) {
-      Image(systemName: "keyboard")
-        .font(.title2)
-        .foregroundStyle(.tint)
-        .frame(width: 28)
-      VStack(alignment: .leading, spacing: 1) {
+    HStack(alignment: .firstTextBaseline) {
+      VStack(alignment: .leading, spacing: 2) {
         Text("behavior.candidateKeys.title")
-          .font(.headline)
+          .font(.title3.weight(.semibold))
         Text(String(format: String(localized: "behavior.candidateKeys.count"), rows.count))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
       Button("common.close") { dismiss() }
+        .controlSize(.regular)
+        .buttonStyle(.borderless)
         .keyboardShortcut(.cancelAction)
-        .controlSize(.small)
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
   }
 
   // MARK: - 操作行
@@ -511,6 +517,8 @@ private struct CandidateKeysEditor: View {
       }
       .controlSize(.small)
 
+      Spacer()
+
       Button {
         rows.append(KeyBindingRow())
       } label: {
@@ -518,11 +526,7 @@ private struct CandidateKeysEditor: View {
       }
       .controlSize(.small)
       .buttonStyle(.borderedProminent)
-
-      Spacer()
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
   }
 
   // MARK: - 表头
@@ -537,17 +541,16 @@ private struct CandidateKeysEditor: View {
         .frame(width: sendPopupWidth, alignment: .leading)
       Spacer()
     }
-    .font(.caption.weight(.medium))
-    .foregroundStyle(.secondary)
-    .padding(.horizontal, 18)
-    .padding(.bottom, 6)
+    .font(.caption.weight(.semibold))
+    .foregroundStyle(.tertiary)
+    .textCase(.uppercase)
   }
 
   // MARK: - 表格
 
   private var rowsList: some View {
     ScrollView {
-      LazyVStack(spacing: 10) {
+      LazyVStack(spacing: 6) {
         if rows.isEmpty {
           emptyState
         } else {
@@ -555,24 +558,18 @@ private struct CandidateKeysEditor: View {
             KeyBindingRowView(row: $row) {
               rows.removeAll { $0.id == row.id }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-              RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor))
-            )
           }
         }
       }
-      .padding(.horizontal, 12)
+      .padding(.horizontal, 20)
       .padding(.vertical, 8)
     }
   }
 
   private var emptyState: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 12) {
       Image(systemName: "keyboard.badge.ellipsis")
-        .font(.system(size: 40))
+        .font(.system(size: 36))
         .foregroundStyle(.tertiary)
       Text("behavior.candidateKeys.empty")
         .font(.callout)
@@ -580,7 +577,7 @@ private struct CandidateKeysEditor: View {
         .multilineTextAlignment(.center)
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 50)
+    .padding(.vertical, 48)
   }
 
   // MARK: - 底部说明
@@ -591,8 +588,6 @@ private struct CandidateKeysEditor: View {
       .foregroundStyle(.secondary)
       .fixedSize(horizontal: false, vertical: true)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 10)
   }
 }
 
@@ -618,20 +613,26 @@ private struct KeyBindingRowView: View {
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
         .frame(width: sendPopupWidth, alignment: .leading)
 
-      Spacer(minLength: 0)
+      Spacer(minLength: 8)
 
+      // 删除按钮：row hover 才显示；常驻占位但 0 透明度避免抖动
       Button(action: onDelete) {
-        Image(systemName: "minus.circle.fill")
-          .font(.system(size: 15))
+        Image(systemName: "minus.circle")
+          .font(.system(size: 16))
+          .foregroundStyle(.secondary)
       }
       .buttonStyle(.plain)
-      .foregroundStyle(.red)
       .opacity(hovering ? 1 : 0)
-      .animation(.easeInOut(duration: 0.12), value: hovering)
+      .animation(.easeInOut(duration: 0.15), value: hovering)
       .help("generic.remove")
     }
     .padding(.horizontal, 12)
     .padding(.vertical, 8)
+    .background(
+      RoundedRectangle(cornerRadius: 6)
+        .fill(hovering ? Color(nsColor: .controlBackgroundColor).opacity(0.6) : Color.clear)
+    )
+    .contentShape(Rectangle())
     .onHover { hovering = $0 }
   }
 }
