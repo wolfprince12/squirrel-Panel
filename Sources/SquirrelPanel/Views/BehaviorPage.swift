@@ -451,7 +451,7 @@ private struct CandidateKeysEditor: View {
       Divider()
       footer
     }
-    .frame(width: 580, height: 480)
+    .frame(width: 620, height: 480)
     .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
     .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
   }
@@ -510,11 +510,11 @@ private struct CandidateKeysEditor: View {
   private var columnHeaders: some View {
     HStack(spacing: 8) {
       Text(LocalizedStringKey("behavior.candidateKeys.when"))
-        .frame(width: 110, alignment: .leading)
+        .frame(width: 120, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-        .frame(width: 130, alignment: .leading)
+        .frame(width: 145, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.send"))
-        .frame(width: 165, alignment: .leading)
+        .frame(width: 175, alignment: .leading)
       Spacer()
     }
     .font(.caption.weight(.medium))
@@ -583,20 +583,22 @@ private struct KeyBindingRowView: View {
   @State private var hovering = false
 
   var body: some View {
-    HStack(spacing: 20) {
+    HStack(spacing: 22) {
       Picker("", selection: $row.when) {
         ForEach(WhenOption.all) { opt in
           Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
         }
       }
       .labelsHidden()
-      .frame(width: 110)
+      .frame(width: 120)
 
       CategorizedPopupButton(groups: keyGroups, selection: $row.accept)
-        .frame(width: 130)
+        .fixedSize()
+        .frame(width: 145, alignment: .leading)
 
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
-        .frame(width: 165)
+        .fixedSize()
+        .frame(width: 175, alignment: .leading)
 
       Spacer(minLength: 0)
 
