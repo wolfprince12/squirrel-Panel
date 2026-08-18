@@ -279,6 +279,26 @@ private let sendGroups: [CategorizedPopupButton.Group] = SendCategory.allCases.m
         })
 }
 
+/// 测量 NSPopUpButton / SwiftUI Picker 的固有宽度：
+/// 取最长可见文本宽度 + 箭头(~20pt) + bezel/picker padding(~12pt)。
+/// groups/options 是静态数据，启动时一次性算出，避免每次 render 重算。
+private func intrinsicPopupWidth(texts: [String]) -> CGFloat {
+  let font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .regular))
+  let attrs: [NSAttributedString.Key: Any] = [.font: font]
+  let widest = texts.map { ($0 as NSString).size(withAttributes: attrs).width }.max() ?? 0
+  return ceil(widest) + 40
+}
+
+private let whenPickerWidth: CGFloat = intrinsicPopupWidth(
+  texts: WhenOption.all.map { NSLocalizedString($0.titleKey, comment: "") }
+)
+private let keyPopupWidth: CGFloat = intrinsicPopupWidth(
+  texts: keyGroups.flatMap { $0.items.map(\.label) }
+)
+private let sendPopupWidth: CGFloat = intrinsicPopupWidth(
+  texts: sendGroups.flatMap { $0.items.map(\.label) }
+)
+
 /// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）
 ///
 /// `toggle` 字段为历史数据保留：界面已不再显示「切换」列（避免歧义），
@@ -508,13 +528,13 @@ private struct CandidateKeysEditor: View {
   // MARK: - 表头
 
   private var columnHeaders: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 18) {
       Text(LocalizedStringKey("behavior.candidateKeys.when"))
-        .frame(width: 120, alignment: .leading)
+        .frame(width: whenPickerWidth, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-        .frame(width: 145, alignment: .leading)
+        .frame(width: keyPopupWidth, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.send"))
-        .frame(width: 175, alignment: .leading)
+        .frame(width: sendPopupWidth, alignment: .leading)
       Spacer()
     }
     .font(.caption.weight(.medium))
@@ -583,22 +603,20 @@ private struct KeyBindingRowView: View {
   @State private var hovering = false
 
   var body: some View {
-    HStack(spacing: 22) {
+    HStack(spacing: 18) {
       Picker("", selection: $row.when) {
         ForEach(WhenOption.all) { opt in
           Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
         }
       }
       .labelsHidden()
-      .frame(width: 120)
+      .frame(width: whenPickerWidth)
 
       CategorizedPopupButton(groups: keyGroups, selection: $row.accept)
-        .fixedSize()
-        .frame(width: 145, alignment: .leading)
+        .frame(width: keyPopupWidth, alignment: .leading)
 
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
-        .fixedSize()
-        .frame(width: 175, alignment: .leading)
+        .frame(width: sendPopupWidth, alignment: .leading)
 
       Spacer(minLength: 0)
 
