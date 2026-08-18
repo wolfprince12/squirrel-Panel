@@ -12,60 +12,28 @@
 
 </div>
 
-## 最新版本
+## 设计理念
 
-**v1.4.0 已发布** —— 一次以「求稳」为核心的大版本重构：在稳定的基础上做功能整合与创新。
+鼠须管（Rime）是好用的输入法，但改配置要手写 YAML，对普通人门槛太高。做这个面板，就是想把它变得「看得见、点得到」。
 
-- **🧭 面板重新规划功能划分**：九个功能面板重新梳理，结构更清晰、入口更顺手。
-- **🎨 外观面板升级**：新增更多字体控制能力，候选窗观感可调项更丰富。
-- **📚 词库与标点面板（新整合）**：词库编辑与标点设置合二为一，并新增**标点映射编辑**功能模块。
-- **⌨️ 按键与行为面板**：新增全新**候选窗按键编辑**面板，可自定义各类快捷键——这可能是很多朋友一直盼望的功能。
-- **🪲 备份与同步面板（新整合）**：同步功能全面升级，并**新增备份功能**。
-- **☁️ iCloud 云盘备份彩蛋**：选择用 iCloud 云盘做备份，会有小惊喜哦！
+作者 **Mr大狼** 在技术上只有一条核心原则，六个字：**先求稳定，再求创新**。
 
-[查看 v1.4.0 发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
+- **求稳**：所有改动都以 Rime 标准的 `*.custom.yaml` 补丁形式写入，绝不覆盖你手写的其他配置；涉及删除或重置的操作前会自动生成 `.bak` 备份。即便面板自身出了 bug，最多只会影响补丁文件，绝不会动到输入法本身。
+- **再创新**：在稳定的基础上，才去打磨更顺手的图形界面——面板重新规划、字体与布局的精细控制、词库与标点的整合、候选窗按键的自定义、备份与同步的一体化，以及一点点 iCloud 云盘备份的「小惊喜」。
 
-### 📸 v1.4.0 界面预览
-
-<table>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-appearance-colors.png" alt="外观 - 配色方案"><br><center>外观 — 配色方案</center></td>
-<td width="50%"><img src="docs/v1.4.0-appearance-fonts.png" alt="外观 - 字体与布局"><br><center>外观 — 字体与布局</center></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-dictionary-punctuation.png" alt="词库与标点"><br><center>词库与标点</center></td>
-<td width="50%"><img src="docs/v1.4.0-candidate-keys-editor.png" alt="候选窗按键编辑"><br><center>候选窗按键编辑</center></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-backup-sync.png" alt="备份与同步"><br><center>备份与同步</center></td>
-<td width="50%"><img src="docs/v1.4.0-compare.png" alt="文件对比"><br><center>文件对比</center></td>
-</tr>
-</table>
-
-**v1.3.2** —— 专注于「词库编辑」与「同步功能」升级，并新增独立的**维护面板**，把所有维护与修复类操作集中在一处：
-
-- **📚 词库图形化编辑**：`custom_phrase.txt` 与用户级 `*.dict.yaml` 现在可以直接在面板里增删改查。输入中文即可自动生成拼音编码，权重、搜索、排序、备份一应俱全，不再需要手写编码。
-- **🌐 同步升级**：一键将同步目录指向 iCloud 云盘，并自动为 `RimeSync` 文件夹设置鼠须管控制面板图标；同步目录展示与选择器均已优化。
-- **🔧 维护面板**：把「重新读取配置、修复缩进空白字符、恢复默认设置、恢复鼠须管默认、恢复雾凇默认、部署 YAML 错误诊断」全部集合在一个面板，操作前自动 `.bak` 备份。
-
-[查看 v1.3.2 发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.3.2)
-
-**v1.3.1** 调整了更新升级策略，检查更新速度大为提升：雾凇拼音、鼠须管输入法、鼠须管控制面板三者的更新检查，现在与万象语法模型一致，走「国内镜像优先 + 轻量 HEAD 请求」链路，告别此前依赖被墙的 GitHub API 导致的 5–20 秒等待。
-
-**v1.3.0** 是一次大版本更新：整个软件 UI 完全重构，配色方案卡片新增动态悬停效果，并在作者专属配色方案之外，新增「用户自定义配色方案」功能（可创建多套命名配色、实时预览、导入导出，并在外观面板中确认展示）。
+每次发版的详细更新内容，都写在对应的 [GitHub Release 发布简介](https://github.com/wolfprince12/squirrel-Panel/releases) 里，本文档只讲软件本身。
 
 ## 功能
 
 - **🎨 外观**：配色方案（含用户自定义配色）、字体、候选窗布局、实时预览与动态悬停效果。
 - **⌨️ 输入方案**：启用/禁用/排序方案、切换快捷键（点击输入框即自动录制）、菜单标题。
 - **🌳 雾凇与万象**：侧边栏专属入口，集中管理雾凇拼音与万象语法模型，无需手改 YAML。
-- **📚 词库与同步**：图形化编辑用户词库；第三方词库与语法模型（如万象语法模型）一键安装/更新/卸载并自动备份；同步目录与 ID、一键同步、iCloud 云盘图标。
-- **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作，以及 **Tab / Shift+Tab 翻页**。
+- **📚 词库与标点**：图形化编辑用户词库；标点映射可视化编辑；第三方词库与语法模型（如万象语法模型）一键安装/更新/卸载并自动备份；同步目录与 ID、一键同步、iCloud 云盘图标。
+- **🖱️ 按键与行为**：每页候选数、Caps Lock 行为、各修饰键动作、Tab / Shift+Tab 翻页，以及完整的**候选窗按键编辑**（自定义各类快捷键）。
 - **🪟 应用适配**：按 App 设置 ASCII 模式、内联/非内联、Vim 模式。
+- **🪲 备份与同步**：同步功能全面升级，并新增备份功能（含文件对比）。
 - **🔧 维护**：集中进行重新读取配置、修复 YAML 缩进空白、恢复默认、急救重置，以及部署 YAML 错误诊断。
 - **ℹ️ 关于**：运行状态、路径跳转、YAML 预览、版本更新提醒（含鼠须管本体更新检查）。
-
-> 所有改动以 Rime 标准的 `*.custom.yaml` 补丁形式写入，不会覆盖你手写的其他配置；涉及删除或重置的操作前会自动生成 `.bak` 备份。
 
 ### 🎨 外观与配色
 
@@ -77,7 +45,7 @@
 
 ### 📚 词库图形化编辑
 
-不再需要手写编码。在「词库与同步」面板中，每个可编辑词库右侧都有「编辑」按钮，点击后在 sheet 中管理词条：
+不再需要手写编码。在「词库与标点」面板中，每个可编辑词库右侧都有「编辑」按钮，点击后在 sheet 中管理词条：
 
 - 三列式编辑：词语、编码、权重，列宽与表头对齐；
 - 新增中文词条时，拼音编码由系统自动生成；
@@ -85,7 +53,7 @@
 - 保存前自动生成 `.bak` 备份，保存后自动重新部署；
 - 兼容 `custom_phrase.txt` 与用户级 `*.dict.yaml`。
 
-![词库图形化编辑器](docs/assets/v1.3.2-dictionary-editor.png)
+![词库图形化编辑器](docs/v1.3.2-dictionary-editor.png)
 
 ### 🌳 雾凇与万象
 
@@ -95,13 +63,13 @@
 - 一键叠加 **万象语法模型**（本地 `.gram` 语言模型），显著提升长句联想与整句准确度；
 - 三态控制简繁、Emoji、中英混输等出厂开关，以及 Lua 滤镜、模糊音等高级选项。
 
-![雾凇拼音独立面板](docs/assets/rime-ice-panel.png?v=1.2.6)
+![雾凇拼音独立面板](docs/rime-ice-panel.png?v=1.2.6)
 
 面板分为五大区块：
 
 - **包管理**：雾凇拼音的安装 / 更新 / 卸载，以及安装后的部署状态。
 - **基础开关**：雾凇拼音出厂的多个开关（简繁、Emoji、中英混输、拆字等）支持「记忆 / 开 / 关」三态控制。
-- **词库**：用户词库概览（自定义短语已合并到「词库与同步」面板统一编辑）。
+- **词库**：用户词库概览（自定义短语已合并到「词库与标点」面板统一编辑）。
 - **语言与拼音**：繁体类型、双拼方案切换。
 - **高级**：Lua 滤镜、模糊音等进阶选项。
 
@@ -113,7 +81,7 @@
 - 一键将同步目录指向 iCloud 云盘的 `RimeSync` 文件夹，面板会自动为同步目录添加鼠须管控制面板图标，方便在 Finder 中识别；
 - 同步目录输入框已拉长，目录选择器会打开当前同步目录。
 
-![词库与同步](docs/assets/v1.3.2-dictionary-sync.png)
+![词库与同步](docs/v1.3.2-dictionary-sync.png)
 
 ### 🔧 维护面板
 
@@ -126,7 +94,7 @@
 - **恢复雾凇拼音全部默认**：删除 `rime_ice.custom.yaml`（含手写配置）并将开关记忆恢复为出厂值，让雾凇拼音完全回到初始状态。
 - **部署 YAML 错误诊断**：重新运行一次部署，精确捕获 YAML 语法错误，定位到文件、行号与列号，便于排查「改了不生效」的问题。
 
-![维护面板](docs/assets/v1.3.2-maintenance.png)
+![维护面板](docs/v1.3.2-maintenance.png)
 
 ## 下载 / 安装
 
@@ -142,7 +110,7 @@
 
 ## 自行构建
 
-需要 macOS 13+、Xcode 15+ / Swift 5.9+。
+需要 macOS 14+、Xcode 15+ / Swift 5.9+。
 
 ```bash
 git clone https://github.com/wolfprince12/squirrel-Panel.git
@@ -177,15 +145,14 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 - [rime/squirrel](https://github.com/rime/squirrel) —— 鼠须管输入法本体。
 - [iDvel/rime-ice](https://github.com/iDvel/rime-ice) —— 雾凇拼音（本面板已为其提供独立的 🌳 雾凇拼音控制面板）。
-- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) —— 万象语法模型（本地语言模型，可叠加在雾凇拼音之上显著提升长句联想与整句准确度；在本面板「词库与同步」中一键安装）。
+- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) —— 万象语法模型（本地语言模型，可叠加在雾凇拼音之上显著提升长句联想与整句准确度；在本面板「词库与标点」中一键安装）。
 - [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) —— 本控制面板（第三方独立项目）。
 
 ## 关于作者
 
 **Mr大狼（Winter Zheng）** —— 二十年影视传媒老兵，做过音乐节、纪录片、综艺导演，作品上过央视春晚、北影节音乐节。八年前独立运营「大狼导演工作室」，近年转型用 AI 把跨界底子焊成产品：爻知云AI 微信服务号、DealV 智能合同平台、鼠须管输入法图形控制台等。
 
-鼠须管是好用的输入法，但改配置要手写 YAML，对普通人门槛太高。做这个面板，就是想把它变得「看得见、点得到」。
-
+做这个面板，技术上坚持「先求稳定，再求创新」：先把补丁写入、备份、恢复这些地基打牢，再去想界面怎么更好用。鼠须管是好用的输入法，但改配置要手写 YAML，对普通人门槛太高——这个面板，就是想把它变得「看得见、点得到」。
 
 ## 赞助 · 请杯咖啡
 
@@ -217,60 +184,28 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 </div>
 
-## Latest version
+## Design Philosophy
 
-**v1.4.0 is out** — a major "stability-first" release that reorganizes the panels and adds features on a solid foundation.
+Squirrel is a great input method, but configuring it means hand-editing YAML — too high a bar for most people. This panel exists to make it visible and clickable.
 
-- **🧭 Reorganized panels**: the nine panels are re-planned for a clearer structure and more intuitive entry points.
-- **🎨 Appearance upgrade**: more font-control options, richer candidate-window tuning.
-- **📚 Dictionary & punctuation panel (newly merged)**: dictionary editing and punctuation settings are combined, with a new **punctuation mapping editor**.
-- **⌨️ Key & behavior panel**: brand-new **candidate-window key editor** lets you customize all kinds of shortcuts — a long-requested feature.
-- **🪲 Backup & sync panel (newly merged)**: sync is fully upgraded, and **backup** is now built in.
-- **☁️ iCloud Drive backup easter egg**: choose iCloud Drive as your backup location for a little surprise!
+The author, **Mr大狼 (Winter Zheng)**, follows a single technical principle — six words: **stability first, then innovation**.
 
-[Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
+- **Stability first**: every change is written as a Rime-standard `*.custom.yaml` patch — it never overwrites your other hand-written config, and destructive operations create a `.bak` backup first. Even if this panel has a bug, at worst it only affects the patch files and never touches the input method itself.
+- **Then innovation**: only on that solid foundation does the panel polish a more intuitive GUI — reorganized panels, fine-grained font & layout control, dictionary & punctuation integration, customizable candidate-window keys, unified backup & sync, and a small "easter egg" for iCloud Drive backups.
 
-### 📸 v1.4.0 Screenshots
-
-<table>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-appearance-colors.png" alt="Appearance - Color Schemes"><br><center>Appearance — Color Schemes</center></td>
-<td width="50%"><img src="docs/v1.4.0-appearance-fonts.png" alt="Appearance - Fonts & Layout"><br><center>Appearance — Fonts & Layout</center></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-dictionary-punctuation.png" alt="Dictionary & Punctuation"><br><center>Dictionary & Punctuation</center></td>
-<td width="50%"><img src="docs/v1.4.0-candidate-keys-editor.png" alt="Candidate Keys Editor"><br><center>Candidate Keys Editor</center></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/v1.4.0-backup-sync.png" alt="Backup & Sync"><br><center>Backup & Sync</center></td>
-<td width="50%"><img src="docs/v1.4.0-compare.png" alt="File Compare"><br><center>File Compare</center></td>
-</tr>
-</table>
-
-**v1.3.2** — focused on dictionary editing and sync upgrades, plus a new dedicated **Maintenance** panel that centralizes all repair/reset/diagnostic actions.
-
-- **📚 Graphical dictionary editor**: `custom_phrase.txt` and user-level `*.dict.yaml` can now be edited visually. Type Chinese and the pinyin code is generated automatically; weight, search, sort, and `.bak` backups are all included.
-- **🌐 Sync upgrades**: one-click sync-directory setup in iCloud Drive, with an automatic Squirrel Panel folder icon applied to the `RimeSync` folder; the sync path field and picker are also improved.
-- **🔧 Maintenance panel**: reload config, fix YAML indentation whitespace, restore defaults, reset Squirrel, reset Rime Ice, and run deploy-time YAML error diagnostics — all in one place, with automatic `.bak` backups before destructive actions.
-
-[Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.3.2)
-
-**v1.3.1** adjusted the update strategy: update checks for Rime Ice, Squirrel, and Squirrel Panel itself now use the same "mirror-first + lightweight HEAD request" path as the Wanxiang Grammar Model, doing away with the 5–20s waits caused by the blocked GitHub API.
-
-**v1.3.0** was a major release: the entire UI was rebuilt, color-scheme cards gained a hover animation, and a new **user-custom color scheme** feature was added alongside the author's signature schemes (create multiple named schemes, live-preview, import/export, and confirm which one to show in the Appearance panel).
+Detailed per-release changelogs live in the corresponding [GitHub Release notes](https://github.com/wolfprince12/squirrel-Panel/releases); this document describes the software itself.
 
 ## Features
 
 - **🎨 Appearance**: color schemes (including user-custom schemes), fonts, candidate window layout, live preview with hover animation.
 - **⌨️ Schemas**: enable/disable/reorder schemes, switch hotkeys (click the box to capture), menu title.
 - **🌳 Rime Ice & Wanxiang**: a dedicated sidebar entry to centrally manage Rime Ice and the Wanxiang grammar model, without hand-editing YAML.
-- **📚 Dictionary & sync**: graphical editing of user dictionaries; third-party dictionaries and grammar models (e.g., Wanxiang Grammar Model) with one-click install/update/uninstall and automatic backup; sync dir & ID, one-click sync, and iCloud folder icon.
-- **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, and **Tab / Shift+Tab paging**.
+- **📚 Dictionary & punctuation**: graphical editing of user dictionaries; visual punctuation-mapping editor; third-party dictionaries and grammar models (e.g., Wanxiang Grammar Model) with one-click install/update/uninstall and automatic backup; sync dir & ID, one-click sync, and iCloud folder icon.
+- **🖱️ Key behavior**: candidates per page, Caps Lock behavior, modifier-key actions, Tab / Shift+Tab paging, and a full **candidate-window key editor** (customize all kinds of shortcuts).
 - **🪟 Per-app**: ASCII mode, inline/non-inline, Vim mode per application.
+- **🪲 Backup & sync**: sync is fully upgraded, and **backup** is now built in (with file comparison).
 - **🔧 Maintenance**: reload config, fix indentation whitespace, restore defaults, reset Squirrel, reset Rime Ice, and deploy-time YAML error diagnostics.
 - **ℹ️ About**: running status, path jump, YAML preview, and update checks (including Squirrel itself).
-
-All changes are written as Rime-standard `*.custom.yaml` patches — they never overwrite your other hand-written config, and destructive operations create a `.bak` backup first.
 
 ### 🎨 Appearance & color schemes
 
@@ -282,7 +217,7 @@ All changes are written as Rime-standard `*.custom.yaml` patches — they never 
 
 ### 📚 Graphical dictionary editor
 
-No more hand-writing codes. In the "Dictionary & Sync" panel, every editable dictionary has an "Edit" button that opens a sheet:
+No more hand-writing codes. In the "Dictionary & Punctuation" panel, every editable dictionary has an "Edit" button that opens a sheet:
 
 - Three-column editing: word, code, weight, with aligned headers and columns;
 - Chinese words automatically get a generated pinyin code;
@@ -290,7 +225,7 @@ No more hand-writing codes. In the "Dictionary & Sync" panel, every editable dic
 - Automatic `.bak` backup before saving, then automatic redeploy;
 - Compatible with `custom_phrase.txt` and user-level `*.dict.yaml`.
 
-![Dictionary editor](docs/assets/v1.3.2-dictionary-editor.png)
+![Dictionary editor](docs/v1.3.2-dictionary-editor.png)
 
 ### 🌳 Rime Ice & Wanxiang
 
@@ -300,13 +235,13 @@ One of the panel's headline features. Click the 🌳 icon in the sidebar to open
 - Layer the **Wanxiang Grammar Model** (a local `.gram` language model) in one click for much better long-sentence prediction and whole-sentence accuracy.
 - Toggle built-in switches (simplification/traditional, Emoji, mixed CN/EN, etc.) and access Lua filters / fuzzy pinyin options without hand-editing YAML.
 
-![Rime Ice dedicated panel](docs/assets/rime-ice-panel.png?v=1.2.6)
+![Rime Ice dedicated panel](docs/rime-ice-panel.png?v=1.2.6)
 
 The panel is organized into five sections:
 
 - **Package**: install / update / uninstall Rime Ice, plus its deploy status.
 - **Basic switches**: Rime Ice's built-in switches (simplification/traditional, Emoji, mixed CN/EN, radical, etc.) with three states — remember / on / off.
-- **Lexicon**: user dictionary overview (custom phrases are now edited in the unified "Dictionary & Sync" panel).
+- **Lexicon**: user dictionary overview (custom phrases are now edited in the unified "Dictionary & Punctuation" panel).
 - **Language & pinyin**: traditionalization type, double-pinyin scheme switching.
 - **Advanced**: Lua filters, fuzzy pinyin and other options.
 
@@ -318,7 +253,7 @@ The panel is organized into five sections:
 - One-click sync-directory setup in iCloud Drive's `RimeSync` folder; the panel automatically applies a Squirrel Panel folder icon so you can spot it in Finder.
 - The sync path field is wider, and the directory picker now opens the current sync directory.
 
-![Dictionary and sync](docs/assets/v1.3.2-dictionary-sync.png)
+![Dictionary and sync](docs/v1.3.2-dictionary-sync.png)
 
 ### 🔧 Maintenance panel
 
@@ -331,7 +266,7 @@ All repair, reset, and diagnostic actions are now centralized. Destructive opera
 - **Restore Rime Ice defaults**: delete `rime_ice.custom.yaml` (including hand-written entries) and reset switch memories to factory values.
 - **Deploy YAML diagnostics**: run a deploy and capture YAML syntax errors with file, line, and column information, making it easy to find why a change "didn't take effect".
 
-![Maintenance panel](docs/assets/v1.3.2-maintenance.png)
+![Maintenance panel](docs/v1.3.2-maintenance.png)
 
 ## Install
 
@@ -355,15 +290,14 @@ So even if this panel has a bug, at worst it only affects the patch files; unins
 
 - [rime/squirrel](https://github.com/rime/squirrel) — the Squirrel input method itself.
 - [iDvel/rime-ice](https://github.com/iDvel/rime-ice) — Rime Ice (this panel provides a dedicated 🌳 Rime Ice control panel).
-- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) — Wanxiang Grammar Model (a local grammar model that layers on top of Rime Ice for better long-sentence prediction; installable in one click from this panel's "Dictionary & sync").
+- [amzxyz/RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) — Wanxiang Grammar Model (a local grammar model that layers on top of Rime Ice for better long-sentence prediction; installable in one click from this panel's "Dictionary & punctuation").
 - [wolfprince12/squirrel-Panel](https://github.com/wolfprince12/squirrel-Panel) — this control panel (a third-party, independent project).
 
 ## About the Author
 
 **Mr大狼 (Winter Zheng)** — 20+ years in film, TV and live production; runs "Big Wolf Director Studio" independently; now rebuilding cross-domain experience into AI products: 爻知云AI WeChat Official Account, DealV smart contract platform, Squirrel Panel (input-method GUI), and more.
 
-Squirrel is a great input method, but configuring it means hand-editing YAML — too high a bar for most people. This panel exists to make it visible and clickable.
-
+Technically, the panel holds to "stability first, then innovation": the foundation — patch writing, backups, and recovery — is built rock-solid before the UI is made nicer. Squirrel is a great input method, but configuring it means hand-editing YAML — too high a bar for most people. This panel exists to make it visible and clickable.
 
 ## Sponsor · Buy Me a Coffee
 
