@@ -20,15 +20,6 @@ private struct SwitchAction: Identifiable {
   ]
 }
 
-/// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）
-struct KeyBindingRow: Identifiable, Hashable {
-  var id = UUID()
-  var when: String = "paging"
-  var accept: String = ""
-  var send: String = ""
-  var toggle: String = ""
-}
-
 /// key_bindings 的 `when` 取值（鼠须管候选窗 / 编辑过程的触发时机）
 private struct WhenOption: Identifiable {
   let id: String
@@ -41,6 +32,145 @@ private struct WhenOption: Identifiable {
     .init(id: "always", titleKey: "behavior.when.always"),
     .init(id: "predict", titleKey: "behavior.when.predict")
   ]
+}
+
+/// `accept`（按键）下拉选单的分类（鼠须管 X11 keysym）
+private enum KeyCategory: String, CaseIterable, Identifiable {
+  case letter, digit, function, special, arrow, punctuation, modifier
+
+  var id: String { rawValue }
+
+  var titleKey: LocalizedStringKey {
+    switch self {
+    case .letter: return "behavior.key.category.letter"
+    case .digit: return "behavior.key.category.digit"
+    case .function: return "behavior.key.category.function"
+    case .special: return "behavior.key.category.special"
+    case .arrow: return "behavior.key.category.arrow"
+    case .punctuation: return "behavior.key.category.punctuation"
+    case .modifier: return "behavior.key.category.modifier"
+    }
+  }
+}
+
+/// `accept`（按键）下拉选项（Rime X11 keysym 名）
+private struct KeyOption: Hashable, Identifiable {
+  let name: String
+  let category: KeyCategory
+  var id: String { name }
+}
+
+/// `send`（动作）下拉选单的分类
+private enum SendCategory: String, CaseIterable, Identifiable {
+  case pageNavigation, listNavigation, commit, inputControl, ascii
+
+  var id: String { rawValue }
+
+  var titleKey: LocalizedStringKey {
+    switch self {
+    case .pageNavigation: return "behavior.sendAction.category.pageNavigation"
+    case .listNavigation: return "behavior.sendAction.category.listNavigation"
+    case .commit: return "behavior.sendAction.category.commit"
+    case .inputControl: return "behavior.sendAction.category.inputControl"
+    case .ascii: return "behavior.sendAction.category.ascii"
+    }
+  }
+}
+
+/// `send`（动作）下拉选项：Rime 命令名 + 本地化显示标签
+private struct SendAction: Identifiable {
+  let id: String
+  let titleKey: LocalizedStringKey
+  let category: SendCategory
+}
+
+/// 常用候选窗键位（与鼠须管默认候选窗行为对齐的精简集）
+private let defaultCandidateBindings: [[String: Any]] = [
+  ["when": "paging", "accept": "comma", "send": "Page_Up"],
+  ["when": "paging", "accept": "period", "send": "Page_Down"],
+  ["when": "has_menu", "accept": "Return", "send": "commit_comment"],
+  ["when": "has_menu", "accept": "Escape", "send": "cancel"],
+  ["when": "has_menu", "accept": "space", "send": "commit"],
+  ["when": "has_menu", "accept": "Up", "send": "Prev_On_List"],
+  ["when": "has_menu", "accept": "Down", "send": "Next_On_List"]
+]
+
+private let allKeyOptions: [KeyOption] =
+  (["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
+    .map { KeyOption(name: $0, category: .letter) })
+  + (["0","1","2","3","4","5","6","7","8","9"]
+    .map { KeyOption(name: $0, category: .digit) })
+  + (["F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"]
+    .map { KeyOption(name: $0, category: .function) })
+  + [
+    KeyOption(name: "Tab", category: .special),
+    KeyOption(name: "Return", category: .special),
+    KeyOption(name: "Escape", category: .special),
+    KeyOption(name: "space", category: .special),
+    KeyOption(name: "BackSpace", category: .special),
+    KeyOption(name: "Delete", category: .special),
+    KeyOption(name: "Insert", category: .special),
+    KeyOption(name: "Home", category: .special),
+    KeyOption(name: "End", category: .special),
+    KeyOption(name: "Page_Up", category: .special),
+    KeyOption(name: "Page_Down", category: .special)
+  ]
+  + [
+    KeyOption(name: "Up", category: .arrow),
+    KeyOption(name: "Down", category: .arrow),
+    KeyOption(name: "Left", category: .arrow),
+    KeyOption(name: "Right", category: .arrow)
+  ]
+  + [
+    KeyOption(name: "comma", category: .punctuation),
+    KeyOption(name: "period", category: .punctuation),
+    KeyOption(name: "semicolon", category: .punctuation),
+    KeyOption(name: "apostrophe", category: .punctuation),
+    KeyOption(name: "bracketleft", category: .punctuation),
+    KeyOption(name: "bracketright", category: .punctuation),
+    KeyOption(name: "slash", category: .punctuation),
+    KeyOption(name: "backslash", category: .punctuation),
+    KeyOption(name: "grave", category: .punctuation),
+    KeyOption(name: "minus", category: .punctuation),
+    KeyOption(name: "equal", category: .punctuation)
+  ]
+  + [
+    KeyOption(name: "Shift+Tab", category: .modifier),
+    KeyOption(name: "Shift+space", category: .modifier),
+    KeyOption(name: "Control+space", category: .modifier),
+    KeyOption(name: "Control+Shift+space", category: .modifier)
+  ]
+
+private let allSendActions: [SendAction] = [
+  .init(id: "Page_Up", titleKey: "behavior.sendAction.Page_Up", category: .pageNavigation),
+  .init(id: "Page_Down", titleKey: "behavior.sendAction.Page_Down", category: .pageNavigation),
+  .init(id: "Prev_Page", titleKey: "behavior.sendAction.Prev_Page", category: .pageNavigation),
+  .init(id: "Next_Page", titleKey: "behavior.sendAction.Next_Page", category: .pageNavigation),
+  .init(id: "Home", titleKey: "behavior.sendAction.Home", category: .pageNavigation),
+  .init(id: "End", titleKey: "behavior.sendAction.End", category: .pageNavigation),
+  .init(id: "Prev_On_List", titleKey: "behavior.sendAction.Prev_On_List", category: .listNavigation),
+  .init(id: "Next_On_List", titleKey: "behavior.sendAction.Next_On_List", category: .listNavigation),
+  .init(id: "Prev_Whole_List", titleKey: "behavior.sendAction.Prev_Whole_List", category: .listNavigation),
+  .init(id: "Next_Whole_List", titleKey: "behavior.sendAction.Next_Whole_List", category: .listNavigation),
+  .init(id: "commit", titleKey: "behavior.sendAction.commit", category: .commit),
+  .init(id: "commit_comment", titleKey: "behavior.sendAction.commit_comment", category: .commit),
+  .init(id: "cancel", titleKey: "behavior.sendAction.cancel", category: .commit),
+  .init(id: "clear", titleKey: "behavior.sendAction.clear", category: .inputControl),
+  .init(id: "reset", titleKey: "behavior.sendAction.reset", category: .inputControl),
+  .init(id: "noop", titleKey: "behavior.sendAction.noop", category: .inputControl),
+  .init(id: "inline_ascii", titleKey: "behavior.sendAction.inline_ascii", category: .ascii)
+]
+
+/// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）
+///
+/// `toggle` 字段为历史数据保留：界面已不再显示「切换」列（避免歧义），
+/// 但读取/写回时保留原值，避免破坏已存在的 toggle 绑定。
+struct KeyBindingRow: Identifiable, Hashable {
+  var id = UUID()
+  var when: String = "paging"
+  var accept: String = ""
+  var send: String = ""
+  var toggle: String = ""
 }
 
 struct BehaviorPage: View {
@@ -141,7 +271,7 @@ struct BehaviorPage: View {
     }
   }
 
-  // MARK: - 候选窗按键（P2：key_bindings 编辑器）
+  // MARK: - 候选窗按键（重设计：下拉选单 + 常驻表格 + 移除切换列）
 
   private var candidateKeysSection: some View {
     SettingsGroup("behavior.candidateKeys.title") {
@@ -152,8 +282,8 @@ struct BehaviorPage: View {
           .fixedSize(horizontal: false, vertical: true)
 
         HStack {
-          Menu {
-            Button("behavior.candidateKeys.preset.default") { loadPreset() }
+          Button {
+            loadDefaultPreset()
           } label: {
             Label("behavior.candidateKeys.preset", systemImage: "square.and.arrow.down")
           }
@@ -161,63 +291,76 @@ struct BehaviorPage: View {
           Spacer()
         }
 
-        if keyBindingRows.isEmpty {
-          Text("behavior.candidateKeys.empty")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        } else {
-          // 表头
+        // 表头（始终显示）
+        HStack(spacing: 6) {
+          Text(LocalizedStringKey("behavior.candidateKeys.when"))
+            .font(.caption.weight(.medium))
+            .frame(width: 140, alignment: .leading)
+          Text(LocalizedStringKey("behavior.candidateKeys.accept"))
+            .font(.caption.weight(.medium))
+            .frame(width: 150, alignment: .leading)
+          Text(LocalizedStringKey("behavior.candidateKeys.send"))
+            .font(.caption.weight(.medium))
+            .frame(width: 170, alignment: .leading)
+          Spacer()
+        }
+        .foregroundStyle(.secondary)
+
+        ForEach($keyBindingRows) { $row in
           HStack(spacing: 6) {
-            Text(LocalizedStringKey("behavior.candidateKeys.when"))
-              .font(.caption.weight(.medium))
-              .frame(width: 158, alignment: .leading)
-            Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-              .font(.caption.weight(.medium))
-              .frame(width: 130, alignment: .leading)
-            Text(LocalizedStringKey("behavior.candidateKeys.send"))
-              .font(.caption.weight(.medium))
-              .frame(width: 130, alignment: .leading)
-            Text(LocalizedStringKey("behavior.candidateKeys.toggle"))
-              .font(.caption.weight(.medium))
-              .frame(width: 110, alignment: .leading)
-            Spacer()
-          }
-          .foregroundStyle(.secondary)
-          ForEach($keyBindingRows) { $row in
-            HStack(spacing: 6) {
-              Picker("", selection: $row.when) {
-                ForEach(WhenOption.all) { opt in
-                  Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
+            Picker("", selection: $row.when) {
+              ForEach(WhenOption.all) { opt in
+                Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
+              }
+            }
+            .labelsHidden()
+            .frame(width: 140)
+
+            Picker("", selection: $row.accept) {
+              ForEach(KeyCategory.allCases) { cat in
+                Section {
+                  ForEach(allKeyOptions.filter { $0.category == cat }) { opt in
+                    Text(opt.name).tag(opt.name)
+                  }
+                } header: {
+                  Text(cat.titleKey)
                 }
               }
-              .labelsHidden()
-              .frame(width: 158)
-              TextField("behavior.candidateKeys.accept", text: $row.accept)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 130)
-              TextField("behavior.candidateKeys.send", text: $row.send)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 130)
-              TextField("behavior.candidateKeys.toggle", text: $row.toggle)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 110)
-              Button {
-                keyBindingRows.removeAll { $0.id == row.id }
-              } label: {
-                Image(systemName: "minus.circle.fill")
-              }
-              .buttonStyle(.plain)
-              .foregroundStyle(.red)
-              .help("generic.remove")
             }
+            .labelsHidden()
+            .frame(width: 150)
+
+            Picker("", selection: $row.send) {
+              ForEach(SendCategory.allCases) { cat in
+                Section {
+                  ForEach(allSendActions.filter { $0.category == cat }) { action in
+                    Text(action.titleKey).tag(action.id)
+                  }
+                } header: {
+                  Text(cat.titleKey)
+                }
+              }
+            }
+            .labelsHidden()
+            .frame(width: 170)
+
+            Button {
+              keyBindingRows.removeAll { $0.id == row.id }
+            } label: {
+              Image(systemName: "minus.circle.fill")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.red)
+            .help("generic.remove")
           }
-          Button {
-            keyBindingRows.append(KeyBindingRow())
-          } label: {
-            Label("behavior.candidateKeys.add", systemImage: "plus")
-          }
-          .controlSize(.small)
         }
+
+        Button {
+          keyBindingRows.append(KeyBindingRow())
+        } label: {
+          Label("behavior.candidateKeys.add", systemImage: "plus")
+        }
+        .controlSize(.small)
       }
     }
   }
@@ -232,8 +375,9 @@ struct BehaviorPage: View {
     store.candidateKeyBindings = Self.rowsToBindings(keyBindingRows)
   }
 
-  private func loadPreset() {
-    keyBindingRows = Self.bindingsToRows(Self.candidatePreset)
+  /// 重置为常用候选窗预设（覆盖当前编辑内容）
+  private func loadDefaultPreset() {
+    keyBindingRows = Self.bindingsToRows(defaultCandidateBindings)
   }
 
   private static func rowsToBindings(_ rows: [KeyBindingRow]) -> [[String: Any]] {
@@ -247,6 +391,7 @@ struct BehaviorPage: View {
       if !row.send.trimmingCharacters(in: .whitespaces).isEmpty {
         dict["send"] = row.send.trimmingCharacters(in: .whitespaces)
       }
+      // 保留历史 toggle 绑定（界面已不暴露该列，但已存在配置不能丢）
       if !row.toggle.trimmingCharacters(in: .whitespaces).isEmpty {
         dict["toggle"] = row.toggle.trimmingCharacters(in: .whitespaces)
       }
@@ -264,17 +409,6 @@ struct BehaviorPage: View {
       )
     }
   }
-
-  /// 常用候选窗键位（与鼠须管默认候选窗行为对齐的精简集）
-  private static let candidatePreset: [[String: Any]] = [
-    ["when": "paging", "accept": "comma", "send": "Page_Up"],
-    ["when": "paging", "accept": "period", "send": "Page_Down"],
-    ["when": "has_menu", "accept": "Return", "send": "commit_comment"],
-    ["when": "has_menu", "accept": "Escape", "send": "cancel"],
-    ["when": "has_menu", "accept": "space", "send": "commit"],
-    ["when": "has_menu", "accept": "Up", "send": "Prev_On_List"],
-    ["when": "has_menu", "accept": "Down", "send": "Next_On_List"]
-  ]
 }
 
 private struct SwitchKeyRow: View {

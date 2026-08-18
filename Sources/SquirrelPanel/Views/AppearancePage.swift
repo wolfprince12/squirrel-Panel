@@ -18,7 +18,7 @@ struct AppearancePage: View {
   var body: some View {
     @Bindable var store = store
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
+      LazyVStack(alignment: .leading, spacing: 20) {
         CandidatePreview()
 
         // 开发者（大狼）专属签名配色：独立模块，不混入总色卡网格

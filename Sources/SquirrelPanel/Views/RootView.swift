@@ -121,8 +121,9 @@ struct RootView: View {
           case .about: AboutPage()
           }
         }
-        .transition(.opacity)
-        .animation(.easeInOut(duration: 0.16), value: selection)
+        // 原先 `.transition(.opacity) + .animation(.easeInOut(0.16))` 会让切换瞬间
+        // 旧页与新页同时留在视图树中（即双倍渲染），是外观/输入方案等大页面「开关延迟」
+        // 的最大来源。直接瞬切，避开双倍渲染。
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
 
