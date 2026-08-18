@@ -31,13 +31,14 @@ struct AppOptionEntry: Identifiable, Equatable {
 }
 
 @MainActor
-final class SettingsStore: ObservableObject {
+@Observable
+final class SettingsStore {
 
   // MARK: - 环境
 
-  @Published private(set) var environment: RimeEnvironment
-  @Published private(set) var colorSchemes: [RimeColorSchemeInfo] = []
-  @Published private(set) var availableSchemas: [RimeSchema] = []
+  private(set) var environment: RimeEnvironment
+  private(set) var colorSchemes: [RimeColorSchemeInfo] = []
+  private(set) var availableSchemas: [RimeSchema] = []
 
   private var squirrelPatch: CustomYAMLFile
   private var defaultPatch: CustomYAMLFile
@@ -64,81 +65,81 @@ final class SettingsStore: ObservableObject {
 
   // MARK: - 外观
 
-  @Published var colorSchemeID = "native"
-  @Published var followSystemAppearance = false
-  @Published var colorSchemeDarkID = "native"
-  @Published var fontFace = ""
-  @Published var labelFontFace = ""
-  @Published var commentFontFace = ""
-  @Published var fontPoint: Double = 16
-  @Published var labelFontPoint: Double = 12
-  @Published var commentFontPoint: Double = 12
-  @Published var useLinearLayout = false
-  @Published var useVerticalText = false
-  @Published var cornerRadius: Double = 7
-  @Published var hilitedCornerRadius: Double = 4
-  @Published var borderHeight: Double = 0
-  @Published var borderWidth: Double = 0
-  @Published var lineSpacing: Double = 5
-  @Published var preeditSpacing: Double = 10
-  @Published var alpha: Double = 1
-  @Published var candidateFormat = "[label]. [candidate] [comment]"
-  @Published var inlinePreedit = true
-  @Published var inlineCandidate = false
-  @Published var translucency = false
-  @Published var shadow = false
-  @Published var shadowSize: Double = 0
-  @Published var statusMessageType = "mix"
-  @Published var showPaging = false
-  @Published var memorizeSize = true
-  @Published var mutualExclusive = false
+  var colorSchemeID = "native"
+  var followSystemAppearance = false
+  var colorSchemeDarkID = "native"
+  var fontFace = ""
+  var labelFontFace = ""
+  var commentFontFace = ""
+  var fontPoint: Double = 16
+  var labelFontPoint: Double = 12
+  var commentFontPoint: Double = 12
+  var useLinearLayout = false
+  var useVerticalText = false
+  var cornerRadius: Double = 7
+  var hilitedCornerRadius: Double = 4
+  var borderHeight: Double = 0
+  var borderWidth: Double = 0
+  var lineSpacing: Double = 5
+  var preeditSpacing: Double = 10
+  var alpha: Double = 1
+  var candidateFormat = "[label]. [candidate] [comment]"
+  var inlinePreedit = true
+  var inlineCandidate = false
+  var translucency = false
+  var shadow = false
+  var shadowSize: Double = 0
+  var statusMessageType = "mix"
+  var showPaging = false
+  var memorizeSize = true
+  var mutualExclusive = false
 
   // MARK: - 输入方案
 
-  @Published var enabledSchemaIDs: [String] = []
-  @Published var switcherHotkeys = ""
-  @Published var switcherCaption = ""
+  var enabledSchemaIDs: [String] = []
+  var switcherHotkeys = ""
+  var switcherCaption = ""
   /// switcher/save_options：哪些开关在方案选单切换后被「记住」。
   /// 由 RimeIceConfigStore 在应用配置时改写；其余面板不碰它。
-  @Published var savedSwitchOptions: [String] = []
+  var savedSwitchOptions: [String] = []
 
   // MARK: - 按键与行为
 
-  @Published var pageSize: Int = 5
-  @Published var goodOldCapsLock = true
-  @Published var capsLockAction = "commit_code"
-  @Published var shiftLeftAction = "commit_code"
-  @Published var shiftRightAction = "commit_code"
-  @Published var controlLeftAction = "noop"
-  @Published var controlRightAction = "noop"
-  @Published var keyboardLayout = "last"
-  @Published var showNotificationsWhen = "appropriate"
+  var pageSize: Int = 5
+  var goodOldCapsLock = true
+  var capsLockAction = "commit_code"
+  var shiftLeftAction = "commit_code"
+  var shiftRightAction = "commit_code"
+  var controlLeftAction = "noop"
+  var controlRightAction = "noop"
+  var keyboardLayout = "last"
+  var showNotificationsWhen = "appropriate"
 
   // MARK: - 标点映射（punctuator）
   /// 全角 / 半角标点符号映射，写入 default.custom.yaml 的
   /// punctuator/full_shape 与 punctuator/half_shape。
-  @Published var fullShapePunct: [String: Any] = [:]
-  @Published var halfShapePunct: [String: Any] = [:]
+  var fullShapePunct: [String: Any] = [:]
+  var halfShapePunct: [String: Any] = [:]
 
   // MARK: - 候选窗按键绑定（key_bindings）
   /// 候选窗导航键（确认 / 取消 / 翻页 / 方向等），写入 squirrel.custom.yaml 的 key_bindings
-  @Published var candidateKeyBindings: [[String: Any]] = []
+  var candidateKeyBindings: [[String: Any]] = []
 
   /// Tab 翻页开关：Tab 向后翻页（同 =），Shift+Tab 向前翻页（同 -）
-  @Published var tabPagingEnabled = false
+  var tabPagingEnabled = false
   /// 我们是否在托管 key_bindings（载入时已含我们的 Tab 条目，或用户历史上启用过）
   private var managingKeyBindings = false
 
   // MARK: - 分应用适配
 
-  @Published var appOptions: [AppOptionEntry] = []
+  var appOptions: [AppOptionEntry] = []
   private var originalAppBundleIDs: Set<String> = []
 
   // MARK: - 运行状态
 
-  @Published var statusMessage = ""
-  @Published var lastError: String?
-  @Published var isApplying = false
+  var statusMessage = ""
+  var lastError: String?
+  var isApplying = false
 
   var isDirty: Bool {
     compileSquirrelPatch() != baselineSquirrel

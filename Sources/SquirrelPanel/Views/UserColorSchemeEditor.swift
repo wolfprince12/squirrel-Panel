@@ -19,14 +19,14 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// 编辑器的工作模型（ObservableObject，便于 SwiftUI 双向绑定）
-final class SchemeEditorModel: ObservableObject {
-  @Published var id: String = ""
-  @Published var name: String = ""
-  @Published var author: String = ""
-  @Published var colorSpace: String = "srgb"
+/// 编辑器的工作模型（@Observable，便于 SwiftUI 双向绑定）
+final class SchemeEditorModel: Observable {
+  var id: String = ""
+  var name: String = ""
+  var author: String = ""
+  var colorSpace: String = "srgb"
   /// 已启用的颜色字段（键 -> RimeColor）；未启用的字段不写入方案，由 Rime 回退默认
-  @Published var colors: [String: RimeColor] = [:]
+  var colors: [String: RimeColor] = [:]
 
   var isNew: Bool { id.isEmpty }
 
@@ -92,9 +92,9 @@ final class SchemeEditorModel: ObservableObject {
 }
 
 struct UserColorSchemeEditor: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @StateObject private var model = SchemeEditorModel()
+  @State private var model = SchemeEditorModel()
   @State private var schemes: [UserColorScheme] = UserColorSchemes.all
   @State private var selectedID: String? = UserColorSchemes.all.first?.id
   @State private var statusMessage: String?
@@ -170,7 +170,7 @@ struct UserColorSchemeEditor: View {
         }
       }
       .listStyle(.inset)
-      .onChange(of: selectedID) { newID in
+      .onChange(of: selectedID) { _, newID in
         if let s = schemes.first(where: { $0.id == newID }) {
           model.load(from: s)
         }

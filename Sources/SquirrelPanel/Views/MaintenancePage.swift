@@ -10,8 +10,8 @@ import SwiftUI
 import AppKit
 
 struct MaintenancePage: View {
-  @EnvironmentObject private var store: SettingsStore
-  @EnvironmentObject private var ice: RimeIceConfigStore
+  @Environment(SettingsStore.self) private var store
+  @Environment(RimeIceConfigStore.self) private var ice
 
   // 三类破坏性操作的二次确认
   @State private var showingResetAlert = false

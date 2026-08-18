@@ -7,8 +7,8 @@ import SwiftUI
 import AppKit
 
 struct AboutPage: View {
-  @EnvironmentObject private var store: SettingsStore
-  @EnvironmentObject private var updateCenter: UpdateCenter
+  @Environment(SettingsStore.self) private var store
+  @Environment(UpdateCenter.self) private var updateCenter
 
   private var panelVersion: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String

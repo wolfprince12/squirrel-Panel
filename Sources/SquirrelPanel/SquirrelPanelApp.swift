@@ -12,26 +12,26 @@ import AppKit
 @main
 struct SquirrelPanelApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-  @StateObject private var store: SettingsStore
-  @StateObject private var iceStore: RimeIceConfigStore
-  @StateObject private var updateCenter: UpdateCenter
+  @State private var store: SettingsStore
+  @State private var iceStore: RimeIceConfigStore
+  @State private var updateCenter: UpdateCenter
 
   @MainActor
   init() {
     let store = SettingsStore()
     let iceStore = RimeIceConfigStore(settings: store)
     store.rimeIce = iceStore
-    _store = StateObject(wrappedValue: store)
-    _iceStore = StateObject(wrappedValue: iceStore)
-    _updateCenter = StateObject(wrappedValue: UpdateCenter(store: store))
+    _store = State(initialValue: store)
+    _iceStore = State(initialValue: iceStore)
+    _updateCenter = State(initialValue: UpdateCenter(store: store))
   }
 
   var body: some Scene {
     Window("app.name", id: "main") {
       RootView()
-        .environmentObject(store)
-        .environmentObject(iceStore)
-        .environmentObject(updateCenter)
+        .environment(store)
+        .environment(iceStore)
+        .environment(updateCenter)
     }
     .defaultSize(width: 960, height: 860)
     .windowResizability(.contentMinSize)

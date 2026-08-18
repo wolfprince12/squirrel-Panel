@@ -54,14 +54,14 @@ enum PanelSection: String, CaseIterable, Identifiable {
 }
 
 struct RootView: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   /// 底部操作栏的启用态取决于 `store.isDirty`，而它含 `rimeIce?.isDirty`。
-  /// `SettingsStore` 与 `RimeIceConfigStore` 是两个独立的 ObservableObject：
-  /// 用户在雾凇面板改控件时只有 `ice` 的 @Published 变化，不订阅它的话
+  /// `SettingsStore` 与 `RimeIceConfigStore` 是两个独立的 @Observable 数据源：
+  /// 用户在雾凇面板改控件时只有 `ice` 的相关属性变化，不订阅它的话
   /// `RootView.body`（footer 所在）不会重求值，「应用及部署」按钮会一直停在禁用态。
   /// 这里只为订阅变更通知而持有，不直接读取。
-  @EnvironmentObject private var ice: RimeIceConfigStore
-  @EnvironmentObject private var updateCenter: UpdateCenter
+  @Environment(RimeIceConfigStore.self) private var ice
+  @Environment(UpdateCenter.self) private var updateCenter
   @State private var selection: PanelSection = .appearance
   @State private var showingYAML = false
 
@@ -211,11 +211,14 @@ struct RootView: View {
   // MARK: - 底部操作栏
 
   private var footer: some View {
-    HStack(spacing: 10) {
+    // P0-1：isDirty 每次访问都会完整重编译三份补丁，footer 内原本读取 3 次。
+    // 这里只取一次复用，避免随每一帧 / 每一个控件改动重复编译。
+    let dirty = store.isDirty
+    return HStack(spacing: 10) {
       if store.isApplying {
         ProgressView().controlSize(.small)
       }
-      if store.isDirty {
+      if dirty {
         Text("footer.dirty")
           .font(.callout)
           .foregroundStyle(Color.orange)
@@ -227,13 +230,13 @@ struct RootView: View {
           .lineLimit(1)
       }
       Spacer()
-      if store.isDirty {
+      if dirty {
         Button("button.revert") { store.revert() }
       }
       Button("button.viewYAML") { showingYAML = true }
       Button("button.applyDeploy") { store.apply() }
         .buttonStyle(.borderedProminent)
-        .disabled(!store.isDirty || !store.canWrite)
+        .disabled(!dirty || !store.canWrite)
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 10)

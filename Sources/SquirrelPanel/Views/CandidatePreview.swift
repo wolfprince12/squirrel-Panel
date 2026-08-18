@@ -43,7 +43,7 @@ private enum FormatSegment: Equatable {
 struct CandidatePanel: View {
   let scheme: RimeColorSchemeInfo
   var height: CGFloat = 168
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   private static let samples: [(label: String, text: String, comment: String)] = [
     ("1", "鼠须管", "shu xu guan"),
@@ -165,7 +165,7 @@ struct CandidatePanel: View {
 
 /// 外观页顶部使用的候选窗预览，使用当前生效的配色方案。
 struct CandidatePreview: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   var body: some View {
     CandidatePanel(scheme: store.currentScheme)

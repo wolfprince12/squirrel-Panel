@@ -18,7 +18,7 @@ struct DeployReportModel {
 }
 
 struct DeployPage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @State private var report = DeployReportModel()
   @State private var busy = false
   @State private var selectedIDs: [String] = []

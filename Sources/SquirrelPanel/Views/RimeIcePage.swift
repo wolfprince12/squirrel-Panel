@@ -14,8 +14,8 @@
 import SwiftUI
 
 struct RimeIcePage: View {
-  @EnvironmentObject var ice: RimeIceConfigStore
-  @EnvironmentObject var settings: SettingsStore
+  @Environment(RimeIceConfigStore.self) var ice
+  @Environment(SettingsStore.self) var settings
 
   // 原始 YAML 编辑器状态
   @State private var rawExpanded = false
@@ -75,7 +75,8 @@ struct RimeIcePage: View {
   // MARK: - 基础开关（Phase B）
 
   private var basicSection: some View {
-    SettingsGroup("riceice.basic.title") {
+    @Bindable var ice = ice
+    return SettingsGroup("riceice.basic.title") {
       VStack(alignment: .leading, spacing: 14) {
         Text("riceice.basic.hint")
           .font(.callout)
@@ -128,7 +129,8 @@ struct RimeIcePage: View {
   // MARK: - 词库与短语（Phase C）
 
   private var lexiconSection: some View {
-    SettingsGroup("riceice.lexicon.title") {
+    @Bindable var ice = ice
+    return SettingsGroup("riceice.lexicon.title") {
       VStack(alignment: .leading, spacing: 12) {
         Text("riceice.lexicon.hint")
           .font(.callout)
@@ -156,7 +158,8 @@ struct RimeIcePage: View {
   // MARK: - 语言与拼音（Phase D）
 
   private var langSection: some View {
-    SettingsGroup("riceice.lang.title") {
+    @Bindable var ice = ice
+    return SettingsGroup("riceice.lang.title") {
       VStack(alignment: .leading, spacing: 12) {
         Text("riceice.lang.hint")
           .font(.callout)

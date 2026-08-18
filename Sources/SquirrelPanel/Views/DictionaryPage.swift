@@ -63,13 +63,15 @@ struct PunctRow: Identifiable, Hashable {
 }
 
 struct DictionaryPage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @State private var dictionaries: [UserDictInfo] = []
   @State private var editableFiles: [EditableDict] = []
   @State private var editingURL: EditableDict?
-  /// 标点映射表的镜像行（实时写回 store 字典，纳入统一应用流程）
+  /// 标点映射表的镜像行（编辑时只改本地镜像，防抖后写回 store 字典）
   @State private var fullRows: [PunctRow] = []
   @State private var halfRows: [PunctRow] = []
+  /// 防抖提交任务：避免每输入一个字符就写回 store 触发全局重编译级联
+  @State private var commitTask: Task<Void, Never>?
 
   var body: some View {
     ScrollView {
@@ -86,11 +88,26 @@ struct DictionaryPage: View {
       .padding(20)
     }
     .onAppear(perform: load)
-    .onChange(of: fullRows) { _ in commitPunct() }
-    .onChange(of: halfRows) { _ in commitPunct() }
+    .onDisappear {
+      commitTask?.cancel()
+      commitPunct()
+    }
+    .onChange(of: fullRows) { _, _ in schedulePunctCommit() }
+    .onChange(of: halfRows) { _, _ in schedulePunctCommit() }
     .sheet(item: $editingURL) { dict in
       DictionaryEditor(url: dict.url)
-        .environmentObject(store)
+        .environment(store)
+    }
+  }
+
+  /// 防抖写回：编辑标点映射时只改本地镜像，停顿 300ms 后才写回 store，
+  /// 避免每敲一个字符就触发一次全局补丁重编译。
+  private func schedulePunctCommit() {
+    commitTask?.cancel()
+    commitTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 300_000_000)
+      guard !Task.isCancelled else { return }
+      commitPunct()
     }
   }
 

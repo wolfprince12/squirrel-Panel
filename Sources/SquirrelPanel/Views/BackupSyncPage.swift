@@ -40,7 +40,7 @@ struct CompareTarget: Identifiable {
 }
 
 struct BackupSyncPage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @State private var installationID = ""
   @State private var syncDirectory = ""
   @State private var message = ""

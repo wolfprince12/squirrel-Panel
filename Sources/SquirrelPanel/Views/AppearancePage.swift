@@ -7,7 +7,7 @@ import SwiftUI
 import AppKit
 
 struct AppearancePage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @State private var showSchemeEditor = false
   /// 自定义模块当前展示的「用户确认方案」快照。
   /// confirmedScheme() 是读盘静态函数：编辑器点「使用此方案」只改了磁盘注册表，
@@ -16,6 +16,7 @@ struct AppearancePage: View {
   @State private var confirmedScheme: UserColorScheme? = UserColorSchemes.confirmedScheme()
 
   var body: some View {
+    @Bindable var store = store
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         CandidatePreview()
@@ -141,7 +142,7 @@ struct AppearancePage: View {
       .padding(20)
     }
     .onAppear { confirmedScheme = UserColorSchemes.confirmedScheme() }
-    .onChange(of: showSchemeEditor) { isShowing in
+    .onChange(of: showSchemeEditor) { _, isShowing in
       // 弹窗关闭（确认/保存/编辑自定义方案后）重新读盘刷新模块展示，
       // 否则 SwiftUI 不会因磁盘注册表变更而重绘，预览会停留在旧方案。
       if !isShowing {
@@ -150,7 +151,7 @@ struct AppearancePage: View {
     }
     .sheet(isPresented: $showSchemeEditor) {
       UserColorSchemeEditor()
-        .environmentObject(store)
+        .environment(store)
     }
   }
 
@@ -181,7 +182,7 @@ struct AppearancePage: View {
 // MARK: - 配色色卡
 
 struct ColorSchemeGrid: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   private let columns = [GridItem(.adaptive(minimum: 148), spacing: 10)]
 
@@ -199,7 +200,7 @@ struct ColorSchemeGrid: View {
 
 /// 开发者（大狼）专属配色的独立展示网格，点击即套用
 struct DeveloperSchemeGrid: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   private let columns = [GridItem(.adaptive(minimum: 148), spacing: 10)]
 

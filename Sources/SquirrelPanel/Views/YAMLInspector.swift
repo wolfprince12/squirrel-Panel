@@ -10,7 +10,7 @@ import SwiftUI
 import AppKit
 
 struct YAMLInspector: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @Environment(\.dismiss) private var dismiss
 
   private enum Target: String, CaseIterable, Identifiable {

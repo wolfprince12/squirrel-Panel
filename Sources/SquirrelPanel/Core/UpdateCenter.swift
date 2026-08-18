@@ -22,22 +22,23 @@ enum UpdateCheckState: Equatable {
 }
 
 @MainActor
-final class UpdateCenter: ObservableObject {
+@Observable
+final class UpdateCenter {
   // MARK: - 软件自身更新
-  @Published var appUpdateState: UpdateCheckState = .idle
-  @Published var appLatestVersion: String?
-  @Published var appReleaseURL: String?
-  @Published var appUpdateUsedMirror = false
+  var appUpdateState: UpdateCheckState = .idle
+  var appLatestVersion: String?
+  var appReleaseURL: String?
+  var appUpdateUsedMirror = false
 
   // MARK: - 鼠须管输入法更新
-  @Published var squirrelUpdateState: UpdateCheckState = .idle
-  @Published var squirrelLatestVersion: String?
-  @Published var squirrelReleaseURL: String?
-  @Published var squirrelUpdateUsedMirror = false
+  var squirrelUpdateState: UpdateCheckState = .idle
+  var squirrelLatestVersion: String?
+  var squirrelReleaseURL: String?
+  var squirrelUpdateUsedMirror = false
 
   // MARK: - 第三方词库包更新
-  @Published var dictionaryUpdateStates: [String: PackageUpdateState] = [:]
-  @Published var dictionaryCheckingAll = false
+  var dictionaryUpdateStates: [String: PackageUpdateState] = [:]
+  var dictionaryCheckingAll = false
 
   private let store: SettingsStore
 

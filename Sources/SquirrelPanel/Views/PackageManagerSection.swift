@@ -21,8 +21,8 @@ enum PackageUpdateState: Equatable {
 }
 
 struct PackageManagerSection: View {
-  @EnvironmentObject private var store: SettingsStore
-  @EnvironmentObject private var updateCenter: UpdateCenter
+  @Environment(SettingsStore.self) private var store
+  @Environment(UpdateCenter.self) private var updateCenter
 
   @State private var packages: [DictionaryPackage] = []
   @State private var statuses: [String: PackageStatus] = [:]

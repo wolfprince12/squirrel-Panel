@@ -30,7 +30,7 @@ private func containsCJK(_ s: String) -> Bool {
 
 /// 单个用户词库的图形化编辑器（以 sheet 形式呈现）。
 struct DictionaryEditor: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
   @Environment(\.dismiss) private var dismiss
 
   @State private var file: CustomPhraseFile

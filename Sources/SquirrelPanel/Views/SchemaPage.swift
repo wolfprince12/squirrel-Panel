@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct SchemaPage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   private var enabled: [RimeSchema] {
     store.enabledSchemaIDs.compactMap { id in
@@ -39,6 +39,7 @@ struct SchemaPage: View {
   }
 
   var body: some View {
+    @Bindable var store = store
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         SettingsGroup("schema.enabled.title") {

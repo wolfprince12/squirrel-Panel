@@ -44,11 +44,14 @@ private struct WhenOption: Identifiable {
 }
 
 struct BehaviorPage: View {
-  @EnvironmentObject private var store: SettingsStore
-  /// 候选窗按键绑定的镜像行（实时写回 store，纳入统一「应用并重新部署」流程）
+  @Environment(SettingsStore.self) private var store
+  /// 候选窗按键绑定的镜像行（编辑时只改本地镜像，防抖后写回 store）
   @State private var keyBindingRows: [KeyBindingRow] = []
+  /// 防抖提交任务：避免每输入一个字符就写回 store 触发全局重编译级联
+  @State private var commitTask: Task<Void, Never>?
 
   var body: some View {
+    @Bindable var store = store
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         SettingsGroup("behavior.candidates.title") {
@@ -120,7 +123,22 @@ struct BehaviorPage: View {
       .padding(20)
     }
     .onAppear(perform: load)
-    .onChange(of: keyBindingRows) { _ in commitKeyBindings() }
+    .onDisappear {
+      commitTask?.cancel()
+      commitKeyBindings()
+    }
+    .onChange(of: keyBindingRows) { _, _ in scheduleCommit() }
+  }
+
+  /// 防抖写回：编辑期间只改本地镜像，停顿 300ms 后才写回 store。
+  /// 避免每敲一个字符就触发一次全局补丁重编译（面板「黏手」的主要来源）。
+  private func scheduleCommit() {
+    commitTask?.cancel()
+    commitTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 300_000_000)
+      guard !Task.isCancelled else { return }
+      commitKeyBindings()
+    }
   }
 
   // MARK: - 候选窗按键（P2：key_bindings 编辑器）

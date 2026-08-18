@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
   name: "SquirrelPanel",
-  platforms: [.macOS(.v13)],
+  platforms: [.macOS(.v14)],
   dependencies: [
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.6")
   ],

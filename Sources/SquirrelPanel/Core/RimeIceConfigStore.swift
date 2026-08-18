@@ -84,7 +84,8 @@ struct FuzzyRule: Identifiable, Hashable {
 }
 
 @MainActor
-final class RimeIceConfigStore: ObservableObject {
+@Observable
+final class RimeIceConfigStore {
 
   /// SettingsStore 是 default.custom.yaml 的唯一通道；用 unowned 避免与 store.rimeIce 形成强引用环。
   unowned let settings: SettingsStore
@@ -113,7 +114,7 @@ final class RimeIceConfigStore: ObservableObject {
 
   // MARK: - UI 状态：基础开关（Phase B）
 
-  @Published var switches: [RimeIceSwitchItem] = []
+  var switches: [RimeIceSwitchItem] = []
 
   // 候选词数（menu/page_size）**不再由本面板管理**：
   // 唯一入口是「按键与行为」面板的全局 `menu/page_size`（SettingsStore.pageSize），
@@ -122,23 +123,23 @@ final class RimeIceConfigStore: ObservableObject {
   // MARK: - UI 状态：词库与短语（Phase C）
 
   /// 英文输入 melt_eng（translator + dependency 成对，autocap / reduce_english 随之同生同死）
-  @Published var enableMeltEng: Bool = true
+  var enableMeltEng: Bool = true
   /// 中英混合词 cn_en
-  @Published var enableCnEn: Bool = true
+  var enableCnEn: Bool = true
   /// 部件拆字（translator + 两个 filter + dependency 四者联动）
-  @Published var enableRadical: Bool = true
+  var enableRadical: Bool = true
   /// Emoji 词库 simplifier@emoji
-  @Published var enableEmojiDict: Bool = true
+  var enableEmojiDict: Bool = true
   /// 自定义短语文件；目标随当前激活方案在
   /// custom_phrase.txt（全拼）与 custom_phrase_double.txt（双拼）之间切换
-  @Published var phrases: CustomPhraseFile
+  var phrases: CustomPhraseFile
 
   // MARK: - UI 状态：语言与拼音（Phase D）
 
   /// 繁体类型：s2t.json | s2hk.json | s2tw.json | s2twp.json
-  @Published var opencc: String = "s2t.json"
+  var opencc: String = "s2t.json"
   /// 当前排在 schema_list 首位的拼音类方案（rime_ice = 全拼）
-  @Published var activePinyinSchemaID: String = "rime_ice" {
+  var activePinyinSchemaID: String = "rime_ice" {
     didSet {
       guard !isReloading, oldValue != activePinyinSchemaID else { return }
       promoteActivePinyinSchema()
@@ -147,14 +148,14 @@ final class RimeIceConfigStore: ObservableObject {
     }
   }
   /// 双拼「编码原样显示」：写 `<dp>.custom.yaml` 的 `translator/preedit_format: []`
-  @Published var showRawDoubleCode: Bool = false
+  var showRawDoubleCode: Bool = false
 
   // MARK: - UI 状态：高级（Phase E）
 
   /// 6 个可独立开关的 Lua 滤镜，键为 lua 名（如 `*corrector`）
-  @Published var luaFilters: [String: Bool] = [:]
+  var luaFilters: [String: Bool] = [:]
   /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
-  @Published var fuzzySelection: Set<String> = []
+  var fuzzySelection: Set<String> = []
 
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
@@ -295,7 +296,7 @@ final class RimeIceConfigStore: ObservableObject {
   /// 切换拼音方案时短语文件保存失败后的上层提示（UI 展示用）。
   /// 仅当 `syncPhraseFile()` 保存旧文件失败（只读目录 / 磁盘满 / 权限）时才有值，
   /// 此时会**阻止**指针重指向，未保存词条留在编辑器里，绝不静默丢失。
-  @Published var phraseSaveError: String?
+  var phraseSaveError: String?
 
   /// 切换拼音方案后把短语编辑器指向新方案的词典文件。
   /// 切换前若旧文件有未保存内容，先落盘到**旧文件**——用户手打的词条不能因为

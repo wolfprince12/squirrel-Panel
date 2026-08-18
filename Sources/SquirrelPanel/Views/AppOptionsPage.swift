@@ -11,9 +11,10 @@ import AppKit
 import UniformTypeIdentifiers
 
 struct AppOptionsPage: View {
-  @EnvironmentObject private var store: SettingsStore
+  @Environment(SettingsStore.self) private var store
 
   var body: some View {
+    @Bindable var store = store
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         SettingsGroup("appOptions.title") {
