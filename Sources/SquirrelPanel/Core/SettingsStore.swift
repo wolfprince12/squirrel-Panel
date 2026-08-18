@@ -68,6 +68,8 @@ final class SettingsStore: ObservableObject {
   @Published var followSystemAppearance = false
   @Published var colorSchemeDarkID = "native"
   @Published var fontFace = ""
+  @Published var labelFontFace = ""
+  @Published var commentFontFace = ""
   @Published var fontPoint: Double = 16
   @Published var labelFontPoint: Double = 12
   @Published var commentFontPoint: Double = 12
@@ -208,6 +210,8 @@ final class SettingsStore: ObservableObject {
     }
 
     fontFace = str("style/font_face", "")
+    labelFontFace = str("style/label_font_face", "")
+    commentFontFace = str("style/comment_font_face", "")
     fontPoint = num("style/font_point", 16)
     labelFontPoint = num("style/label_font_point", max(9, fontPoint - 4))
     commentFontPoint = num("style/comment_font_point", max(9, fontPoint - 4))
@@ -443,7 +447,7 @@ final class SettingsStore: ObservableObject {
   /// 本面板管理的 squirrel.custom.yaml 键，「恢复默认」时只清理这些
   static let managedSquirrelKeys: Set<String> = [
     "style/color_scheme", "style/color_scheme_dark", "style/font_face", "style/font_point",
-    "style/label_font_point", "style/comment_font_point", "style/candidate_list_layout",
+    "style/label_font_face", "style/label_font_point", "style/comment_font_face", "style/comment_font_point", "style/candidate_list_layout",
     "style/text_orientation", "style/corner_radius", "style/hilited_corner_radius",
     "style/border_height", "style/border_width", "style/line_spacing", "style/spacing",
     "style/alpha", "style/candidate_format", "style/inline_preedit", "style/inline_candidate",
@@ -477,6 +481,8 @@ final class SettingsStore: ObservableObject {
     // 覆盖用户 squirrel.yaml 基础配置中可能存在的 color_scheme_dark，确保明暗模式使用同一配色。
     set["style/color_scheme_dark"] = followSystemAppearance ? .string(colorSchemeDarkID) : .string(colorSchemeID)
     set["style/font_face"] = fontFace.isEmpty ? PatchValue?.none : .string(fontFace)
+    set["style/label_font_face"] = labelFontFace.isEmpty ? PatchValue?.none : .string(labelFontFace)
+    set["style/comment_font_face"] = commentFontFace.isEmpty ? PatchValue?.none : .string(commentFontFace)
     put(&set, "style/font_point", .double(fontPoint), defaultValue: defaults["style/font_point"])
     put(&set, "style/label_font_point", .double(labelFontPoint), defaultValue: defaults["style/label_font_point"])
     put(&set, "style/comment_font_point", .double(commentFontPoint), defaultValue: defaults["style/comment_font_point"])

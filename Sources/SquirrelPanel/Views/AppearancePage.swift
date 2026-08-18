@@ -74,10 +74,18 @@ struct AppearancePage: View {
         }
 
         SettingsGroup("appearance.font.title") {
-          FontFamilyPicker(selection: $store.fontFace)
-          SliderRow(title: String(localized: "appearance.font.candidateSize"), value: $store.fontPoint, range: 10...36, step: 1, unit: "pt")
-          SliderRow(title: String(localized: "appearance.font.labelSize"), value: $store.labelFontPoint, range: 8...30, step: 1, unit: "pt")
-          SliderRow(title: String(localized: "appearance.font.commentSize"), value: $store.commentFontPoint, range: 8...30, step: 1, unit: "pt")
+          HStack(alignment: .center, spacing: 20) {
+            FontFamilyPicker(selection: $store.fontFace, titleKey: "appearance.font.candidate", pickerWidth: nil)
+            SliderRow(title: String(localized: "appearance.font.candidateSize"), value: $store.fontPoint, range: 10...36, step: 1, unit: "pt")
+          }
+          HStack(alignment: .center, spacing: 20) {
+            FontFamilyPicker(selection: $store.labelFontFace, titleKey: "appearance.font.label", pickerWidth: nil)
+            SliderRow(title: String(localized: "appearance.font.labelSize"), value: $store.labelFontPoint, range: 8...30, step: 1, unit: "pt")
+          }
+          HStack(alignment: .center, spacing: 20) {
+            FontFamilyPicker(selection: $store.commentFontFace, titleKey: "appearance.font.comment", pickerWidth: nil)
+            SliderRow(title: String(localized: "appearance.font.commentSize"), value: $store.commentFontPoint, range: 8...30, step: 1, unit: "pt")
+          }
         }
 
         SettingsGroup("appearance.layout.title") {
@@ -335,6 +343,8 @@ private struct CustomEmptyState: View {
 
 struct FontFamilyPicker: View {
   @Binding var selection: String
+  var titleKey: LocalizedStringKey = "appearance.font.candidate"
+  var pickerWidth: CGFloat? = 240
 
   private static let families: [String] = {
     NSFontManager.shared.availableFontFamilies.sorted {
@@ -342,20 +352,35 @@ struct FontFamilyPicker: View {
     }
   }()
 
-  var body: some View {
-    LabeledContent("appearance.font.candidate") {
-      Picker("", selection: Binding(
-        get: { Self.families.contains(selection) ? selection : "" },
-        set: { selection = $0 }
-      )) {
-        Text("appearance.font.system").tag("")
-        Divider()
-        ForEach(Self.families, id: \.self) { family in
-          Text(family).tag(family)
-        }
+  private var picker: some View {
+    Picker("", selection: Binding(
+      get: { Self.families.contains(selection) ? selection : "" },
+      set: { selection = $0 }
+    )) {
+      Text("appearance.font.system").tag("")
+      Divider()
+      ForEach(Self.families, id: \.self) { family in
+        Text(family).tag(family)
       }
-      .labelsHidden()
-      .frame(width: 240)
+    }
+    .labelsHidden()
+    .modifier(OptionalWidth(width: pickerWidth))
+  }
+
+  var body: some View {
+    LabeledContent(titleKey) {
+      picker
+    }
+  }
+}
+
+private struct OptionalWidth: ViewModifier {
+  let width: CGFloat?
+  func body(content: Content) -> some View {
+    if let width {
+      content.frame(width: width)
+    } else {
+      content.frame(maxWidth: .infinity)
     }
   }
 }
