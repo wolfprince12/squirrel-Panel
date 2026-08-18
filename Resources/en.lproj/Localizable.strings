@@ -715,6 +715,7 @@
 "backupSync.compare.current" = "Current Version";
 "backupSync.compare.identical" = "Files are identical";
 "backupSync.compare.differences" = "%d difference(s)";
+"backupSync.compare.hint" = "Left: selected backup. Right: config currently in use. Red lines existed in the backup but are gone; green lines are newly added.";
 "backup.label.auto" = "Auto backup";
 
 /* Behavior — Candidate Window Keys (P2: key_bindings editor) */

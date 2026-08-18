@@ -442,72 +442,137 @@ private struct CandidateKeysEditor: View {
   @State private var rows: [KeyBindingRow] = []
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      // 标题栏
-      HStack {
+    VStack(spacing: 0) {
+      header
+      Divider()
+      toolbar
+      columnHeaders
+      rowsList
+      Divider()
+      footer
+    }
+    .frame(width: 680, height: 520)
+    .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
+    .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
+  }
+
+  // MARK: - 标题栏
+
+  private var header: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "keyboard")
+        .font(.title2)
+        .foregroundStyle(.tint)
+        .frame(width: 28)
+      VStack(alignment: .leading, spacing: 1) {
         Text("behavior.candidateKeys.title")
           .font(.headline)
-        Spacer()
-        Button("common.close") { dismiss() }
-          .keyboardShortcut(.cancelAction)
-          .controlSize(.small)
-      }
-
-      // 操作行
-      HStack(spacing: 8) {
-        Button {
-          rows = bindingsToRows(defaultCandidateBindings)
-        } label: {
-          Label("behavior.candidateKeys.preset", systemImage: "square.and.arrow.down")
-        }
-        .controlSize(.small)
-        Button {
-          rows.append(KeyBindingRow())
-        } label: {
-          Label("behavior.candidateKeys.add", systemImage: "plus")
-        }
-        .controlSize(.small)
-        Spacer()
         Text(String(format: String(localized: "behavior.candidateKeys.count"), rows.count))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
+      Spacer()
+      Button("common.close") { dismiss() }
+        .keyboardShortcut(.cancelAction)
+        .controlSize(.small)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
 
-      // 表头
-      HStack(spacing: 6) {
-        Text(LocalizedStringKey("behavior.candidateKeys.when"))
-          .font(.caption.weight(.medium))
-          .frame(width: 140, alignment: .leading)
-        Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-          .font(.caption.weight(.medium))
-          .frame(width: 150, alignment: .leading)
-        Text(LocalizedStringKey("behavior.candidateKeys.send"))
-          .font(.caption.weight(.medium))
-          .frame(width: 170, alignment: .leading)
-        Spacer()
+  // MARK: - 操作行
+
+  private var toolbar: some View {
+    HStack(spacing: 8) {
+      Button {
+        rows = bindingsToRows(defaultCandidateBindings)
+      } label: {
+        Label("behavior.candidateKeys.preset", systemImage: "square.and.arrow.down")
       }
-      .foregroundStyle(.secondary)
+      .controlSize(.small)
 
-      // 表格（编辑主区）
-      ScrollView {
-        LazyVStack(spacing: 6) {
+      Button {
+        rows.append(KeyBindingRow())
+      } label: {
+        Label("behavior.candidateKeys.add", systemImage: "plus")
+      }
+      .controlSize(.small)
+      .buttonStyle(.borderedProminent)
+
+      Spacer()
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 10)
+  }
+
+  // MARK: - 表头
+
+  private var columnHeaders: some View {
+    HStack(spacing: 8) {
+      Text(LocalizedStringKey("behavior.candidateKeys.when"))
+        .frame(width: 130, alignment: .leading)
+      Text(LocalizedStringKey("behavior.candidateKeys.accept"))
+        .frame(width: 150, alignment: .leading)
+      Text(LocalizedStringKey("behavior.candidateKeys.send"))
+        .frame(width: 190, alignment: .leading)
+      Spacer()
+    }
+    .font(.caption.weight(.medium))
+    .foregroundStyle(.secondary)
+    .padding(.horizontal, 18)
+    .padding(.bottom, 6)
+  }
+
+  // MARK: - 表格
+
+  private var rowsList: some View {
+    ScrollView {
+      LazyVStack(spacing: 8) {
+        if rows.isEmpty {
+          emptyState
+        } else {
           ForEach($rows) { $row in
             KeyBindingRowView(row: $row) {
               rows.removeAll { $0.id == row.id }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+              RoundedRectangle(cornerRadius: 8)
+                .fill(Color(nsColor: .controlBackgroundColor))
+            )
           }
         }
       }
-
-      Text("behavior.candidateKeys.hint")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 8)
     }
-    .padding(16)
-    .frame(width: 640, height: 480)
-    .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
-    .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
+  }
+
+  private var emptyState: some View {
+    VStack(spacing: 10) {
+      Image(systemName: "keyboard.badge.ellipsis")
+        .font(.system(size: 40))
+        .foregroundStyle(.tertiary)
+      Text("behavior.candidateKeys.empty")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 50)
+  }
+
+  // MARK: - 底部说明
+
+  private var footer: some View {
+    Text("behavior.candidateKeys.hint")
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
   }
 }
 
@@ -515,30 +580,38 @@ private struct CandidateKeysEditor: View {
 private struct KeyBindingRowView: View {
   @Binding var row: KeyBindingRow
   let onDelete: () -> Void
+  @State private var hovering = false
 
   var body: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 8) {
       Picker("", selection: $row.when) {
         ForEach(WhenOption.all) { opt in
           Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
         }
       }
       .labelsHidden()
-      .frame(width: 140)
+      .frame(width: 130)
 
       CategorizedPopupButton(groups: keyGroups, selection: $row.accept)
         .frame(width: 150)
 
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
-        .frame(width: 170)
+        .frame(width: 190)
+
+      Spacer()
 
       Button(action: onDelete) {
         Image(systemName: "minus.circle.fill")
       }
       .buttonStyle(.plain)
       .foregroundStyle(.red)
+      .opacity(hovering ? 1 : 0)
+      .animation(.easeInOut(duration: 0.12), value: hovering)
       .help("generic.remove")
     }
+    .padding(.horizontal, 6)
+    .padding(.vertical, 2)
+    .onHover { hovering = $0 }
   }
 }
 

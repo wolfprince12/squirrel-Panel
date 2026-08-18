@@ -424,7 +424,7 @@ struct BackupSyncPage: View {
   }
 }
 
-/// 左右双栏对比 sheet
+/// 左右双栏对比 sheet（现代 macOS 面板风）
 private struct CompareSheet: View {
   let dirName: String
   let fileName: String
@@ -439,100 +439,155 @@ private struct CompareSheet: View {
     _selectedFile = State(initialValue: fileName)
   }
 
+  private var addedCount: Int { lines.filter { $0.kind == .added }.count }
+  private var removedCount: Int { lines.filter { $0.kind == .removed }.count }
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // 标题栏
-      HStack {
-        Text("backupSync.compare.title")
-          .font(.headline)
-        Spacer()
-        Button("common.close") { dismiss() }
-          .controlSize(.small)
-          .keyboardShortcut(.cancelAction)
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-
+    VStack(spacing: 0) {
+      header
       Divider()
-
-      // 文件选择器 + 状态提示
-      HStack(spacing: 12) {
-        Picker("backupSync.compare.file", selection: $selectedFile) {
-          ForEach(BackupManager.listBackupFiles(dirName: dirName), id: \.self) { f in
-            Text(f).tag(f)
-          }
-        }
-        .onChange(of: selectedFile) { _, newVal in loadDiff(for: newVal) }
-          .pickerStyle(.menu)
-          .frame(width: 260)
-
-        Spacer()
-
-        if identical {
-          Label("backupSync.compare.identical", systemImage: "checkmark.circle.fill")
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.green)
-        } else {
-          let changes = lines.filter { $0.kind != .equal }.count
-          Text(String(format: String(localized: "backupSync.compare.differences"), changes))
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 10)
-
+      toolbar
+      columnHeaders
+      bodyRows
       Divider()
-
-      // 双栏主体
-      HStack(spacing: 0) {
-        // 左栏：备份版本
-        VStack(alignment: .trailing, spacing: 0) {
-          headerLabel("backupSync.compare.backup")
-          ScrollView {
-            LazyVStack(spacing: 0) {
-              ForEach(lines) { line in
-                sideBySideRow(line: line, side: .left)
-              }
-            }
-            .font(.system(.caption, design: .monospaced))
-          }
-        }
-
-        // 中间分隔线
-        Rectangle()
-          .fill(Color(nsColor: .separatorColor))
-          .frame(width: 1)
-
-        // 右栏：当前版本
-        VStack(alignment: .leading, spacing: 0) {
-          headerLabel("backupSync.compare.current")
-          ScrollView {
-            LazyVStack(spacing: 0) {
-              ForEach(lines) { line in
-                sideBySideRow(line: line, side: .right)
-              }
-            }
-            .font(.system(.caption, design: .monospaced))
-          }
-        }
-      }
-      .frame(maxHeight: 420)
+      footer
     }
-    .frame(width: 720)
+    .frame(width: 760)
     .onAppear { loadDiff(for: selectedFile) }
   }
 
-  // MARK: - 子视图
+  // MARK: - 标题栏
 
-  private func headerLabel(_ key: LocalizedStringKey) -> some View {
-    Text(key)
-      .font(.caption2.weight(.semibold))
-      .foregroundStyle(.secondary)
-      .frame(maxWidth: .infinity, alignment: .center)
-      .padding(.vertical, 6)
-      .background(Color(nsColor: .controlBackgroundColor))
+  private var header: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "doc.text.magnifyingglass")
+        .font(.title2)
+        .foregroundStyle(.tint)
+        .frame(width: 28)
+      VStack(alignment: .leading, spacing: 1) {
+        Text("backupSync.compare.title")
+          .font(.headline)
+        Text(selectedFile)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .truncationMode(.middle)
+      }
+      Spacer()
+      Button("common.close") { dismiss() }
+        .controlSize(.small)
+        .keyboardShortcut(.cancelAction)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
   }
+
+  // MARK: - 文件选择 + 差异统计
+
+  private var toolbar: some View {
+    HStack(spacing: 12) {
+      Label("backupSync.compare.file", systemImage: "doc.badge.clock")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      Picker("", selection: $selectedFile) {
+        ForEach(BackupManager.listBackupFiles(dirName: dirName), id: \.self) { f in
+          Text(f).tag(f)
+        }
+      }
+      .labelsHidden()
+      .onChange(of: selectedFile) { _, newVal in loadDiff(for: newVal) }
+      .pickerStyle(.menu)
+      .frame(width: 240)
+
+      Spacer()
+
+      if identical {
+        Label("backupSync.compare.identical", systemImage: "checkmark.circle.fill")
+          .font(.caption.weight(.medium))
+          .foregroundStyle(.green)
+      } else {
+        HStack(spacing: 10) {
+          Label("\(addedCount)", systemImage: "plus.circle")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.green)
+          Label("\(removedCount)", systemImage: "minus.circle")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.red)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(Capsule().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5))
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 10)
+  }
+
+  // MARK: - 左右栏列头
+
+  private var columnHeaders: some View {
+    HStack(spacing: 0) {
+      columnHeader("backupSync.compare.backup", icon: "clock.arrow.circlepath")
+      Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
+      columnHeader("backupSync.compare.current", icon: "doc.text")
+    }
+  }
+
+  private func columnHeader(_ title: LocalizedStringKey, icon: String) -> some View {
+    HStack(spacing: 6) {
+      Image(systemName: icon)
+        .font(.caption2)
+      Text(title)
+        .font(.caption.weight(.semibold))
+    }
+    .foregroundStyle(.secondary)
+    .frame(maxWidth: .infinity, alignment: .center)
+    .padding(.vertical, 7)
+    .background(Color(nsColor: .controlBackgroundColor))
+  }
+
+  // MARK: - 双栏主体
+
+  private var bodyRows: some View {
+    HStack(spacing: 0) {
+      VStack(spacing: 0) {
+        ScrollView {
+          LazyVStack(spacing: 0) {
+            ForEach(lines) { line in
+              sideBySideRow(line: line, side: .left)
+            }
+          }
+          .font(.system(.caption, design: .monospaced))
+        }
+      }
+      Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
+      VStack(spacing: 0) {
+        ScrollView {
+          LazyVStack(spacing: 0) {
+            ForEach(lines) { line in
+              sideBySideRow(line: line, side: .right)
+            }
+          }
+          .font(.system(.caption, design: .monospaced))
+        }
+      }
+    }
+    .frame(maxHeight: 440)
+  }
+
+  // MARK: - 底部说明
+
+  private var footer: some View {
+    Text("backupSync.compare.hint")
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 8)
+  }
+
+  // MARK: - 行渲染
 
   @ViewBuilder
   private func sideBySideRow(line: SideBySideLine, side: Side) -> some View {
@@ -540,21 +595,22 @@ private struct CompareSheet: View {
     let no = (side == .left) ? line.leftNo : line.rightNo
     let isEmptyLine = text.isEmpty
 
-    HStack(spacing: 8) {
-      // 行号
+    HStack(spacing: 0) {
+      // 行号（差异行的行号底条更醒目）
       Text(no.map { "\($0)" } ?? "")
         .font(.system(.caption2, design: .monospaced))
         .foregroundStyle(.tertiary)
-        .frame(width: 36, alignment: .trailing)
-        .opacity(isEmptyLine ? 0 : 1)
+        .frame(width: 40, alignment: .trailing)
+        .padding(.horizontal, 8)
+        .background(lineNumberBackground(line: line, side: side))
 
-      // 内容（用 ZStack 让空行也占位，保持左右行对齐）
+      // 内容
       Text(text)
         .frame(maxWidth: .infinity, alignment: side == .left ? .trailing : .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
         .opacity(isEmptyLine ? 0 : 1)
     }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 1)
     .background(rowBackground(line: line, side: side))
     .foregroundStyle(foreground(line: line, side: side))
   }
@@ -567,16 +623,28 @@ private struct CompareSheet: View {
     case .equal:
       Color.clear
     case .removed:
-      (side == .left ? Color.red : Color.clear).opacity(0.15)
+      (side == .left ? Color.red : Color.clear).opacity(0.12)
     case .added:
-      (side == .right ? Color.green : Color.clear).opacity(0.15)
+      (side == .right ? Color.green : Color.clear).opacity(0.12)
+    }
+  }
+
+  @ViewBuilder
+  private func lineNumberBackground(line: SideBySideLine, side: Side) -> some View {
+    switch line.kind {
+    case .equal:
+      Color(nsColor: .controlBackgroundColor)
+    case .removed:
+      (side == .left ? Color.red : Color(nsColor: .controlBackgroundColor)).opacity(0.25)
+    case .added:
+      (side == .right ? Color.green : Color(nsColor: .controlBackgroundColor)).opacity(0.25)
     }
   }
 
   private func foreground(line: SideBySideLine, side: Side) -> Color {
     switch line.kind {
     case .equal:
-      return .primary.opacity(0.7)
+      return .primary.opacity(0.75)
     case .removed:
       return side == .left ? .red : .clear
     case .added:

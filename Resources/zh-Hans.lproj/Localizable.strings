@@ -715,6 +715,7 @@
 "backupSync.compare.current" = "当前版本";
 "backupSync.compare.identical" = "两个版本完全相同";
 "backupSync.compare.differences" = "%d 处差异";
+"backupSync.compare.hint" = "左栏为所选备份中的内容，右栏为当前正在使用的配置；红色为备份中已删除的行，绿色为当前新增的行。";
 "backup.label.auto" = "自动备份";
 
 /* Behavior — 候选窗按键（P2：key_bindings 编辑器） */
