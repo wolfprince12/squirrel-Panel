@@ -711,6 +711,10 @@
 "backupSync.delete.confirmMessage" = "备份将被永久删除，此操作不可撤销。";
 "backupSync.compare.title" = "文件对比";
 "backupSync.compare.file" = "文件";
+"backupSync.compare.backup" = "备份版本";
+"backupSync.compare.current" = "当前版本";
+"backupSync.compare.identical" = "两个版本完全相同";
+"backupSync.compare.differences" = "%d 处差异";
 "backup.label.auto" = "自动备份";
 
 /* Behavior — 候选窗按键（P2：key_bindings 编辑器） */

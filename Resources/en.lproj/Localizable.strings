@@ -711,6 +711,10 @@
 "backupSync.delete.confirmMessage" = "The backup will be permanently deleted. This cannot be undone.";
 "backupSync.compare.title" = "File Comparison";
 "backupSync.compare.file" = "File";
+"backupSync.compare.backup" = "Backup Version";
+"backupSync.compare.current" = "Current Version";
+"backupSync.compare.identical" = "Files are identical";
+"backupSync.compare.differences" = "%d difference(s)";
 "backup.label.auto" = "Auto backup";
 
 /* Behavior — Candidate Window Keys (P2: key_bindings editor) */

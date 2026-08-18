@@ -424,11 +424,13 @@ struct BackupSyncPage: View {
   }
 }
 
-/// 单文件行级对比 sheet
+/// 左右双栏对比 sheet
 private struct CompareSheet: View {
   let dirName: String
   let fileName: String
   @State private var selectedFile: String
+  @State private var lines: [SideBySideLine] = []
+  @State private var identical = false
   @Environment(\.dismiss) private var dismiss
 
   init(dirName: String, fileName: String) {
@@ -438,7 +440,8 @@ private struct CompareSheet: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 0) {
+      // 标题栏
       HStack {
         Text("backupSync.compare.title")
           .font(.headline)
@@ -447,41 +450,145 @@ private struct CompareSheet: View {
           .controlSize(.small)
           .keyboardShortcut(.cancelAction)
       }
-      Picker("backupSync.compare.file", selection: $selectedFile) {
-        ForEach(BackupManager.listBackupFiles(dirName: dirName), id: \.self) { f in
-          Text(f).tag(f)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+
+      Divider()
+
+      // 文件选择器 + 状态提示
+      HStack(spacing: 12) {
+        Picker("backupSync.compare.file", selection: $selectedFile) {
+          ForEach(BackupManager.listBackupFiles(dirName: dirName), id: \.self) { f in
+            Text(f).tag(f)
+          }
+        }
+        .onChange(of: selectedFile) { _, newVal in loadDiff(for: newVal) }
+          .pickerStyle(.menu)
+          .frame(width: 260)
+
+        Spacer()
+
+        if identical {
+          Label("backupSync.compare.identical", systemImage: "checkmark.circle.fill")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.green)
+        } else {
+          let changes = lines.filter { $0.kind != .equal }.count
+          Text(String(format: String(localized: "backupSync.compare.differences"), changes))
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
       }
-      .pickerStyle(.menu)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
+
       Divider()
-      let lines = BackupManager.compareBackup(dirName: dirName, fileName: selectedFile)
-      ScrollView {
-        VStack(alignment: .leading, spacing: 0) {
-          ForEach(lines) { line in
-            HStack(spacing: 0) {
-              Text(prefix(for: line.kind))
-                .frame(width: 18, alignment: .center)
-                .foregroundStyle(.secondary)
-              Text(line.text)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(color(for: line.kind))
-              Spacer()
+
+      // 双栏主体
+      HStack(spacing: 0) {
+        // 左栏：备份版本
+        VStack(alignment: .trailing, spacing: 0) {
+          headerLabel("backupSync.compare.backup")
+          ScrollView {
+            LazyVStack(spacing: 0) {
+              ForEach(lines) { line in
+                sideBySideRow(line: line, side: .left)
+              }
             }
-            .background(line.kind == .equal ? Color.clear : color(for: line.kind).opacity(0.12))
+            .font(.system(.caption, design: .monospaced))
+          }
+        }
+
+        // 中间分隔线
+        Rectangle()
+          .fill(Color(nsColor: .separatorColor))
+          .frame(width: 1)
+
+        // 右栏：当前版本
+        VStack(alignment: .leading, spacing: 0) {
+          headerLabel("backupSync.compare.current")
+          ScrollView {
+            LazyVStack(spacing: 0) {
+              ForEach(lines) { line in
+                sideBySideRow(line: line, side: .right)
+              }
+            }
+            .font(.system(.caption, design: .monospaced))
           }
         }
       }
-      .frame(maxHeight: 400)
+      .frame(maxHeight: 420)
     }
-    .padding(16)
-    .frame(width: 560)
+    .frame(width: 720)
+    .onAppear { loadDiff(for: selectedFile) }
   }
 
-  private func prefix(for kind: DiffKind) -> String {
-    switch kind { case .added: return "+"; case .removed: return "-"; case .equal: return " " }
+  // MARK: - 子视图
+
+  private func headerLabel(_ key: LocalizedStringKey) -> some View {
+    Text(key)
+      .font(.caption2.weight(.semibold))
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity, alignment: .center)
+      .padding(.vertical, 6)
+      .background(Color(nsColor: .controlBackgroundColor))
   }
 
-  private func color(for kind: DiffKind) -> Color {
-    switch kind { case .added: return .green; case .removed: return .red; case .equal: return .primary }
+  @ViewBuilder
+  private func sideBySideRow(line: SideBySideLine, side: Side) -> some View {
+    let text = (side == .left) ? line.leftText : line.rightText
+    let no = (side == .left) ? line.leftNo : line.rightNo
+    let isEmptyLine = text.isEmpty
+
+    HStack(spacing: 8) {
+      // 行号
+      Text(no.map { "\($0)" } ?? "")
+        .font(.system(.caption2, design: .monospaced))
+        .foregroundStyle(.tertiary)
+        .frame(width: 36, alignment: .trailing)
+        .opacity(isEmptyLine ? 0 : 1)
+
+      // 内容（用 ZStack 让空行也占位，保持左右行对齐）
+      Text(text)
+        .frame(maxWidth: .infinity, alignment: side == .left ? .trailing : .leading)
+        .opacity(isEmptyLine ? 0 : 1)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 1)
+    .background(rowBackground(line: line, side: side))
+    .foregroundStyle(foreground(line: line, side: side))
+  }
+
+  private enum Side { case left, right }
+
+  @ViewBuilder
+  private func rowBackground(line: SideBySideLine, side: Side) -> some View {
+    switch line.kind {
+    case .equal:
+      Color.clear
+    case .removed:
+      (side == .left ? Color.red : Color.clear).opacity(0.15)
+    case .added:
+      (side == .right ? Color.green : Color.clear).opacity(0.15)
+    }
+  }
+
+  private func foreground(line: SideBySideLine, side: Side) -> Color {
+    switch line.kind {
+    case .equal:
+      return .primary.opacity(0.7)
+    case .removed:
+      return side == .left ? .red : .clear
+    case .added:
+      return side == .right ? .green : .clear
+    }
+  }
+
+  // MARK: - 数据加载
+
+  private func loadDiff(for file: String) {
+    let result = BackupManager.compareBackupSideBySide(dirName: dirName, fileName: file)
+    self.lines = result.lines
+    self.identical = result.identical
   }
 }

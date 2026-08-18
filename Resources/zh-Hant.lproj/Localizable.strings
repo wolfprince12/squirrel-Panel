@@ -713,6 +713,10 @@
 "backupSync.delete.confirmMessage" = "備份將被永久刪除，此操作不可復原。";
 "backupSync.compare.title" = "檔案對比";
 "backupSync.compare.file" = "檔案";
+"backupSync.compare.backup" = "備份版本";
+"backupSync.compare.current" = "目前版本";
+"backupSync.compare.identical" = "兩個版本完全相同";
+"backupSync.compare.differences" = "%d 處差異";
 "backup.label.auto" = "自動備份";
 
 /* Behavior — 候選窗按鍵（P2：key_bindings 編輯器） */

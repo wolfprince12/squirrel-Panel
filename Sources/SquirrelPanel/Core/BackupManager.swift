@@ -38,10 +38,20 @@ struct BackupInfo: Identifiable {
   }
 }
 
-/// 行级差异的一行
+/// 行级差异的一行（unified / 单列格式）
 struct DiffLine: Identifiable {
   let id = UUID()
   let text: String
+  let kind: DiffKind
+}
+
+/// 左右双栏 diff 的一行
+struct SideBySideLine: Identifiable {
+  let id = UUID()
+  let leftNo: Int?    // 备份版行号（nil = 该行为空/新增行）
+  let rightNo: Int?   // 当前版行号（nil = 该行为空/删除行）
+  let leftText: String
+  let rightText: String
   let kind: DiffKind
 }
 
@@ -186,6 +196,19 @@ final class BackupManager {
     return diffLines(a, b)
   }
 
+  /// 对某个文件做左右双栏 diff（备份版左栏 / 当前版右栏）。
+  static func compareBackupSideBySide(dirName: String, fileName: String) -> (lines: [SideBySideLine], identical: Bool) {
+    let backupURL = backupsDir.appending(path: dirName).appendingPathComponent(fileName)
+    let currentURL = RimeEnvironment.userDirectory.appendingPathComponent(fileName)
+    let backupText = (try? String(contentsOf: backupURL, encoding: .utf8)) ?? ""
+    let currentText = (try? String(contentsOf: currentURL, encoding: .utf8)) ?? ""
+    let a = backupText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    let b = currentText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    let lines = diffLinesSideBySide(a, b)
+    let identical = lines.allSatisfy { $0.kind == .equal }
+    return (lines, identical)
+  }
+
   // MARK: - 内部
 
   private static func ensureDir() throws {
@@ -254,6 +277,44 @@ final class BackupManager {
     }
     while i < n { result.append(DiffLine(text: a[i], kind: .removed)); i += 1 }
     while j < m { result.append(DiffLine(text: b[j], kind: .added)); j += 1 }
+    return result
+  }
+
+  /// LCS 左右双栏 diff：返回左右对齐的差异行（备份版左 / 当前版右）
+  private static func diffLinesSideBySide(_ a: [String], _ b: [String]) -> [SideBySideLine] {
+    let n = a.count, m = b.count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: m + 1), count: n + 1)
+    for i in (0..<n).reversed() {
+      for j in (0..<m).reversed() {
+        if a[i] == b[j] { dp[i][j] = dp[i + 1][j + 1] + 1 }
+        else { dp[i][j] = max(dp[i + 1][j], dp[i][j + 1]) }
+      }
+    }
+    var result: [SideBySideLine] = []
+    var li = 1, rj = 1   // 1-based 行号（与 git diff / FileMerge 等工具一致）
+    var i = 0, j = 0
+    while i < n && j < m {
+      if a[i] == b[j] {
+        result.append(SideBySideLine(leftNo: li, rightNo: rj, leftText: a[i], rightText: b[j], kind: .equal))
+        i += 1; j += 1; li += 1; rj += 1
+      } else if dp[i + 1][j] >= dp[i][j + 1] {
+        // 备份版有、当前版无 → 删除行
+        result.append(SideBySideLine(leftNo: li, rightNo: nil, leftText: a[i], rightText: "", kind: .removed))
+        i += 1; li += 1
+      } else {
+        // 当前版有、备份版无 → 新增行
+        result.append(SideBySideLine(leftNo: nil, rightNo: rj, leftText: "", rightText: b[j], kind: .added))
+        j += 1; rj += 1
+      }
+    }
+    while i < n {
+      result.append(SideBySideLine(leftNo: li, rightNo: nil, leftText: a[i], rightText: "", kind: .removed))
+      i += 1; li += 1
+    }
+    while j < m {
+      result.append(SideBySideLine(leftNo: nil, rightNo: rj, leftText: "", rightText: b[j], kind: .added))
+      j += 1; rj += 1
+    }
     return result
   }
 }
