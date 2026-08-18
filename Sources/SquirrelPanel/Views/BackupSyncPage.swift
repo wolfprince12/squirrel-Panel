@@ -452,7 +452,7 @@ private struct CompareSheet: View {
       Divider()
       footer
     }
-    .frame(width: 760)
+    .frame(width: 680)
     .onAppear { loadDiff(for: selectedFile) }
   }
 
@@ -560,6 +560,8 @@ private struct CompareSheet: View {
           }
           .font(.system(.caption, design: .monospaced))
         }
+        .scrollDisabled(lines.isEmpty)
+        .background(Color.clear)
       }
       Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
       VStack(spacing: 0) {
@@ -571,11 +573,12 @@ private struct CompareSheet: View {
           }
           .font(.system(.caption, design: .monospaced))
         }
+        .scrollDisabled(lines.isEmpty)
+        .background(Color.clear)
       }
     }
-    .frame(maxHeight: 440)
+    .frame(maxHeight: min(CGFloat(lines.count) * 22 + 40, 460))
     .overlay(
-      // 仅描边，不填底：空白处透出窗口底色，不再有"大灰块"
       RoundedRectangle(cornerRadius: 4)
         .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
     )

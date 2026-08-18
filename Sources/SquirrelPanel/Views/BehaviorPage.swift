@@ -451,7 +451,7 @@ private struct CandidateKeysEditor: View {
       Divider()
       footer
     }
-    .frame(width: 680, height: 520)
+    .frame(width: 580, height: 480)
     .onAppear { rows = bindingsToRows(store.candidateKeyBindings) }
     .onDisappear { store.candidateKeyBindings = rowsToBindings(rows) }
   }
@@ -510,11 +510,11 @@ private struct CandidateKeysEditor: View {
   private var columnHeaders: some View {
     HStack(spacing: 8) {
       Text(LocalizedStringKey("behavior.candidateKeys.when"))
-        .frame(width: 130, alignment: .leading)
+        .frame(width: 110, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.accept"))
-        .frame(width: 150, alignment: .leading)
+        .frame(width: 130, alignment: .leading)
       Text(LocalizedStringKey("behavior.candidateKeys.send"))
-        .frame(width: 190, alignment: .leading)
+        .frame(width: 165, alignment: .leading)
       Spacer()
     }
     .font(.caption.weight(.medium))
@@ -590,13 +590,13 @@ private struct KeyBindingRowView: View {
         }
       }
       .labelsHidden()
-      .frame(width: 130)
+      .frame(width: 110)
 
       CategorizedPopupButton(groups: keyGroups, selection: $row.accept)
-        .frame(width: 150)
+        .frame(width: 130)
 
       CategorizedPopupButton(groups: sendGroups, selection: $row.send)
-        .frame(width: 190)
+        .frame(width: 165)
 
       Spacer(minLength: 0)
 
