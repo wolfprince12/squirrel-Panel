@@ -443,8 +443,9 @@ private struct CompareSheet: View {
         Text("backupSync.compare.title")
           .font(.headline)
         Spacer()
-        Button("generic.close") { dismiss() }
+        Button("common.close") { dismiss() }
           .controlSize(.small)
+          .keyboardShortcut(.cancelAction)
       }
       Picker("backupSync.compare.file", selection: $selectedFile) {
         ForEach(BackupManager.listBackupFiles(dirName: dirName), id: \.self) { f in
