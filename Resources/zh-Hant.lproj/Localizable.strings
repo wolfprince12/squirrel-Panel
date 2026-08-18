@@ -5,7 +5,7 @@
 "nav.riceIce" = "霧鬚管與萬象";
 "nav.behavior" = "按鍵與行為";
 "nav.appOptions" = "應用適配";
-"nav.dictionary" = "詞庫與同步";
+"nav.dictionary" = "詞庫與標點";
 "nav.about" = "關於";
 "footer.dirty" = "有未套用的變更";
 "footer.saved" = "設定已儲存";
@@ -656,3 +656,78 @@
 "scheme.field.preedit_back_color.description" = "輸入編碼區背景色";
 "scheme.field.hilited_preedit_text_color.description" = "編碼區高亮文字顏色";
 "scheme.field.hilited_preedit_back_color.description" = "編碼區高亮背景色";
+
+/* Navigation — 備份與同步 */
+"nav.backupSync" = "備份與同步";
+
+/* Punctuation Map（詞庫與標點面板） */
+"punctuation.title" = "標點映射表";
+"punctuation.hint" = "自訂全角 / 半角標點按鍵對應的符號。修改會寫入 default.custom.yaml 的 punctuator，隨「套用並重新部署」生效。";
+"punctuation.fullShape" = "全角標點";
+"punctuation.halfShape" = "半角標點";
+"punctuation.keyPlaceholder" = "按鍵";
+"punctuation.valuePlaceholder" = "符號，多個候選用逗號分隔";
+"punctuation.add" = "新增映射";
+
+/* Backup & Sync（備份與同步面板） */
+"backupSync.sync.title" = "同步設定";
+"backupSync.sync.id" = "裝置識別";
+"backupSync.sync.idPlaceholder" = "如 device-001";
+"backupSync.sync.id.hint" = "每台裝置填寫不同的 installation_id，同步時依此區分。留空則本機不寫入該欄位。";
+"backupSync.sync.dir" = "同步目錄";
+"backupSync.sync.dirPlaceholder" = "Rime 同步目錄路徑";
+"backupSync.sync.dir.hint" = "使用者詞庫 / 設定將同步到此目錄（可指向隨身碟、iCloud 或 NAS）。修改後需「套用並重新部署」生效。";
+"backupSync.icloud.use" = "使用 iCloud 雲碟";
+"backupSync.icloud.hint" = "在 iCloud 雲碟中建立 RimeSync 目錄並填入路徑，多台 Mac 自動共享詞庫。";
+"backupSync.saveAndDeploy" = "儲存並重新部署";
+"backupSync.syncNow" = "立即同步";
+"backupSync.message.syncStarted" = "已觸發同步，稍後查看輸入法托盤選單。";
+"backupSync.icloud.filled" = "已填入 iCloud 同步路徑，點擊「儲存並重新部署」生效。";
+"backupSync.icloud.applied" = "已儲存並重新部署，同步設定生效。";
+"backupSync.message.saved" = "已儲存同步設定。";
+"backupSync.syncDir.message" = "選擇 Rime 同步目錄";
+"backupSync.status.title" = "同步狀態";
+"backupSync.status.configured" = "已設定";
+"backupSync.status.notConfigured" = "未設定";
+"backupSync.status.dirExists" = "目錄存在";
+"backupSync.status.dirMissing" = "目錄不存在";
+"backupSync.device.title" = "已同步裝置";
+"backupSync.device.empty" = "設定同步目錄並同步後，這裡會列出曾在其他裝置同步過的詞庫。";
+"backupSync.device.never" = "從未";
+"backupSync.device.lastSeen" = "最近 %@";
+"backupSync.backup.title" = "設定備份";
+"backupSync.backup.hint" = "在「套用並重新部署」前會自動備份；也可隨時手動建立整目錄快照，支援整量還原與單檔對比。";
+"backupSync.backup.create" = "建立備份";
+"backupSync.backup.count" = "共 %d 個備份";
+"backupSync.backup.empty" = "尚無備份，點擊上方按鈕建立第一個。";
+"backupSync.backup.restore" = "還原";
+"backupSync.backup.compare" = "對比";
+"backupSync.backup.delete" = "刪除";
+"backupSync.backup.created" = "已建立備份：%@";
+"backupSync.backup.restored" = "已還原備份並重新部署。";
+"backupSync.restore.confirmTitle" = "還原此備份？";
+"backupSync.restore.button" = "還原";
+"backupSync.restore.confirmMessage" = "還原將以該備份覆蓋目前 ~/Library/Rime 的全部設定，且會重新部署。確定繼續？";
+"backupSync.delete.confirmTitle" = "刪除此備份？";
+"backupSync.delete.button" = "刪除";
+"backupSync.delete.confirmMessage" = "備份將被永久刪除，此操作不可復原。";
+"backupSync.compare.title" = "檔案對比";
+"backupSync.compare.file" = "檔案";
+"backup.label.auto" = "自動備份";
+
+/* Behavior — 候選窗按鍵（P2：key_bindings 編輯器） */
+"behavior.candidateKeys.title" = "候選窗按鍵";
+"behavior.candidateKeys.hint" = "候選窗與編輯過程的按鍵綁定（寫入 squirrel.custom.yaml 的 key_bindings）。留空則使用鼠須管預設鍵位。";
+"behavior.candidateKeys.when" = "時機";
+"behavior.candidateKeys.accept" = "按鍵";
+"behavior.candidateKeys.send" = "動作";
+"behavior.candidateKeys.toggle" = "切換";
+"behavior.candidateKeys.add" = "新增按鍵";
+"behavior.candidateKeys.preset" = "載入預設";
+"behavior.candidateKeys.preset.default" = "常用候選窗鍵位";
+"behavior.candidateKeys.empty" = "尚未設定候選窗按鍵，將使用鼠須管預設鍵位。";
+"behavior.when.paging" = "翻頁時 (paging)";
+"behavior.when.has_menu" = "有候選時 (has_menu)";
+"behavior.when.composing" = "編輯中 (composing)";
+"behavior.when.always" = "始終 (always)";
+"behavior.when.predict" = "聯想時 (predict)";

@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, riceIce, dictionary, behavior, appOptions, maintenance, about
+  case appearance, schemas, riceIce, dictionary, behavior, appOptions, maintenance, about, backupSync
 
   var id: String { rawValue }
 
@@ -19,6 +19,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .appOptions: return "nav.appOptions"
     case .dictionary: return "nav.dictionary"
     case .maintenance: return "nav.maintenance"
+    case .backupSync: return "nav.backupSync"
     case .about: return "nav.about"
     }
   }
@@ -32,6 +33,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .appOptions: return "square.grid.2x2"
     case .dictionary: return "externaldrive"
     case .maintenance: return "wrench.and.screwdriver"
+    case .backupSync: return "arrow.triangle.2.circlepath"
     case .about: return "info.circle"
     }
   }
@@ -45,6 +47,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
     case .appOptions: return .blue
     case .dictionary: return .pink
     case .maintenance: return .purple
+    case .backupSync: return .brown
     case .about: return .gray
     }
   }
@@ -71,9 +74,9 @@ struct RootView: View {
       VStack(spacing: 0) {
         ScrollView(.vertical, showsIndicators: true) {
           VStack(spacing: 2) {
-            // 为窗口左上角红黄绿按钮留出顶部安全距离；不铺整行色块，避免产生灰条。
-            Color.clear
-              .frame(height: 22)
+            // 为窗口左上角红黄绿按钮留出顶部安全距离；用窗口背景色填充避免透色。
+            Color(nsColor: .windowBackgroundColor)
+              .frame(height: 40)
 
             ForEach(PanelSection.allCases) { section in
               SidebarItem(
@@ -91,10 +94,11 @@ struct RootView: View {
         Text("footer.hint")
           .font(.caption2)
           .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
           .padding(.horizontal, 12)
           .padding(.vertical, 10)
           .fixedSize(horizontal: false, vertical: true)
-          .frame(maxWidth: .infinity, alignment: .leading)
+          .frame(maxWidth: .infinity, alignment: .center)
           .background(Color(nsColor: .windowBackgroundColor))
       }
       .frame(width: 220)
@@ -113,6 +117,7 @@ struct RootView: View {
           case .appOptions: AppOptionsPage()
           case .dictionary: DictionaryPage()
           case .maintenance: MaintenancePage()
+          case .backupSync: BackupSyncPage()
           case .about: AboutPage()
           }
         }

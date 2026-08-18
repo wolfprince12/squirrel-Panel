@@ -5,7 +5,7 @@
 "nav.riceIce" = "Rime-ice & Wanxiang";
 "nav.behavior" = "Behavior";
 "nav.appOptions" = "App Options";
-"nav.dictionary" = "Dictionary";
+"nav.dictionary" = "Dictionary & Punctuation";
 "nav.about" = "About";
 "footer.dirty" = "Unsaved Changes";
 "footer.saved" = "Settings saved";
@@ -654,3 +654,78 @@
 "scheme.field.preedit_back_color.description" = "Preedit area background";
 "scheme.field.hilited_preedit_text_color.description" = "Highlighted preedit text";
 "scheme.field.hilited_preedit_back_color.description" = "Highlighted preedit background";
+
+/* Navigation — Backup & Sync */
+"nav.backupSync" = "Backup & Sync";
+
+/* Punctuation Map (Dictionary & Punctuation panel) */
+"punctuation.title" = "Punctuation Map";
+"punctuation.hint" = "Customize the symbols for full-width / half-width punctuation keys. Changes are written to punctuator in default.custom.yaml and take effect after Apply & Deploy.";
+"punctuation.fullShape" = "Full-width";
+"punctuation.halfShape" = "Half-width";
+"punctuation.keyPlaceholder" = "Key";
+"punctuation.valuePlaceholder" = "Symbol(s), separate multiple with comma";
+"punctuation.add" = "Add Mapping";
+
+/* Backup & Sync panel */
+"backupSync.sync.title" = "Sync Settings";
+"backupSync.sync.id" = "Device ID";
+"backupSync.sync.idPlaceholder" = "e.g. device-001";
+"backupSync.sync.id.hint" = "Give each device a different installation_id so sync can tell them apart. Leave empty to not write this field.";
+"backupSync.sync.dir" = "Sync Directory";
+"backupSync.sync.dirPlaceholder" = "Rime sync directory path";
+"backupSync.sync.dir.hint" = "User dictionaries / config are synced to this directory (USB drive, iCloud, or NAS). Requires Save & Deploy to take effect.";
+"backupSync.icloud.use" = "Use iCloud Drive";
+"backupSync.icloud.hint" = "Creates a RimeSync folder in iCloud Drive and fills the path, so multiple Macs share dictionaries automatically.";
+"backupSync.saveAndDeploy" = "Save & Deploy";
+"backupSync.syncNow" = "Sync Now";
+"backupSync.message.syncStarted" = "Sync triggered. Check the input method menu shortly.";
+"backupSync.icloud.filled" = "iCloud sync path filled. Click Save & Deploy to apply.";
+"backupSync.icloud.applied" = "Saved and deployed. Sync settings are active.";
+"backupSync.message.saved" = "Sync settings saved.";
+"backupSync.syncDir.message" = "Choose Rime sync directory";
+"backupSync.status.title" = "Sync Status";
+"backupSync.status.configured" = "Configured";
+"backupSync.status.notConfigured" = "Not configured";
+"backupSync.status.dirExists" = "Directory exists";
+"backupSync.status.dirMissing" = "Directory missing";
+"backupSync.device.title" = "Synced Devices";
+"backupSync.device.empty" = "After configuring the sync directory and syncing, other devices' dictionaries appear here.";
+"backupSync.device.never" = "never";
+"backupSync.device.lastSeen" = "last seen %@";
+"backupSync.backup.title" = "Config Backup";
+"backupSync.backup.hint" = "An automatic backup is taken before each Apply & Deploy. You can also snapshot the whole directory anytime, with full restore and per-file diff.";
+"backupSync.backup.create" = "Create Backup";
+"backupSync.backup.count" = "%d backup(s)";
+"backupSync.backup.empty" = "No backups yet. Click the button above to create one.";
+"backupSync.backup.restore" = "Restore";
+"backupSync.backup.compare" = "Compare";
+"backupSync.backup.delete" = "Delete";
+"backupSync.backup.created" = "Backup created: %@";
+"backupSync.backup.restored" = "Backup restored and deployed.";
+"backupSync.restore.confirmTitle" = "Restore this backup?";
+"backupSync.restore.button" = "Restore";
+"backupSync.restore.confirmMessage" = "Restoring overwrites all of ~/Library/Rime with this backup and triggers a deploy. Continue?";
+"backupSync.delete.confirmTitle" = "Delete this backup?";
+"backupSync.delete.button" = "Delete";
+"backupSync.delete.confirmMessage" = "The backup will be permanently deleted. This cannot be undone.";
+"backupSync.compare.title" = "File Comparison";
+"backupSync.compare.file" = "File";
+"backup.label.auto" = "Auto backup";
+
+/* Behavior — Candidate Window Keys (P2: key_bindings editor) */
+"behavior.candidateKeys.title" = "Candidate Window Keys";
+"behavior.candidateKeys.hint" = "Key bindings for the candidate window and editing (written to key_bindings in squirrel.custom.yaml). Leave empty to use Squirrel defaults.";
+"behavior.candidateKeys.when" = "When";
+"behavior.candidateKeys.accept" = "Key";
+"behavior.candidateKeys.send" = "Action";
+"behavior.candidateKeys.toggle" = "Toggle";
+"behavior.candidateKeys.add" = "Add Key";
+"behavior.candidateKeys.preset" = "Load Preset";
+"behavior.candidateKeys.preset.default" = "Common candidate keys";
+"behavior.candidateKeys.empty" = "No candidate keys configured; Squirrel defaults will be used.";
+"behavior.when.paging" = "Paging (paging)";
+"behavior.when.has_menu" = "Has menu (has_menu)";
+"behavior.when.composing" = "Composing (composing)";
+"behavior.when.always" = "Always (always)";
+"behavior.when.predict" = "Predict (predict)";

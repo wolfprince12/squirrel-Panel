@@ -2,15 +2,15 @@
 //  DictionaryPage.swift
 //  Squirrel Panel
 //
-//  用户词库与同步 + 第三方词库包管理。
-//  鼠须管的同步由 librime 完成，这里负责配置 installation.yaml
-//  并通过官方通道触发同步。
-//  第三方词库包（如雾凇拼音 rime-ice）基于内置注册表管理安装/更新/卸载。
+//  词库与标点面板：
+//  1. 用户词库图形化编辑（custom_phrase.txt 及用户级 *.dict.yaml）；
+//  2. 学习词库（*.userdb，leveldb）只读展示；
+//  3. 标点映射表编辑（punctuator/full_shape 与 punctuator/half_shape）。
 //
+//  同步配置已迁移至「备份与同步」面板（BackupSyncPage）。
 //  本面板提供「用户词库图形化编辑」：借助 CustomPhraseFile 读写
-//  ~/Library/Rime 下的用户词库文件（custom_phrase.txt 及用户级 *.dict.yaml）。
-//  学习词库（*.userdb，leveldb）由输入法自动记录，不在面板里手写编辑，
-//  误记词条在输入时用原生 Shift+Delete 删除即可。
+//  ~/Library/Rime 下的用户词库文件。学习词库由输入法自动记录，
+//  不在面板里手写编辑，误记词条在输入时用原生 Shift+Delete 删除即可。
 //
 
 import SwiftUI
@@ -55,14 +55,21 @@ struct EditableDict: Identifiable {
   let description: String
 }
 
+/// 标点映射表的一行（key = 输入法按键，value = 逗号分隔的候选符号）
+struct PunctRow: Identifiable, Hashable {
+  let id = UUID()
+  var key: String
+  var value: String
+}
+
 struct DictionaryPage: View {
   @EnvironmentObject private var store: SettingsStore
   @State private var dictionaries: [UserDictInfo] = []
   @State private var editableFiles: [EditableDict] = []
-  @State private var installationID = ""
-  @State private var syncDirectory = ""
-  @State private var message = ""
   @State private var editingURL: EditableDict?
+  /// 标点映射表的镜像行（实时写回 store 字典，纳入统一应用流程）
+  @State private var fullRows: [PunctRow] = []
+  @State private var halfRows: [PunctRow] = []
 
   var body: some View {
     ScrollView {
@@ -70,15 +77,17 @@ struct DictionaryPage: View {
         // MARK: - 可编辑的用户词库文件
         editableSection
 
+        // MARK: - 标点映射表
+        punctSection
+
         // MARK: - 学习词库（只读）
         learningSection
-
-        // MARK: - 同步设置
-        syncSection
       }
       .padding(20)
     }
     .onAppear(perform: load)
+    .onChange(of: fullRows) { _ in commitPunct() }
+    .onChange(of: halfRows) { _ in commitPunct() }
     .sheet(item: $editingURL) { dict in
       DictionaryEditor(url: dict.url)
         .environmentObject(store)
@@ -166,6 +175,54 @@ struct DictionaryPage: View {
     }
   }
 
+  // MARK: - 标点映射表
+
+  private var punctSection: some View {
+    SettingsGroup("punctuation.title") {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("punctuation.hint")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        punctGroup(title: "punctuation.fullShape", rows: $fullRows)
+        Divider()
+        punctGroup(title: "punctuation.halfShape", rows: $halfRows)
+      }
+    }
+  }
+
+  private func punctGroup(title: String, rows: Binding<[PunctRow]>) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(LocalizedStringKey(title))
+        .font(.subheadline.weight(.medium))
+      ForEach(rows) { $row in
+        HStack(spacing: 6) {
+          TextField("punctuation.keyPlaceholder", text: $row.key)
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 90)
+          Text("→").foregroundStyle(.secondary)
+          TextField("punctuation.valuePlaceholder", text: $row.value)
+            .textFieldStyle(.roundedBorder)
+          Button {
+            rows.wrappedValue.removeAll { $0.id == row.id }
+          } label: {
+            Image(systemName: "minus.circle.fill")
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(.red)
+          .help("generic.remove")
+        }
+      }
+      Button {
+        rows.wrappedValue.append(PunctRow(key: "", value: ""))
+      } label: {
+        Label("punctuation.add", systemImage: "plus")
+      }
+      .controlSize(.small)
+    }
+  }
+
   // MARK: - 学习词库（只读）
 
   private var learningSection: some View {
@@ -197,110 +254,48 @@ struct DictionaryPage: View {
     }
   }
 
-  // MARK: - 同步设置
+  // MARK: - 标点：镜像行 ↔ Store 字典
 
-  private var syncSection: some View {
-    SettingsGroup("dictionary.sync.title") {
-      VStack(alignment: .leading, spacing: 12) {
-        LabeledContent("dictionary.sync.id") {
-          TextField("dictionary.sync.idPlaceholder", text: $installationID)
-            .textFieldStyle(.roundedBorder)
-            .frame(width: 220)
-        }
-        Text("dictionary.sync.id.hint")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+  private func loadPunct() {
+    fullRows = Self.dictToRows(store.fullShapePunct)
+    halfRows = Self.dictToRows(store.halfShapePunct)
+  }
 
-        LabeledContent("dictionary.sync.dir") {
-          HStack(spacing: 6) {
-            TextField("dictionary.sync.dirPlaceholder", text: $syncDirectory)
-              .textFieldStyle(.roundedBorder)
-              .frame(minWidth: 260, maxWidth: .infinity)
-            Button("generic.choose") { chooseSyncDirectory() }
-              .controlSize(.small)
-          }
-          .frame(maxWidth: .infinity)
-        }
-        Text("dictionary.sync.dir.hint")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+  private func commitPunct() {
+    store.fullShapePunct = Self.rowsToDict(fullRows)
+    store.halfShapePunct = Self.rowsToDict(halfRows)
+  }
 
-        Divider()
-
-        HStack(alignment: .top, spacing: 10) {
-          VStack(alignment: .leading, spacing: 4) {
-            Button("dictionary.icloud.use") { useICloudSync() }
-              .controlSize(.small)
-            Text("dictionary.icloud.hint")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-          Spacer()
-        }
-
-        Divider()
-
-        HStack(spacing: 10) {
-          Button("dictionary.saveAndDeploy") { saveAndDeploy() }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-          Button("dictionary.syncNowData") {
-            do {
-              try SquirrelBridge.sync(environment: store.environment)
-              message = String(localized: "dictionary.message.syncStarted")
-            } catch {
-              message = error.localizedDescription
-            }
-          }
-          .controlSize(.small)
-          .disabled(!store.environment.isInstalled)
-          Spacer()
-          if !message.isEmpty {
-            Text(message)
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-        }
+  private static func dictToRows(_ dict: [String: Any]) -> [PunctRow] {
+    dict.sorted { $0.key < $1.key }.map { key, value in
+      let text: String
+      if let arr = value as? [String] {
+        text = arr.joined(separator: ",")
+      } else {
+        text = "\(value)"
       }
+      return PunctRow(key: key, value: text)
     }
   }
 
-  /// 将同步目录指向 iCloud 云盘并填入安装标识；不会自动保存，需点击「保存并重新部署」。
-  private func useICloudSync() {
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    let iCloud = home
-      .appendingPathComponent("Library")
-      .appendingPathComponent("Mobile Documents")
-      .appendingPathComponent("com~apple~CloudDocs")
-      .appendingPathComponent("RimeSync")
-    do {
-      try FileManager.default.createDirectory(at: iCloud, withIntermediateDirectories: true)
-      SquirrelBridge.setFolderIcon(at: iCloud)
-    } catch {
-      message = error.localizedDescription
-      return
+  private static func rowsToDict(_ rows: [PunctRow]) -> [String: Any] {
+    var dict: [String: Any] = [:]
+    for row in rows where !row.key.isEmpty {
+      let parts = row.value
+        .split(separator: ",")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+      dict[row.key] = parts.count > 1 ? parts : (parts.first ?? "")
     }
-    syncDirectory = iCloud.path(percentEncoded: false)
-    if installationID.isEmpty {
-      let suffix = String(format: "%08X", arc4random())
-      installationID = "device-\(suffix)"
-    }
-    message = String(localized: "dictionary.icloud.filled")
+    return dict
   }
 
-  // MARK: - 载入与保存
+  // MARK: - 载入
 
   private func load() {
     dictionaries = Self.scanDictionaries()
     editableFiles = Self.scanEditableDicts()
-    let url = RimeEnvironment.userDirectory.appending(path: "installation.yaml")
-    guard let text = try? String(contentsOf: url, encoding: .utf8),
-          let object = try? Yams.load(yaml: text) as? [String: Any] else {
-      return
-    }
-    installationID = (object["installation_id"] as? String) ?? ""
-    syncDirectory = (object["sync_dir"] as? String) ?? ""
+    loadPunct()
   }
 
   /// 列出本机可被面板图形化编辑的用户词库文件：
@@ -382,64 +377,5 @@ struct DictionaryPage: View {
       total = Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
     }
     return total
-  }
-
-  private func chooseSyncDirectory() {
-    let panel = NSOpenPanel()
-    panel.canChooseDirectories = true
-    panel.canChooseFiles = false
-    panel.canCreateDirectories = true
-    panel.prompt = String(localized: "generic.choose")
-    panel.message = String(localized: "dictionary.syncDir.message")
-    if !syncDirectory.isEmpty, FileManager.default.fileExists(atPath: syncDirectory) {
-      panel.directoryURL = URL(fileURLWithPath: syncDirectory)
-    }
-    guard panel.runModal() == .OK, let url = panel.url else { return }
-    syncDirectory = url.path(percentEncoded: false)
-  }
-
-  /// 保存 installation.yaml 并触发重新部署，使同步目录立即生效。
-  private func saveAndDeploy() {
-    saveInstallation()
-    do {
-      try SquirrelBridge.deploy(environment: store.environment)
-      message = String(localized: "dictionary.icloud.applied")
-    } catch {
-      message = error.localizedDescription
-    }
-  }
-
-  /// installation.yaml 由 librime 维护，这里只改动我们关心的两个字段
-  private func saveInstallation() {
-    let url = RimeEnvironment.userDirectory.appending(path: "installation.yaml")
-    var object: [String: Any] = [:]
-    if let text = try? String(contentsOf: url, encoding: .utf8),
-       let existing = try? Yams.load(yaml: text) as? [String: Any] {
-      object = existing
-    }
-    if installationID.isEmpty {
-      object.removeValue(forKey: "installation_id")
-    } else {
-      object["installation_id"] = installationID
-    }
-    if syncDirectory.isEmpty {
-      object.removeValue(forKey: "sync_dir")
-    } else {
-      object["sync_dir"] = syncDirectory
-    }
-    do {
-      try FileManager.default.createDirectory(at: RimeEnvironment.userDirectory,
-                                              withIntermediateDirectories: true)
-      if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
-        let backup = url.appendingPathExtension("bak")
-        try? FileManager.default.removeItem(at: backup)
-        try? FileManager.default.copyItem(at: url, to: backup)
-      }
-      let body = try Yams.dump(object: object, width: -1, allowUnicode: true, sortKeys: true)
-      try body.write(to: url, atomically: true, encoding: .utf8)
-      message = String(localized: "dictionary.message.saved")
-    } catch {
-      message = error.localizedDescription
-    }
   }
 }

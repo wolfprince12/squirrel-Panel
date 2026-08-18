@@ -17,6 +17,9 @@ enum PatchValue: Equatable {
   case schemaList([String])
   /// Rime 的 key_bindings 列表（每个元素是 [String: Any] 的映射）
   case keyBindings([[String: Any]])
+  /// 标点符号映射表（punctuator/full_shape 与 punctuator/half_shape），
+  /// 每个键映射到单个符号或符号候选列表。
+  case punctuation([String: Any])
   /// 任意「列表的映射」结构（例如 rime_ice.custom.yaml 的 switches 整段），
   /// 用于整段重写而非逐键 patch。
   case mapList([[String: Any]])
@@ -34,6 +37,7 @@ enum PatchValue: Equatable {
     case .schemaList(let v): return v.map { ["schema": $0] }
     case .keyBindings(let v): return v
     case .mapList(let v): return v
+    case .punctuation(let v): return v
     }
   }
 
@@ -47,6 +51,7 @@ enum PatchValue: Equatable {
     case (.schemaList(let a), .schemaList(let b)): return a == b
     case (.keyBindings(let a), .keyBindings(let b)): return listOfMapsEqual(a, b)
     case (.mapList(let a), .mapList(let b)): return listOfMapsEqual(a, b)
+    case (.punctuation(let a), .punctuation(let b)): return valueEqual(a, b)
     default:
       return false
     }

@@ -114,6 +114,16 @@ final class SettingsStore: ObservableObject {
   @Published var keyboardLayout = "last"
   @Published var showNotificationsWhen = "appropriate"
 
+  // MARK: - 标点映射（punctuator）
+  /// 全角 / 半角标点符号映射，写入 default.custom.yaml 的
+  /// punctuator/full_shape 与 punctuator/half_shape。
+  @Published var fullShapePunct: [String: Any] = [:]
+  @Published var halfShapePunct: [String: Any] = [:]
+
+  // MARK: - 候选窗按键绑定（key_bindings）
+  /// 候选窗导航键（确认 / 取消 / 翻页 / 方向等），写入 squirrel.custom.yaml 的 key_bindings
+  @Published var candidateKeyBindings: [[String: Any]] = []
+
   /// Tab 翻页开关：Tab 向后翻页（同 =），Shift+Tab 向前翻页（同 -）
   @Published var tabPagingEnabled = false
   /// 我们是否在托管 key_bindings（载入时已含我们的 Tab 条目，或用户历史上启用过）
@@ -236,6 +246,16 @@ final class SettingsStore: ObservableObject {
     mutualExclusive = flag("style/mutual_exclusive", false)
     keyboardLayout = squirrelPatch.string(forPath: "keyboard_layout") ?? "last"
     showNotificationsWhen = squirrelPatch.string(forPath: "show_notifications_when") ?? "appropriate"
+
+    fullShapePunct = (defaultPatch.value(forPath: "punctuator/full_shape") as? [String: Any]) ?? [:]
+    halfShapePunct = (defaultPatch.value(forPath: "punctuator/half_shape") as? [String: Any]) ?? [:]
+    if let list = squirrelPatch.value(forPath: "key_bindings") as? [[String: Any]] {
+      candidateKeyBindings = list
+    } else if let list = squirrelPatch.value(forPath: "key_bindings") as? [Any] {
+      candidateKeyBindings = list.compactMap { $0 as? [String: Any] }
+    } else {
+      candidateKeyBindings = []
+    }
 
     enabledSchemaIDs = SchemaCatalog.enabledSchemaIDs(patch: defaultPatch, environment: environment)
     switcherHotkeys = readList(defaultPatch, "switcher/hotkeys").joined(separator: ", ")
@@ -453,14 +473,15 @@ final class SettingsStore: ObservableObject {
     "style/alpha", "style/candidate_format", "style/inline_preedit", "style/inline_candidate",
     "style/translucency", "style/show_paging", "style/memorize_size", "style/mutual_exclusive",
     "style/shadow_size", "style/status_message_type",
-    "keyboard_layout", "show_notifications_when"
+    "keyboard_layout", "show_notifications_when", "key_bindings"
   ]
 
   static let managedDefaultKeys: Set<String> = [
     "schema_list", "menu/page_size", "ascii_composer/good_old_caps_lock",
     "ascii_composer/switch_key/Caps_Lock", "ascii_composer/switch_key/Shift_L",
     "ascii_composer/switch_key/Shift_R", "ascii_composer/switch_key/Control_L",
-    "ascii_composer/switch_key/Control_R", "switcher/hotkeys", "switcher/caption"
+    "ascii_composer/switch_key/Control_R", "switcher/hotkeys", "switcher/caption",
+    "punctuator/full_shape", "punctuator/half_shape"
   ]
 
   func compileSquirrelPatch() -> PatchSet {
@@ -518,6 +539,8 @@ final class SettingsStore: ObservableObject {
     put(&set, "style/mutual_exclusive", .bool(mutualExclusive), defaultValue: defaults["style/mutual_exclusive"])
     set["keyboard_layout"] = keyboardLayout == "last" ? PatchValue?.none : .string(keyboardLayout)
     set["show_notifications_when"] = showNotificationsWhen == "appropriate" ? PatchValue?.none : .string(showNotificationsWhen)
+    // 候选窗按键绑定：列表为空则不落盘（回落出厂 squirrel.yaml）
+    set["key_bindings"] = candidateKeyBindings.isEmpty ? PatchValue?.none : .keyBindings(candidateKeyBindings)
 
     for entry in appOptions {
       let prefix = "app_options/\(entry.bundleID)"
@@ -549,6 +572,9 @@ final class SettingsStore: ObservableObject {
       .filter { !$0.isEmpty }
     set["switcher/hotkeys"] = hotkeys.isEmpty ? PatchValue?.none : .stringList(hotkeys)
     set["switcher/caption"] = switcherCaption.isEmpty ? PatchValue?.none : .string(switcherCaption)
+    // 标点映射表：全角 / 半角符号表，字典为空则不落盘
+    set["punctuator/full_shape"] = fullShapePunct.isEmpty ? PatchValue?.none : .punctuation(fullShapePunct)
+    set["punctuator/half_shape"] = halfShapePunct.isEmpty ? PatchValue?.none : .punctuation(halfShapePunct)
     // switcher/save_options：由 RimeIceConfigStore 在应用雾凇配置时改写；
     // 与 switches 的 reset 互斥——记住的开关不能带 reset。
     //
@@ -604,6 +630,8 @@ final class SettingsStore: ObservableObject {
       // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
       rimeIce?.contribute(to: self)
       try rimeIce?.writePatch()
+      // 部署前自动快照：万一本次改动不理想，可从「备份与同步」页一键还原
+      _ = try? BackupManager.createBackup(label: "部署前自动备份")
       let squirrelSet = compileSquirrelPatch()
       let defaultSet = compileDefaultPatch()
       for (key, value) in squirrelSet { squirrelPatch.set(value?.yamlObject, forPath: key) }
