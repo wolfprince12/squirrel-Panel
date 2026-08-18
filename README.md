@@ -29,16 +29,16 @@
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-appearance-colors.png" alt="外观 - 配色方案"><br><center>外观 — 配色方案</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-appearance-fonts.png" alt="外观 - 字体与布局"><br><center>外观 — 字体与布局</center></td>
+<td width="50%"><img src="docs/v1.4.0-appearance-colors.png" alt="外观 - 配色方案"><br><center>外观 — 配色方案</center></td>
+<td width="50%"><img src="docs/v1.4.0-appearance-fonts.png" alt="外观 - 字体与布局"><br><center>外观 — 字体与布局</center></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-dictionary-punctuation.png" alt="词库与标点"><br><center>词库与标点</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-candidate-keys-editor.png" alt="候选窗按键编辑"><br><center>候选窗按键编辑</center></td>
+<td width="50%"><img src="docs/v1.4.0-dictionary-punctuation.png" alt="词库与标点"><br><center>词库与标点</center></td>
+<td width="50%"><img src="docs/v1.4.0-candidate-keys-editor.png" alt="候选窗按键编辑"><br><center>候选窗按键编辑</center></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-backup-sync.png" alt="备份与同步"><br><center>备份与同步</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-compare.png" alt="文件对比"><br><center>文件对比</center></td>
+<td width="50%"><img src="docs/v1.4.0-backup-sync.png" alt="备份与同步"><br><center>备份与同步</center></td>
+<td width="50%"><img src="docs/v1.4.0-compare.png" alt="文件对比"><br><center>文件对比</center></td>
 </tr>
 </table>
 
@@ -234,16 +234,16 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-appearance-colors.png" alt="Appearance - Color Schemes"><br><center>Appearance — Color Schemes</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-appearance-fonts.png" alt="Appearance - Fonts & Layout"><br><center>Appearance — Fonts & Layout</center></td>
+<td width="50%"><img src="docs/v1.4.0-appearance-colors.png" alt="Appearance - Color Schemes"><br><center>Appearance — Color Schemes</center></td>
+<td width="50%"><img src="docs/v1.4.0-appearance-fonts.png" alt="Appearance - Fonts & Layout"><br><center>Appearance — Fonts & Layout</center></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-dictionary-punctuation.png" alt="Dictionary & Punctuation"><br><center>Dictionary & Punctuation</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-candidate-keys-editor.png" alt="Candidate Keys Editor"><br><center>Candidate Keys Editor</center></td>
+<td width="50%"><img src="docs/v1.4.0-dictionary-punctuation.png" alt="Dictionary & Punctuation"><br><center>Dictionary & Punctuation</center></td>
+<td width="50%"><img src="docs/v1.4.0-candidate-keys-editor.png" alt="Candidate Keys Editor"><br><center>Candidate Keys Editor</center></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/assets/v1.4.0-backup-sync.png" alt="Backup & Sync"><br><center>Backup & Sync</center></td>
-<td width="50%"><img src="docs/assets/v1.4.0-compare.png" alt="File Compare"><br><center>File Compare</center></td>
+<td width="50%"><img src="docs/v1.4.0-backup-sync.png" alt="Backup & Sync"><br><center>Backup & Sync</center></td>
+<td width="50%"><img src="docs/v1.4.0-compare.png" alt="File Compare"><br><center>File Compare</center></td>
 </tr>
 </table>
 
