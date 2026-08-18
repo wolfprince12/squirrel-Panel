@@ -85,10 +85,16 @@ final class BackupManager {
           .droppingLeadingSlash
         guard !shouldExclude(rel) else { continue }
         let destFile = dest.appendingPathComponent(rel)
-        try fm.createDirectory(at: destFile.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try fm.copyItem(at: file, to: destFile)
-        count += 1
-        size += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        do {
+          try fm.createDirectory(at: destFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+          try fm.copyItem(at: file, to: destFile)
+          count += 1
+          size += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        } catch {
+          // 单文件失败不阻断整次备份：可能是 broken symlink / librime 临时持有的
+          // LOCK / 权限不足等。跳过该文件，备份继续。
+          continue
+        }
       }
     }
 
@@ -193,6 +199,11 @@ final class BackupManager {
     if comps.contains("build") { return true }
     if comps.contains(where: { $0.hasPrefix(".restore_temp") }) { return true }
     if rel.hasSuffix(".bak") { return true }
+    // librime 的运行时学习数据库（leveldb + 锁文件 LOCK），不是用户可编辑配置，
+    // 且 LOCK 会被 librime 在同步/写入期间持有，与本备份的 copyItem 互斥
+    // （"未能将 'LOCK' 拷贝为 'rime_ice.userdb'"）。设备同步由「备份与同步」面板的
+    // installation.yaml 通道负责，这里彻底排除整个 *.userdb 子树。
+    if comps.contains(where: { $0.hasSuffix(".userdb") }) { return true }
     return false
   }
 
