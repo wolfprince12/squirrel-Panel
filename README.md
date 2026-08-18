@@ -25,6 +25,23 @@
 
 [查看 v1.4.0 发布说明 →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
 
+### 📸 v1.4.0 界面预览
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-appearance-colors.png" alt="外观 - 配色方案"><br><center>外观 — 配色方案</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-appearance-fonts.png" alt="外观 - 字体与布局"><br><center>外观 — 字体与布局</center></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-dictionary-punctuation.png" alt="词库与标点"><br><center>词库与标点</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-candidate-keys-editor.png" alt="候选窗按键编辑"><br><center>候选窗按键编辑</center></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-backup-sync.png" alt="备份与同步"><br><center>备份与同步</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-compare.png" alt="文件对比"><br><center>文件对比</center></td>
+</tr>
+</table>
+
 **v1.3.2** —— 专注于「词库编辑」与「同步功能」升级，并新增独立的**维护面板**，把所有维护与修复类操作集中在一处：
 
 - **📚 词库图形化编辑**：`custom_phrase.txt` 与用户级 `*.dict.yaml` 现在可以直接在面板里增删改查。输入中文即可自动生成拼音编码，权重、搜索、排序、备份一应俱全，不再需要手写编码。
@@ -212,6 +229,23 @@ make release SWIFT_BUILD="swift build --disable-sandbox"
 - **☁️ iCloud Drive backup easter egg**: choose iCloud Drive as your backup location for a little surprise!
 
 [Release notes →](https://github.com/wolfprince12/squirrel-Panel/releases/tag/v1.4.0)
+
+### 📸 v1.4.0 Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-appearance-colors.png" alt="Appearance - Color Schemes"><br><center>Appearance — Color Schemes</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-appearance-fonts.png" alt="Appearance - Fonts & Layout"><br><center>Appearance — Fonts & Layout</center></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-dictionary-punctuation.png" alt="Dictionary & Punctuation"><br><center>Dictionary & Punctuation</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-candidate-keys-editor.png" alt="Candidate Keys Editor"><br><center>Candidate Keys Editor</center></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/v1.4.0-backup-sync.png" alt="Backup & Sync"><br><center>Backup & Sync</center></td>
+<td width="50%"><img src="docs/assets/v1.4.0-compare.png" alt="File Compare"><br><center>File Compare</center></td>
+</tr>
+</table>
 
 **v1.3.2** — focused on dictionary editing and sync upgrades, plus a new dedicated **Maintenance** panel that centralizes all repair/reset/diagnostic actions.
 
