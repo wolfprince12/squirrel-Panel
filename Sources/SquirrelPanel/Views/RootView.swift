@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, riceIce, dictionary, behavior, appOptions, maintenance, about, backupSync
+  case appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
 
   var id: String { rawValue }
 

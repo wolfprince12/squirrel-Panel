@@ -30,7 +30,18 @@ struct KeyBindingRow: Identifiable, Hashable {
 }
 
 /// key_bindings 的 `when` 取值（鼠须管候选窗 / 编辑过程的触发时机）
-private let keyBindingWhenOptions = ["paging", "has_menu", "composing", "always", "predict"]
+private struct WhenOption: Identifiable {
+  let id: String
+  let titleKey: String
+
+  static let all: [WhenOption] = [
+    .init(id: "paging", titleKey: "behavior.when.paging"),
+    .init(id: "has_menu", titleKey: "behavior.when.has_menu"),
+    .init(id: "composing", titleKey: "behavior.when.composing"),
+    .init(id: "always", titleKey: "behavior.when.always"),
+    .init(id: "predict", titleKey: "behavior.when.predict")
+  ]
+}
 
 struct BehaviorPage: View {
   @EnvironmentObject private var store: SettingsStore
@@ -157,8 +168,8 @@ struct BehaviorPage: View {
           ForEach($keyBindingRows) { $row in
             HStack(spacing: 6) {
               Picker("", selection: $row.when) {
-                ForEach(keyBindingWhenOptions, id: \.self) { opt in
-                  Text(LocalizedStringKey("behavior.when.\(opt)")).tag(opt)
+                ForEach(WhenOption.all) { opt in
+                  Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
                 }
               }
               .labelsHidden()
