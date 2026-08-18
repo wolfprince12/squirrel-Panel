@@ -560,7 +560,6 @@ private struct CompareSheet: View {
           }
           .font(.system(.caption, design: .monospaced))
         }
-        .background(Color(nsColor: .textBackgroundColor))
       }
       Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
       VStack(spacing: 0) {
@@ -572,12 +571,11 @@ private struct CompareSheet: View {
           }
           .font(.system(.caption, design: .monospaced))
         }
-        .background(Color(nsColor: .textBackgroundColor))
       }
     }
     .frame(maxHeight: 440)
     .overlay(
-      // 内边框，区分内容区与外框
+      // 仅描边，不填底：空白处透出窗口底色，不再有"大灰块"
       RoundedRectangle(cornerRadius: 4)
         .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
     )
@@ -631,19 +629,19 @@ private struct CompareSheet: View {
 
   private enum Side { case left, right }
 
-  /// 斑马纹 + 差异高亮
+  /// 斑马纹 + 差异高亮（背景只落在真实行上，空白处透出窗口底色，无灰块）
   @ViewBuilder
   private func rowBackground(line: SideBySideLine, side: Side, index: Int) -> some View {
     switch line.kind {
     case .equal:
-      // 斑马纹：奇偶行交替微底色，打破"一大片死黑"
+      // 偶数行透明（窗口底色），奇数行极淡条纹，制造行间节奏而不填灰
       index % 2 == 0
-        ? Color(nsColor: .controlBackgroundColor).opacity(0.4)
-        : Color(nsColor: .textBackgroundColor)
+        ? Color.clear
+        : Color(nsColor: .controlBackgroundColor).opacity(0.5)
     case .removed:
-      (side == .left ? Color.red : Color(nsColor: .textBackgroundColor)).opacity(side == .left ? 0.18 : 0)
+      side == .left ? Color.red.opacity(0.18) : Color.clear
     case .added:
-      (side == .right ? Color.green : Color(nsColor: .textBackgroundColor)).opacity(side == .right ? 0.18 : 0)
+      side == .right ? Color.green.opacity(0.18) : Color.clear
     }
   }
 
@@ -651,11 +649,11 @@ private struct CompareSheet: View {
   private func lineNumberBackground(line: SideBySideLine, side: Side) -> some View {
     switch line.kind {
     case .equal:
-      Color(nsColor: .controlBackgroundColor).opacity(0.6)
+      Color(nsColor: .controlBackgroundColor).opacity(0.35)
     case .removed:
-      (side == .left ? Color.red : Color(nsColor: .controlBackgroundColor)).opacity(side == .left ? 0.35 : 0.6)
+      side == .left ? Color.red.opacity(0.35) : Color(nsColor: .controlBackgroundColor).opacity(0.35)
     case .added:
-      (side == .right ? Color.green : Color(nsColor: .controlBackgroundColor)).opacity(side == .right ? 0.35 : 0.6)
+      side == .right ? Color.green.opacity(0.35) : Color(nsColor: .controlBackgroundColor).opacity(0.35)
     }
   }
 

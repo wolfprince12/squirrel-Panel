@@ -583,7 +583,7 @@ private struct KeyBindingRowView: View {
   @State private var hovering = false
 
   var body: some View {
-    HStack(spacing: 14) {
+    HStack(spacing: 20) {
       Picker("", selection: $row.when) {
         ForEach(WhenOption.all) { opt in
           Text(LocalizedStringKey(opt.titleKey)).tag(opt.id)
