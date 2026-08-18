@@ -40,7 +40,7 @@ private enum KeyCategory: String, CaseIterable, Identifiable {
 
   var id: String { rawValue }
 
-  var titleKey: LocalizedStringKey {
+  var titleKey: String {
     switch self {
     case .letter: return "behavior.key.category.letter"
     case .digit: return "behavior.key.category.digit"
@@ -66,7 +66,7 @@ private enum SendCategory: String, CaseIterable, Identifiable {
 
   var id: String { rawValue }
 
-  var titleKey: LocalizedStringKey {
+  var titleKey: String {
     switch self {
     case .pageNavigation: return "behavior.sendAction.category.pageNavigation"
     case .listNavigation: return "behavior.sendAction.category.listNavigation"
@@ -80,7 +80,7 @@ private enum SendCategory: String, CaseIterable, Identifiable {
 /// `send`（动作）下拉选项：Rime 命令名 + 本地化显示标签
 private struct SendAction: Identifiable {
   let id: String
-  let titleKey: LocalizedStringKey
+  let titleKey: String
   let category: SendCategory
 }
 
@@ -175,6 +175,109 @@ private let sendActionsByCategory: [SendCategory: [SendAction]] = {
   for cat in SendCategory.allCases { d[cat] = allSendActions.filter { $0.category == cat } }
   return d
 }()
+
+// MARK: - AppKit 原生分类下拉（性能关键路径）
+
+/// SwiftUI 的 `Picker` 在 body 求值时会为全部选项构建 SwiftUI 视图——
+/// 候选窗按键编辑器每行 78 + 17 项、7 行就是约 700 个选项视图，
+/// 是「按键与行为」面板打开延迟的根本来源（SwiftUI 差分/缓存均无法回避）。
+///
+/// 这里改用 AppKit 原生 `NSPopUpButton`：菜单项的创建是纳秒级 AppKit 操作，
+/// 不进入 SwiftUI 视图树；交互形态（下拉 + 分类分组标题）保持完全一致。
+private struct CategorizedPopupButton: NSViewRepresentable {
+  struct Item { let id: String; let label: String }
+  struct Group { let title: String; let items: [Item] }
+
+  let groups: [Group]
+  @Binding var selection: String
+
+  func makeNSView(context: Context) -> NSPopUpButton {
+    let button = NSPopUpButton(frame: .zero, pullsDown: false)
+    button.bezelStyle = .texturedRounded
+    button.lineBreakMode = .byTruncatingTail
+    button.menu = Self.buildMenu(groups: groups, selection: selection)
+    if let target = Self.item(in: button.menu, matching: selection) {
+      button.select(target)
+    }
+    button.target = context.coordinator
+    button.action = #selector(Coordinator.pick(_:))
+    return button
+  }
+
+  func updateNSView(_ button: NSPopUpButton, context: Context) {
+    context.coordinator.parent = self
+    // 外部变化（载入预设 / 程序写入）时同步选中项，避免重建
+    if (button.selectedItem?.representedObject as? String) == selection { return }
+    if let target = Self.item(in: button.menu, matching: selection) {
+      button.select(target)
+    } else {
+      // 不在清单中的自定义值（历史配置里的特殊 keysym）：重建菜单补上
+      button.menu = Self.buildMenu(groups: groups, selection: selection)
+      if let target = Self.item(in: button.menu, matching: selection) {
+        button.select(target)
+      }
+    }
+  }
+
+  func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+  final class Coordinator: NSObject {
+    var parent: CategorizedPopupButton
+    init(_ parent: CategorizedPopupButton) { self.parent = parent }
+
+    @objc func pick(_ sender: NSPopUpButton) {
+      parent.selection = sender.selectedItem?.representedObject as? String ?? parent.selection
+    }
+  }
+
+  private static func buildMenu(groups: [Group], selection: String) -> NSMenu {
+    let menu = NSMenu()
+    var found = false
+    for group in groups {
+      // 分类标题：不可点的分组头（等同 SwiftUI Picker 的 Section header）
+      let header = NSMenuItem(title: group.title, action: nil, keyEquivalent: "")
+      header.isEnabled = false
+      menu.addItem(header)
+      for item in group.items {
+        let mi = NSMenuItem(title: item.label, action: nil, keyEquivalent: "")
+        mi.representedObject = item.id
+        if item.id == selection { found = true }
+        menu.addItem(mi)
+      }
+      menu.addItem(.separator())
+    }
+    if !found {
+      // 自定义值（含空值）置顶追加，保证按钮始终有可显示的选中项
+      let custom = NSMenuItem(title: selection.isEmpty ? "—" : selection,
+                              action: nil, keyEquivalent: "")
+      custom.representedObject = selection
+      menu.insertItem(custom, at: 0)
+    }
+    return menu
+  }
+
+  private static func item(in menu: NSMenu?, matching selection: String) -> NSMenuItem? {
+    guard let menu else { return nil }
+    for mi in menu.items where (mi.representedObject as? String) == selection {
+      return mi
+    }
+    return nil
+  }
+}
+
+/// 「按键」下拉的分组数据（初始化一次，全部 AppKit 消费）
+private let keyGroups: [CategorizedPopupButton.Group] = KeyCategory.allCases.map { cat in
+  .init(title: NSLocalizedString(cat.titleKey, comment: ""),
+        items: (keyOptionsByCategory[cat] ?? []).map { .init(id: $0.name, label: $0.name) })
+}
+
+/// 「动作」下拉的分组数据（本地化标签初始化一次）
+private let sendGroups: [CategorizedPopupButton.Group] = SendCategory.allCases.map { cat in
+  .init(title: NSLocalizedString(cat.titleKey, comment: ""),
+        items: (sendActionsByCategory[cat] ?? []).map {
+          .init(id: $0.id, label: NSLocalizedString($0.titleKey, comment: ""))
+        })
+}
 
 /// 候选窗按键绑定的一行（对应 squirrel.custom.yaml 的 key_bindings 元素）
 ///
@@ -398,33 +501,11 @@ private struct KeyBindingRowView: View {
       .labelsHidden()
       .frame(width: 140)
 
-      Picker("", selection: $row.accept) {
-        ForEach(KeyCategory.allCases) { cat in
-          Section {
-            ForEach(keyOptionsByCategory[cat] ?? []) { opt in
-              Text(opt.name).tag(opt.name)
-            }
-          } header: {
-            Text(cat.titleKey)
-          }
-        }
-      }
-      .labelsHidden()
-      .frame(width: 150)
+      CategorizedPopupButton(groups: keyGroups, selection: $row.accept)
+        .frame(width: 150)
 
-      Picker("", selection: $row.send) {
-        ForEach(SendCategory.allCases) { cat in
-          Section {
-            ForEach(sendActionsByCategory[cat] ?? []) { action in
-              Text(action.titleKey).tag(action.id)
-            }
-          } header: {
-            Text(cat.titleKey)
-          }
-        }
-      }
-      .labelsHidden()
-      .frame(width: 170)
+      CategorizedPopupButton(groups: sendGroups, selection: $row.send)
+        .frame(width: 170)
 
       Button(action: onDelete) {
         Image(systemName: "minus.circle.fill")
