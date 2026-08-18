@@ -343,9 +343,9 @@
 "appearance.scheme.followSystem" = "跟隨系統深淺色，深色模式使用另一套配色";
 "appearance.scheme.dark" = "深色模式配色";
 "appearance.layout.arrangement" = "候選排列";
-"appearance.font.candidateSize" = "候選字號";
-"appearance.font.labelSize" = "編號字號";
-"appearance.font.commentSize" = "註釋字號";
+"appearance.font.candidateSize" = "字號";
+"appearance.font.labelSize" = "字號";
+"appearance.font.commentSize" = "字號";
 "appearance.layout.cornerRadius" = "候選窗圓角";
 "appearance.layout.hilitedCornerRadius" = "高亮圓角";
 "appearance.layout.lineSpacing" = "候選間距";

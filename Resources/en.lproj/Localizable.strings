@@ -313,9 +313,9 @@
 "appearance.scheme.followSystem" = "Follow system appearance; use a different color scheme in dark mode";
 "appearance.scheme.dark" = "Dark mode color scheme";
 "appearance.layout.arrangement" = "Candidate Arrangement";
-"appearance.font.candidateSize" = "Candidate Font Size";
-"appearance.font.labelSize" = "Label Font Size";
-"appearance.font.commentSize" = "Comment Font Size";
+"appearance.font.candidateSize" = "Size";
+"appearance.font.labelSize" = "Size";
+"appearance.font.commentSize" = "Size";
 "appearance.layout.cornerRadius" = "Candidate Window Corner Radius";
 "appearance.layout.hilitedCornerRadius" = "Highlight Corner Radius";
 "appearance.layout.lineSpacing" = "Candidate Spacing";
