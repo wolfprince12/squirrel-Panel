@@ -14,7 +14,7 @@
 "button.revert" = "Revert";
 "button.viewYAML" = "View YAML";
 "button.applyDeploy" = "Apply & Deploy";
-"footer.hint" = "All changes are written to custom.yaml patches and will not overwrite your manual settings.";
+"footer.hint" = "All changes are written to custom.yaml patches\nand will not overwrite your manual settings";
 "menu.openUserDir" = "Open User Directory in Finder";
 
 /* RimeIcePage (rime-ice) */
@@ -322,8 +322,15 @@
 "appearance.layout.preeditSpacing" = "Preedit Spacing";
 "appearance.layout.borderWidth" = "Border Width";
 "appearance.layout.borderHeight" = "Border Height";
+"appearance.layout.shadowSize" = "Candidate Window Shadow";
 "appearance.layout.alpha" = "Opacity";
 "appearance.behavior.title" = "Behavior";
+"appearance.behavior.statusMessage" = "Status Message Type";
+"appearance.behavior.statusMessage.mix" = "Mixed";
+"appearance.behavior.statusMessage.long" = "Full";
+"appearance.behavior.statusMessage.short" = "Short";
+"appearance.behavior.statusMessage.never" = "Never";
+"appearance.behavior.statusMessage.hint" = "How status messages (mode switching, deploy results) are displayed";
 "appearance.behavior.inlineCode" = "Inline code (pinyin shown at input position)";
 "appearance.behavior.inlineCandidate" = "Inline candidate (first candidate written to input position)";
 "appearance.behavior.translucency" = "Frosted glass background (needs transparent color scheme)";

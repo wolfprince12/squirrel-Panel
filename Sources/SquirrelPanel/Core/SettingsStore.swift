@@ -85,6 +85,8 @@ final class SettingsStore: ObservableObject {
   @Published var inlineCandidate = false
   @Published var translucency = false
   @Published var shadow = false
+  @Published var shadowSize: Double = 0
+  @Published var statusMessageType = "mix"
   @Published var showPaging = false
   @Published var memorizeSize = true
   @Published var mutualExclusive = false
@@ -223,6 +225,8 @@ final class SettingsStore: ObservableObject {
     inlineCandidate = flag("style/inline_candidate", false)
     translucency = flag("style/translucency", false)
     shadow = flag("style/shadow", false)
+    shadowSize = num("style/shadow_size", 0)
+    statusMessageType = str("style/status_message_type", "mix")
     showPaging = flag("style/show_paging", false)
     memorizeSize = flag("style/memorize_size", true)
     mutualExclusive = flag("style/mutual_exclusive", false)
@@ -444,6 +448,7 @@ final class SettingsStore: ObservableObject {
     "style/border_height", "style/border_width", "style/line_spacing", "style/spacing",
     "style/alpha", "style/candidate_format", "style/inline_preedit", "style/inline_candidate",
     "style/translucency", "style/show_paging", "style/memorize_size", "style/mutual_exclusive",
+    "style/shadow_size", "style/status_message_type",
     "keyboard_layout", "show_notifications_when"
   ]
 
@@ -498,6 +503,10 @@ final class SettingsStore: ObservableObject {
     put(&set, "style/translucency", .bool(translucency), defaultValue: defaults["style/translucency"])
     // 阴影：仅当用户开启时才写入，关闭时回落出厂（不落盘）
     set["style/shadow"] = shadow ? .bool(true) : PatchValue?.none
+    // 阴影大小：出厂默认 0（不渲染阴影），与默认相同不落盘
+    put(&set, "style/shadow_size", .double(shadowSize), defaultValue: defaults["style/shadow_size"] ?? 0)
+    // 状态提示类型：出厂 yaml 无此键（Squirrel 默认 mix），等于默认值不落盘
+    set["style/status_message_type"] = statusMessageType == "mix" ? PatchValue?.none : .string(statusMessageType)
     put(&set, "style/show_paging", .bool(showPaging), defaultValue: defaults["style/show_paging"])
     put(&set, "style/memorize_size", .bool(memorizeSize), defaultValue: defaults["style/memorize_size"])
     put(&set, "style/mutual_exclusive", .bool(mutualExclusive), defaultValue: defaults["style/mutual_exclusive"])

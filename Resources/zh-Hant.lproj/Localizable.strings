@@ -14,7 +14,7 @@
 "button.revert" = "放棄變更";
 "button.viewYAML" = "檢視 YAML";
 "button.applyDeploy" = "套用並重新部署";
-"footer.hint" = "所有變更寫入 custom.yaml 補丁，不會覆蓋你手寫的設定。";
+"footer.hint" = "所有變更寫入 custom.yaml 補丁\n不會覆蓋你手寫的設定";
 "menu.openUserDir" = "在 Finder 中開啟使用者目錄";
 
 /* RimeIcePage（霧鬚管） */
@@ -352,8 +352,15 @@
 "appearance.layout.preeditSpacing" = "編碼區間距";
 "appearance.layout.borderWidth" = "邊框寬度";
 "appearance.layout.borderHeight" = "邊框高度";
+"appearance.layout.shadowSize" = "候選窗陰影";
 "appearance.layout.alpha" = "整體不透明度";
 "appearance.behavior.title" = "行為";
+"appearance.behavior.statusMessage" = "狀態提示類型";
+"appearance.behavior.statusMessage.mix" = "混合";
+"appearance.behavior.statusMessage.long" = "完整";
+"appearance.behavior.statusMessage.short" = "簡短";
+"appearance.behavior.statusMessage.never" = "不顯示";
+"appearance.behavior.statusMessage.hint" = "狀態提示（中英切換、部署結果等）的顯示方式";
 "appearance.behavior.inlineCode" = "內嵌編碼：拼音直接顯示在輸入位置";
 "appearance.behavior.inlineCandidate" = "內嵌候選：把第一候選也寫進輸入位置";
 "appearance.behavior.translucency" = "毛玻璃背景（需配色帶透明度）";

@@ -99,6 +99,7 @@ struct AppearancePage: View {
           SliderRow(title: String(localized: "appearance.layout.preeditSpacing"), value: $store.preeditSpacing, range: 0...24, step: 1, unit: "pt")
           SliderRow(title: String(localized: "appearance.layout.borderWidth"), value: $store.borderWidth, range: 0...20, step: 1, unit: "pt")
           SliderRow(title: String(localized: "appearance.layout.borderHeight"), value: $store.borderHeight, range: 0...20, step: 1, unit: "pt")
+          SliderRow(title: String(localized: "appearance.layout.shadowSize"), value: $store.shadowSize, range: 0...24, step: 1, unit: "pt")
           SliderRow(title: String(localized: "appearance.layout.alpha"), value: $store.alpha, range: 0.2...1, step: 0.05, unit: "")
 
           LabeledContent("appearance.layout.candidateFormat") {
@@ -112,6 +113,15 @@ struct AppearancePage: View {
         }
 
         SettingsGroup("appearance.behavior.title") {
+          Picker("appearance.behavior.statusMessage", selection: $store.statusMessageType) {
+            Text("appearance.behavior.statusMessage.mix").tag("mix")
+            Text("appearance.behavior.statusMessage.long").tag("long")
+            Text("appearance.behavior.statusMessage.short").tag("short")
+            Text("appearance.behavior.statusMessage.never").tag("never")
+          }
+          Text("appearance.behavior.statusMessage.hint")
+            .font(.caption)
+            .foregroundStyle(.secondary)
           Toggle("appearance.behavior.inlineCode", isOn: $store.inlinePreedit)
           Toggle("appearance.behavior.inlineCandidate", isOn: $store.inlineCandidate)
           Toggle("appearance.behavior.translucency", isOn: $store.translucency)

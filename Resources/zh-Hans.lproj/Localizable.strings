@@ -14,7 +14,7 @@
 "button.revert" = "放弃更改";
 "button.viewYAML" = "查看 YAML";
 "button.applyDeploy" = "应用并重新部署";
-"footer.hint" = "所有改动写入 custom.yaml 补丁，不会覆盖你手写的配置。";
+"footer.hint" = "所有改动写入 custom.yaml 补丁\n不会覆盖你手写的配置";
 "menu.openUserDir" = "在访达中打开用户目录";
 
 /* RimeIcePage（雾凇拼音） */
@@ -322,8 +322,15 @@
 "appearance.layout.preeditSpacing" = "编码区间距";
 "appearance.layout.borderWidth" = "边框宽度";
 "appearance.layout.borderHeight" = "边框高度";
+"appearance.layout.shadowSize" = "候选窗阴影";
 "appearance.layout.alpha" = "整体不透明度";
 "appearance.behavior.title" = "行为";
+"appearance.behavior.statusMessage" = "状态提示类型";
+"appearance.behavior.statusMessage.mix" = "混合";
+"appearance.behavior.statusMessage.long" = "完整";
+"appearance.behavior.statusMessage.short" = "简短";
+"appearance.behavior.statusMessage.never" = "不显示";
+"appearance.behavior.statusMessage.hint" = "状态提示（中英切换、部署结果等）的显示方式";
 "appearance.behavior.inlineCode" = "内嵌编码：拼音直接显示在输入位置";
 "appearance.behavior.inlineCandidate" = "内嵌候选：把第一候选也写进输入位置";
 "appearance.behavior.translucency" = "毛玻璃背景（需配色带透明度）";
