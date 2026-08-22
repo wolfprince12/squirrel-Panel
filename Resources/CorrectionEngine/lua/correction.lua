@@ -204,7 +204,7 @@ local function candidates_for(cur)
     for h, w in pairs(user_dict[cur]) do
       -- 用户词加权到亿级：生成词典词频仅几十万量级，单次采纳即可让该词
       -- 稳定排到最前（用户明确选择，应当优先）；多条用户词按采纳次数排序。
-      merged[h] = (merged[h] or 0) + w + 1_000_000_000
+      merged[h] = (merged[h] or 0) + w + 1000000000
     end
   end
   local list = {}
