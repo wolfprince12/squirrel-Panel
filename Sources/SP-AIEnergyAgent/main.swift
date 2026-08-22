@@ -454,8 +454,11 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
     terminateChildren()
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)
+    // 自动发现本地模型：models/ 下首个含 config.json 的目录即视为可用模型，
+    // 「下载模型即自动启用」，无需在面板手动填路径（modelPath 也可显式覆盖）。
+    let effectiveModelPath = cfg.modelPath.isEmpty ? Self.detectBundledModel() : cfg.modelPath
     var args = [script.path, "--port", "\(cfg.port)"]
-    if !cfg.modelPath.isEmpty { args += ["--model", cfg.modelPath] }
+    if !effectiveModelPath.isEmpty { args += ["--model", effectiveModelPath] }
     proc.arguments = args
     proc.environment = childEnvironment()
     let log = logHandle("aienergy_service.log")
@@ -474,6 +477,24 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
       print("[SP-AIEnergyAgent] 启动续写服务失败：\(error)")
       writeStatus(running: false, message: "service failed", error: error.localizedDescription)
     }
+  }
+
+  /// 扫描 ~/Library/Rime/aienergy/models/ 下首个含 config.json 的目录，作为本地模型路径。
+  /// 这样「下载模型即自动启用」，无需在面板手动填路径；modelPath 显式配置时优先用显式值。
+  private static func detectBundledModel() -> String {
+    let base = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Rime/aienergy/models")
+    let fm = FileManager.default
+    guard let subs = try? fm.contentsOfDirectory(atPath: base) else { return "" }
+    for sub in subs where !sub.hasPrefix(".") {
+      let p = (base as NSString).appendingPathComponent(sub)
+      var isDir: ObjCBool = false
+      guard fm.fileExists(atPath: p, isDirectory: &isDir), isDir.boolValue else { continue }
+      let cfgPath = (p as NSString).appendingPathComponent("config.json")
+      if fm.fileExists(atPath: cfgPath) {
+        return p
+      }
+    }
+    return ""
   }
 
   /// 终止续写服务子进程（按 pid 文件跨进程回收孤儿）。

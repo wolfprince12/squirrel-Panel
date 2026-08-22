@@ -19,8 +19,8 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// 编辑器的工作模型（@Observable，便于 SwiftUI 双向绑定）
-final class SchemeEditorModel: Observable {
+/// 编辑器的工作模型（@Observable 宏，便于 SwiftUI 双向绑定与属性观察）
+@Observable final class SchemeEditorModel {
   var id: String = ""
   var name: String = ""
   var author: String = ""

@@ -212,10 +212,10 @@ private struct AIModelStoreSheet: View {
   }
 
   private func download(_ m: AIModel, mirror: Bool) {
-    // mirror 参数保留兼容旧调用；两个入口现在都走「自动回退」，只是起始渠道不同。
-    let chain: [ModelChannel] = mirror
-      ? [.modelScope, .huggingFace]
-      : [.huggingFace, .modelScope]
+    // 国内网络实测：HuggingFace 镜像(hf-mirror.com)下载大权重稳定快速（约 40s / 868MB），
+    // 而 ModelScope 在下载大文件时极易卡死；故统一首选 HF 镜像，ModelScope 仅作兜底。
+    // mirror 参数保留兼容旧调用，不再影响渠道顺序。
+    let chain: [ModelChannel] = [.huggingFace, .modelScope]
     runDownload(m, chain: chain, at: 0)
   }
 
@@ -248,6 +248,9 @@ private struct AIModelStoreSheet: View {
     var env = ProcessInfo.processInfo.environment
     env["PYTHONUNBUFFERED"] = "1"
     env["HF_HUB_DISABLE_TELEMETRY"] = "1"
+    // 国内网络：HuggingFace 走 hf-mirror.com 镜像，直连 huggingface.co 会被墙/超时。
+    // huggingface_hub 会读取此变量重定向下载源；ModelScope 忽略它，无副作用。
+    env["HF_ENDPOINT"] = "https://hf-mirror.com"
     // 清掉可能从启动环境继承的代理设置：本机代理常把模型站请求打成 502。
     for k in ["http_proxy", "https_proxy", "all_proxy",
               "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"] { env[k] = nil }
@@ -295,6 +298,15 @@ private struct AIModelStoreSheet: View {
     do { try proc.run() } catch {
       states[m.id] = .failed("无法启动下载进程：\(error.localizedDescription)")
       return
+    }
+    // 安全超时：单渠道最多 20 分钟。ModelScope 等渠道偶发大文件卡死，
+    // 不设超时会导致 UI 永久停在「下载中」；超时后强杀，由 terminationHandler
+    // 接管——仍有下一渠道则自动切换，否则向用户报「下载超时」。
+    Task {
+      try? await Task.sleep(nanoseconds: 20 * 60_000_000_000)
+      if proc.isRunning {
+        proc.terminate()
+      }
     }
     // 轮询日志，实时显示进度
     Task {
