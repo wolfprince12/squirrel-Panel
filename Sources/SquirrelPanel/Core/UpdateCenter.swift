@@ -51,6 +51,20 @@ final class UpdateCenter {
     checkAppUpdate()
     checkSquirrelUpdate()
     checkDictionaryUpdates()
+    checkAIEngineUpdate()
+  }
+
+  // MARK: - AI 引擎更新
+
+  /// AI 引擎（ai-energy 包）的更新状态，供「AI 增强」标签页读取
+  var aiEngineUpdateState: PackageUpdateState {
+    dictionaryUpdateStates["ai-energy"] ?? .notApplicable
+  }
+
+  /// 检查 AI 引擎是否有更新（复用通用词库包检查逻辑；未安装则 notApplicable）
+  func checkAIEngineUpdate() {
+    guard let pkg = DictionaryPackageManager.loadRegistry().first(where: { $0.id == "ai-energy" }) else { return }
+    checkDictionaryOne(pkg)
   }
 
   // MARK: - 软件自身更新
@@ -111,9 +125,10 @@ final class UpdateCenter {
   func checkDictionaryUpdates() {
     guard !dictionaryCheckingAll else { return }
     let packages = DictionaryPackageManager.loadRegistry()
+    let env = store.environment
     var statuses: [String: PackageStatus] = [:]
     for p in packages {
-      statuses[p.id] = DictionaryPackageManager.status(of: p, environment: store.environment)
+      statuses[p.id] = DictionaryPackageManager.status(of: p, environment: env)
     }
     var draft = dictionaryUpdateStates
     for p in packages where (statuses[p.id] ?? .notInstalled).isInstalled {
@@ -124,7 +139,7 @@ final class UpdateCenter {
     Task {
       await withThrowingTaskGroup(of: (String, PackageUpdateState).self) { group in
         for p in packages where (statuses[p.id] ?? .notInstalled).isInstalled {
-          group.addTask { (p.id, await Self.computeUpdateState(for: p, status: statuses[p.id] ?? .notInstalled)) }
+          group.addTask { (p.id, await Self.computeUpdateState(for: p, status: statuses[p.id] ?? .notInstalled, environment: env)) }
         }
         while let result = try? await group.next() {
           let (id, st) = result
@@ -136,16 +151,17 @@ final class UpdateCenter {
   }
 
   func checkDictionaryOne(_ pkg: DictionaryPackage) {
-    let status = DictionaryPackageManager.status(of: pkg, environment: store.environment)
+    let env = store.environment
+    let status = DictionaryPackageManager.status(of: pkg, environment: env)
     guard case .installed = status else { return }
     dictionaryUpdateStates[pkg.id] = .checking
     Task {
-      let st = await Self.computeUpdateState(for: pkg, status: status)
+      let st = await Self.computeUpdateState(for: pkg, status: status, environment: env)
       await MainActor.run { self.dictionaryUpdateStates[pkg.id] = st }
     }
   }
 
-  private static func computeUpdateState(for pkg: DictionaryPackage, status: PackageStatus) async -> PackageUpdateState {
+  private static func computeUpdateState(for pkg: DictionaryPackage, status: PackageStatus, environment: RimeEnvironment) async -> PackageUpdateState {
     // 语法模型（如万象）：文件固定 LTS tag，但 .gram 可能原地更新（大小变化）；
     // 以远程文件大小与安装时记录的大小比对，判断是否有更新，模式与词库包一致。
     if pkg.type == "grammar" {
@@ -156,7 +172,17 @@ final class UpdateCenter {
       }
       return .unknown
     }
-    guard case .installed(let manifest) = status else { return .notApplicable }
+    guard case .installed(var manifest) = status else { return .notApplicable }
+
+    // 旧版 commit-based 包 manifest 可能缺少 installedCommit，导致更新检查永久 .unknown。
+    // 先异步补录一次远程 commit 基线；补录失败或不需要时保持原 manifest。
+    if !isReleaseAssetPackage(pkg), normalizedSHA(manifest.installedCommit) == nil {
+      await DictionaryPackageManager.backfillInstalledCommitIfNeeded(pkg: pkg)
+      if case .installed(let refreshed) = DictionaryPackageManager.status(of: pkg, environment: environment) {
+        manifest = refreshed
+      }
+    }
+
     do {
       if isReleaseAssetPackage(pkg) {
         // release asset 包：优先按 release tag 比对

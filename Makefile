@@ -10,7 +10,7 @@ VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURC
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
 SWIFT_BUILD ?= swift build
 
-.PHONY: all debug release bundle universal dmg install uninstall run clean icons
+.PHONY: all debug release bundle universal dmg install uninstall run clean icons python-tarball
 
 all: release
 
@@ -34,10 +34,14 @@ universal:
 	@$(MAKE) bundle BIN=.build/apple/Products/Release/$(EXEC)
 
 ## 组装 .app bundle
-bundle:
+## 注意：自 2.0.0 起 Python+MLX 运行时不再内置进 App（改为「运行依赖」里按需从
+## GitHub Releases 下载），因此 release 打包不再调用 bundle-python，App 体积大幅减小。
+## 本地开发若想自带 Python 调试，可手动 `make bundle-python` 后再 `make release`。
+bundle: prepare-engine
 	@rm -rf "$(BUNDLE)"
 	@mkdir -p "$(CONTENTS)/MacOS" "$(CONTENTS)/Resources"
 	@cp "$(BIN)" "$(CONTENTS)/MacOS/$(EXEC)"
+	@cp "$(dir $(BIN))SP-AIEnergyAgent" "$(CONTENTS)/MacOS/SP-AIEnergyAgent" 2>/dev/null || true
 	@cp "$(RESOURCES)/AppInfo.plist" "$(CONTENTS)/Info.plist"
 	@cp -R "$(RESOURCES)/"* "$(CONTENTS)/Resources/"
 	@rm -f "$(CONTENTS)/Resources/AppInfo.plist"
@@ -78,3 +82,27 @@ run: release
 clean:
 	@rm -rf .build "$(DIST)"
 	@echo "已清理构建产物"
+
+## 同步内置 AI 引擎包（Resources/AIEnergyEngine/）到 bundle 资源。
+## 注意：Resources/AIEnergyEngine/ 本身即“源”（lua 叠加层 + 服务 + 内核都在这里直接维护），
+## 这里只负责补一份 vendored 内核 bzx_ai.py（运行时 `from bzx_ai import AIClient` 需要），
+## 绝不 rm -rf 整个目录、绝不反向用旧副本覆盖我们的最新改动。
+prepare-engine:
+	@mkdir -p "$(RESOURCES)/AIEnergyEngine/lua"
+	@cp -f "$(RESOURCES)/bzx_ai.py" "$(RESOURCES)/AIEnergyEngine/bzx_ai.py" 2>/dev/null || true
+	@echo "✅ 已同步内置 AI 引擎包"
+
+## 将受控 Python + MLX 推理栈打包进 App（D6）。失败不致命：回退系统 Python。
+## 仅本地开发/调试用；release 打包已不再调用它。
+bundle-python:
+	@bash "$(CURDIR)/Tools/bundle_python.sh" || echo "⚠️  bundle-python 跳过（将回退系统 Python）"
+
+## 生成可上传到 GitHub Releases 的 Python 运行时压缩包（ wolfprince12/squirrel-Panel-aienergy-runtime ）。
+## App 内的「运行依赖 → Python + MLX 运行时」卡片会按 aienergy-python-*.tar.gz 资产名拉取它。
+## 压缩包顶层目录为 python/，解压后落到 <Rime 用户目录>/aienergy/python。
+python-tarball:
+	@bash "$(CURDIR)/Tools/bundle_python.sh"
+	@mkdir -p "$(DIST)"
+	@tar -czf "$(DIST)/aienergy-python-macos-arm64.tar.gz" -C "$(RESOURCES)/aienergy-python" .
+	@echo "✅ 已生成 $(DIST)/aienergy-python-macos-arm64.tar.gz"
+	@echo "   请将其作为资产上传到 GitHub Releases：wolfprince12/squirrel-Panel-aienergy-runtime（建议 tag：v1.0.0）"

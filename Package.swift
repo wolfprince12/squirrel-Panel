@@ -10,8 +10,12 @@ let package = Package(
   targets: [
     .executableTarget(
       name: "SquirrelPanel",
-      dependencies: ["Yams"],
+      dependencies: ["Yams", "SP-AIEnergyAgent"],
       path: "Sources/SquirrelPanel"
+    ),
+    .executableTarget(
+      name: "SP-AIEnergyAgent",
+      path: "Sources/SP-AIEnergyAgent"
     ),
     .testTarget(
       name: "SquirrelPanelTests",

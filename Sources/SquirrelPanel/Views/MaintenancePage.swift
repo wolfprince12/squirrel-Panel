@@ -26,11 +26,11 @@ struct MaintenancePage: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: 24) {
         maintenanceSection
         diagnoseSection
       }
-      .padding(20)
+      .padding(24)
     }
     .alert("alert.resetTitle", isPresented: $showingResetAlert) {
       Button("alert.cancel", role: .cancel) {}
@@ -56,11 +56,12 @@ struct MaintenancePage: View {
 
   private var maintenanceSection: some View {
     SettingsGroup("maintenance.title") {
-      VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: 16) {
         Text("maintenance.hint")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+          .padding(.bottom, 4)
 
         VStack(spacing: 0) {
           MaintenanceRow(
@@ -248,18 +249,18 @@ struct MaintenanceRow: View {
   let action: () -> Void
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: 16) {
       Image(systemName: icon)
-        .font(.caption)
+        .font(.callout)
         .foregroundStyle(tint)
-        .frame(width: 28, height: 28)
+        .frame(width: 34, height: 34)
         .background(tint.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: 4) {
         Text(title)
         Text(subtitle)
-          .font(.caption)
+          .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -268,11 +269,12 @@ struct MaintenanceRow: View {
 
       if isDestructive {
         Button(actionTitle, role: .destructive, action: action)
-          .controlSize(.small)
+          .controlSize(.regular)
       } else {
         Button(actionTitle, action: action)
-          .controlSize(.small)
+          .controlSize(.regular)
       }
     }
+    .padding(.vertical, 8)
   }
 }

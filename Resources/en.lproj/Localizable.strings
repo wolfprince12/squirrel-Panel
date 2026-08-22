@@ -1,4 +1,4 @@
-/* RootView & Navigation */
+
 "app.name" = "Squirrel Panel";
 "nav.appearance" = "Appearance";
 "nav.schemas" = "Schemas";
@@ -8,16 +8,16 @@
 "nav.dictionary" = "Dictionary & Punctuation";
 "nav.about" = "About";
 "footer.dirty" = "Unsaved Changes";
+"footer.hint" = "All changes are written to custom.yaml patches\nand will not overwrite your manual settings";
 "footer.saved" = "Settings saved";
 "footer.reloaded" = "Configuration reloaded";
 "footer.reset" = "Settings reset";
 "button.revert" = "Revert";
 "button.viewYAML" = "View YAML";
 "button.applyDeploy" = "Apply & Deploy";
-"footer.hint" = "All changes are written to custom.yaml patches\nand will not overwrite your manual settings";
+"toolbar.back" = "Back";
+"toolbar.forward" = "Forward";
 "menu.openUserDir" = "Open User Directory in Finder";
-
-/* RimeIcePage (rime-ice) */
 "riceice.config.title" = "Rime-ice Configuration";
 "riceice.basic.title" = "Basic Switches";
 "riceice.basic.hint" = "Set the default state of each switch. Changes are written to rime_ice.custom.yaml.";
@@ -39,8 +39,6 @@
 "riceice.emergencyReset" = "Restore all Rime-ice defaults";
 "riceice.emergencyReset.hint" = "Delete rime_ice.custom.yaml (including manually added unmanaged keys) and revert switcher memory to factory defaults, returning Rime-ice to its initial state. A .bak backup is created automatically.";
 "error.parse.riceice" = "rime_ice.custom.yaml parsing failed: %@";
-
-/* RimeIcePage — Lexicon & Phrases */
 "riceice.lexicon.title" = "Lexicons";
 "riceice.lexicon.hint" = "Turning off unused lexicons keeps candidates clean and deployment fast. Changes are written to engine/translators, engine/filters and schema/dependencies in rime_ice.custom.yaml.";
 "riceice.lexicon.meltEng" = "English input (melt_eng)";
@@ -61,8 +59,6 @@
 "riceice.phrase.delete" = "Delete this row";
 "riceice.phrase.save" = "Save Phrases & Deploy";
 "riceice.phrase.empty" = "No custom phrases yet. Click “Add Row” to start.";
-
-/* RimeIcePage — Language & Pinyin */
 "riceice.lang.title" = "Language & Pinyin";
 "riceice.lang.hint" = "The traditional variant is written to rime_ice.custom.yaml. Switching the pinyin schema edits schema_list in default.custom.yaml (a global setting) and takes effect after “Apply & Deploy”.";
 "riceice.opencc" = "Traditional Variant";
@@ -75,8 +71,6 @@
 "riceice.pinyin.rawCode" = "Show raw double-pinyin code";
 "riceice.pinyin.rawCode.hint" = "Shows the typed double-pinyin keys instead of expanding them to full pinyin. Written to translator/preedit_format in the selected schema’s own <schema>.custom.yaml.";
 "riceice.pinyin.rawCode.unavailable" = "Only applies to double-pinyin schemas; full pinyin is currently selected.";
-
-/* RimeIcePage — Advanced */
 "riceice.advanced.title" = "Advanced";
 "riceice.advanced.hint" = "Everything below is written to rime_ice.custom.yaml. When in doubt keep the defaults — disabling a filter changes candidate ordering right away.";
 "riceice.lua.title" = "Lua Filters";
@@ -100,8 +94,6 @@
 "riceice.raw.reload" = "Reload";
 "riceice.raw.invalid" = "Invalid YAML: %@";
 "riceice.raw.applied" = "Written and redeployed.";
-
-/* Status Messages */
 "status.loaded" = "Configuration loaded";
 "status.notInstalled" = "Squirrel not detected";
 "status.saving" = "Saving…";
@@ -114,8 +106,6 @@
 "status.squirrelReset" = "Squirrel has been reset to defaults";
 "status.whitespaceFixed" = "Fixed indentation whitespace in config files; the panel is writable again.";
 "status.whitespaceNone" = "No special indentation whitespace detected.";
-
-/* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml parsing failed: %@";
 "error.parse.default" = "default.custom.yaml parsing failed: %@";
 "error.yaml.notMapping" = "The top level of the file is not a key-value mapping.";
@@ -126,21 +116,15 @@
 "error.commandFailed" = "Command failed (%@, exit code %d).";
 "mirror.error.unexpected" = "Mirror returned an unrecognized response. Please check your network or try again later.";
 "mirror.error.empty" = "Mirror returned an empty response.";
-
-/* Banners */
 "banner.squirrelNotInstalled" = "Squirrel not detected. Settings can still be saved and will take effect after installation.";
 "banner.userDirNotReady" = "Squirrel user directory is not initialized. It will be created automatically on first save.";
 "banner.unparsable" = "%@ YAML parsing failed. Write disabled to avoid corruption.";
 "banner.openUserDir" = "Open User Directory";
 "banner.download" = "Download";
-
-/* Alert */
 "alert.resetTitle" = "Reset to Defaults?";
 "alert.resetMessage" = "This removes all settings written by this panel. Your manual patches are preserved, and .bak backups are created automatically.";
 "alert.cancel" = "Cancel";
 "alert.reset" = "Reset";
-
-/* AppearancePage */
 "appearance.preview.title" = "Candidate Window Preview";
 "appearance.scheme.title" = "Color Scheme";
 "appearance.scheme.custom" = "Custom";
@@ -164,8 +148,6 @@
 "appearance.layout.candidateFormat.hint" = "Placeholders: [label] index · [candidate] text · [comment] note";
 "appearance.layout.inlinePreedit" = "Inline preedit";
 "appearance.layout.pageSizeSync" = "Sync page size";
-
-/* SchemaPage */
 "schema.enabled.title" = "Enabled Schemas";
 "schema.enabled.empty" = "No enabled schemas yet. Select one from the list below, or deploy once in Squirrel first.";
 "schema.enabled.hint" = "Drag to reorder. The first item is the default schema.";
@@ -182,8 +164,6 @@
 "schema.caption" = "Menu Caption";
 "schema.openPlum" = "Open Schema Library (plum)";
 "schema.needDeploy" = "Schema changes require redeploy to take effect.";
-
-/* BehaviorPage */
 "behavior.pageSize" = "Candidates per Page";
 "behavior.pageSize.hint" = "Written to default.custom.yaml as menu/page_size. Some schemas override this.";
 "behavior.capsLock" = "Good Old Caps Lock";
@@ -210,8 +190,6 @@
 "button.asciiMode" = "ASCII Mode";
 "button.chineseMode" = "Chinese Mode";
 "button.restartSquirrel" = "Restart Squirrel";
-
-/* AppOptionsPage */
 "appOptions.title" = "Per-App Options";
 "appOptions.add" = "Add App";
 "appOptions.selectApp" = "Select Application";
@@ -222,8 +200,6 @@
 "appOptions.empty" = "No per-app rules yet. Common use: default to English in Terminal and code editors.";
 "appOptions.explain.title" = "Option Reference";
 "appOptions.hint" = "Select an app to configure input method behavior per application.";
-
-/* DictionaryPage */
 "dictionary.title" = "User Dictionary";
 "dictionary.location" = "Dictionaries are located at ~/Library/Rime";
 "dictionary.scannedFrom" = "Scanned from ~/Library/Rime and Squirrel.app SharedSupport";
@@ -234,8 +210,6 @@
 "dictionary.sync.dir.hint" = "Can point to an iCloud Drive or other sync folder for multi-device sync.";
 "button.syncNow" = "Sync Now";
 "button.redeploy" = "Redeploy";
-
-/* AboutPage */
 "about.title" = "About";
 "about.header.developer" = "Developer";
 "about.header.moreWorks" = "More Works";
@@ -266,8 +240,6 @@
 "about.link.issues" = "Issues";
 "about.link.rime" = "RIME";
 "about.link.squirrel" = "Squirrel Source";
-
-/* Developer & Promotion */
 "about.developer.name" = "Mr. Dawolf";
 "about.developer.title" = "Director / Producer / AI Product Creator";
 "about.developer.bio" = "20+ years in film, TV, and live production. Reconstructing cross-domain experience into AI-powered products.";
@@ -285,8 +257,6 @@
 "promo.dsondt.subtitle" = "Open Source Project";
 "promo.dsondt.description" = "A macOS DeepSeek desktop client with persistent memory library.";
 "promo.dsondt.action" = "View DSonDT";
-
-/* YAML Inspector */
 "yaml.title" = "Pending Configuration";
 "yaml.subtitle" = "This is what will be written to disk after clicking Apply & Deploy. Review before saving.";
 "yaml.squirrel" = "squirrel.custom.yaml";
@@ -299,8 +269,6 @@
 "yaml.copy" = "Copy";
 "yaml.copied" = "Copied";
 "yaml.close" = "Close";
-
-/* Generic */
 "generic.open" = "Open";
 "generic.select" = "Select";
 "generic.remove" = "Remove";
@@ -308,8 +276,6 @@
 "generic.version" = "Version";
 "generic.unknown" = "Unknown";
 "generic.dev" = "Development";
-
-/* Added keys for view localization */
 "appearance.scheme.followSystem" = "Follow system appearance; use a different color scheme in dark mode";
 "appearance.scheme.dark" = "Dark mode color scheme";
 "appearance.layout.arrangement" = "Candidate Arrangement";
@@ -339,14 +305,12 @@
 "appearance.behavior.mutualExclusive" = "Mutually exclusive highlight in horizontal layout";
 "appearance.scheme.author" = "Author: %@";
 "appearance.font.system" = "Follow System";
-
 "schema.available.allEnabled" = "All schemas on this device are already enabled";
 "schema.available.rescan" = "Rescan";
 "schema.switch.title" = "Schema Switching";
 "schema.installMore" = "Install More Schemas";
 "schema.installMore.hint" = "Get from the official repository via plum";
 "schema.notFound" = "Schema file not found, possibly not installed yet";
-
 "behavior.switch.commit_code" = "Commit code";
 "behavior.switch.commit_code.detail" = "Commit the typed pinyin as-is, then switch";
 "behavior.switch.commit_text" = "Commit candidate";
@@ -361,7 +325,6 @@
 "behavior.switching.title" = "Chinese/English Switching";
 "behavior.system.title" = "System Integration";
 "behavior.quickActions.hint" = "These actions take effect immediately; no need to click Apply.";
-
 "appOptions.addFromApps" = "Add from Applications";
 "appOptions.addCommon" = "Add Common Apps";
 "appOptions.header.app" = "App";
@@ -374,7 +337,6 @@
 "appOptions.vimMode.detail" = "Auto switch back to English when this app loses focus, corresponds to vim_mode. For modal editors like Vim and Emacs.";
 "appOptions.panel.message" = "Select the apps to configure input state for";
 "generic.add" = "Add";
-
 "dictionary.empty" = "No user dictionaries generated yet. After using Squirrel for a while, each schema's learning records will appear here.";
 "dictionary.neverUsed" = "Never used";
 "dictionary.lastUpdated" = "Last updated %@";
@@ -390,12 +352,8 @@
 "dictionary.message.deployStarted" = "Deploy initiated";
 "dictionary.syncDir.message" = "Choose sync directory";
 "generic.choose" = "Choose…";
-
-/* Navigation new */
 "nav.deploy" = "Deploy & Diagnose";
 "nav.packages" = "Third-Party Libraries";
-
-/* DeployPage */
 "deploy.title" = "Deploy & Diagnose";
 "deploy.redeploy.title" = "Redeploy";
 "deploy.redeploy.hint" = "Applies changes and checks whether deployment succeeded and no schema is broken.";
@@ -412,8 +370,6 @@
 "deploy.result.ok" = "Deployment succeeded; all schemas available";
 "deploy.result.warn" = "Deployment finished, but some schemas are unavailable";
 "deploy.result.duration" = "took %@ ms";
-
-/* PackagePage */
 "package.title" = "Third-Party Libraries";
 "package.intro" = "Lists all third-party libraries that can be installed into Squirrel. Updates are checked automatically each time this panel opens; installed libraries can be updated manually. Installation downloads the official archive, backs up overwritten files, and deploys automatically.";
 "package.status.notInstalled" = "Not installed";
@@ -436,6 +392,7 @@
 "package.log.install" = "Installing %@";
 "package.log.downloading" = "Downloading package…";
 "package.log.downloading.grammar" = "Downloading model…";
+"package.log.downloading.aiengine" = "Downloading AI engine…";
 "package.log.installed" = "Installed; wrote %@ files and deployed.";
 "package.log.uninstall" = "Uninstalling %@";
 "package.log.removing" = "Removing package files and restoring backups…";
@@ -451,8 +408,6 @@
 "package.error.grammarMustBeUninstalledFirst" = "Uninstall the Wanxiang grammar model before uninstalling Rime-ice";
 "package.hint.needsRimeIce" = "Install Rime-ice (雾凇拼音) before installing the grammar model";
 "package.hint.uninstallRimeIceNeedsGrammar" = "Uninstall the Wanxiang grammar model before uninstalling Rime-ice";
-
-/* v0.3.3 additions */
 "dictionary.message.saved" = "Sync settings saved";
 "about.header.update" = "Software Update";
 "about.update.idle" = "Click to check for updates";
@@ -488,8 +443,6 @@
 "alert.iceEmergencyResetTitle" = "Restore all Rime-ice defaults?";
 "alert.iceEmergencyResetMessage" = "This will delete rime_ice.custom.yaml (including all your hand-written configuration) and revert related switch memory to factory. Squirrel will re-deploy to apply the change. A .bak backup is created automatically.";
 "alert.iceEmergencyReset" = "Restore all defaults";
-
-/* MaintenancePage */
 "nav.maintenance" = "Maintenance";
 "maintenance.title" = "Maintenance";
 "maintenance.hint" = "Use these tools to reload configuration, fix abnormalities, or restore defaults. Destructive operations create automatic backups first.";
@@ -505,8 +458,6 @@
 "diagnose.fixHint" = "Open the file and check indentation, quotes and brackets on the reported line.";
 "diagnose.rawLog" = "Detailed Log";
 "diagnose.logEmpty" = "(No build log output captured)";
-
-/* DictionaryPage — User Dynamic Word Frequency */
 "dictionary.freq.title" = "User Dynamic Word Frequency";
 "dictionary.freq.hint" = "Reads each schema's learned dictionary (text / code / weight). You can search, sort by frequency, export a backup, and adjust an entry's weight (written back to the userdb). To forget a wrongly-learned word, use Shift+Delete in Squirrel.";
 "dictionary.freq.schema" = "Schema";
@@ -529,13 +480,10 @@
 "dictionary.freq.noData" = "This schema has not recorded any user words yet.";
 "dictionary.freq.applied" = "Frequency written back to user dictionary";
 "dictionary.freq.exported" = "Frequency table exported";
-
-/* DictionaryPage — iCloud Sync Guide */
 "dictionary.icloud.use" = "Use iCloud Drive";
 "dictionary.icloud.hint" = "Point the sync directory to the RimeSync folder in iCloud Drive, and auto-generate a unique installation_id when it is empty. Each Mac must use a different installation_id; save to apply and redeploy.";
 "dictionary.icloud.applied" = "Sync directory set to iCloud Drive and saved";
 "dictionary.icloud.filled" = "iCloud sync directory filled in. Click Save to apply.";
-
 // Editable user dictionaries (graphical editor)
 "dictionary.files.title" = "User Dictionary Files";
 "dictionary.files.hint" = "These are the dictionaries you maintain by hand. You can add, edit and delete entries graphically. Saving triggers a redeploy automatically — no need to quit the input method.";
@@ -572,7 +520,6 @@
 "dictionary.editor.empty" = "No editable entries in this dictionary";
 "dictionary.editor.legend" = "Word: text shown in the candidate bar · Code: pinyin or custom code used while typing (pinyin is auto-generated for new Chinese words) · Weight: sort priority; larger values appear first, may be empty.";
 "dictionary.editor.infoDictAggregator" = "This file is mainly used to mount system dictionaries and usually contains only a few letter or number direct-input entries. To add Chinese entries, edit them in Custom Phrases.";
-
 // User custom color schemes
 "appearance.scheme.custom.title" = "Custom Color Schemes";
 "appearance.scheme.custom.open" = "Edit Custom Scheme";
@@ -654,11 +601,7 @@
 "scheme.field.preedit_back_color.description" = "Preedit area background";
 "scheme.field.hilited_preedit_text_color.description" = "Highlighted preedit text";
 "scheme.field.hilited_preedit_back_color.description" = "Highlighted preedit background";
-
-/* Navigation — Backup & Sync */
 "nav.backupSync" = "Backup & Sync";
-
-/* Punctuation Map (Dictionary & Punctuation panel) */
 "punctuation.title" = "Punctuation Map";
 "punctuation.hint" = "Customize the symbols for full-width / half-width punctuation keys. Changes are written to punctuator in default.custom.yaml and take effect after Apply & Deploy.";
 "punctuation.fullShape" = "Full-width";
@@ -666,8 +609,6 @@
 "punctuation.keyPlaceholder" = "Key";
 "punctuation.valuePlaceholder" = "Symbol(s), separate multiple with comma";
 "punctuation.add" = "Add Mapping";
-
-/* Backup & Sync panel */
 "backupSync.sync.title" = "Sync Settings";
 "backupSync.sync.id" = "Device ID";
 "backupSync.sync.idPlaceholder" = "e.g. device-001";
@@ -717,8 +658,6 @@
 "backupSync.compare.differences" = "%d difference(s)";
 "backupSync.compare.hint" = "Left: selected backup. Right: config currently in use. Red lines existed in the backup but are gone; green lines are newly added.";
 "backup.label.auto" = "Auto backup";
-
-/* Behavior — Candidate Window Keys (P2: key_bindings editor) */
 "behavior.candidateKeys.title" = "Candidate Window Keys";
 "behavior.candidateKeys.edit" = "Edit Candidate Keys";
 "behavior.candidateKeys.count" = "%d configured";
@@ -730,7 +669,6 @@
 "behavior.candidateKeys.preset" = "Load Preset";
 "behavior.candidateKeys.preset.default" = "Common candidate keys";
 "behavior.candidateKeys.empty" = "No candidate keys configured; Squirrel defaults will be used.";
-
 behavior.key.category.letter = "Letters";
 behavior.key.category.digit = "Digits";
 behavior.key.category.function = "Function";
@@ -765,3 +703,123 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "behavior.when.composing" = "Composing (composing)";
 "behavior.when.always" = "Always (always)";
 "behavior.when.predict" = "Predict (predict)";
+"nav.aiEnhanced" = "AI Enhancement Engine";
+"sidebar.brand.name" = "Squirrel Panel";
+"ai.nav" = "AI Enhancement Engine";
+"ai.status.running" = "Engine running";
+"ai.status.loading" = "Starting…";
+"ai.status.stopped" = "Stopped";
+"ai.status.unknown" = "Unknown status";
+"ai.error.pythonMissing" = "Python interpreter not found";
+"ai.error.mlxMissing" = "mlx-lm is not installed in the current Python, local model cannot run";
+"ai.error.agentStart" = "Failed to start engine: ";
+"ai.error.agentBinaryMissing" = "Resident engine binary not found";
+"ai.engine.title" = "Engine";
+"ai.engine.enable" = "Enable AI Enhancement (resident local model)";
+"ai.status.refresh" = "Refresh status";
+"ai.log.open" = "View log";
+"ai.python.label" = "Python:";
+"ai.python.ok" = "available";
+"ai.python.bad" = "unavailable";
+"ai.python.redetect" = "Re-detect";
+"ai.model.title" = "Model";
+"ai.model.current" = "Current model";
+"ai.model.hint" = "Takes effect on next engine start";
+"ai.store.open" = "Open model store";
+"ai.store.title" = "Model Store";
+"ai.store.current" = "Current";
+"ai.store.use" = "Use";
+"ai.store.using" = "In use";
+"ai.store.download" = "Download weights";
+"ai.store.note" = "All models are Apache-2.0 / MIT, free and run fully offline; mlx-lm auto-downloads the selected weights when the engine starts.";
+"ai.behavior.title" = "Trigger behavior";
+"ai.behavior.slot" = "Inject AI candidate at position %d";
+"ai.behavior.translate" = "Translate hotkey";
+"ai.behavior.dialog" = "Dialogue hotkey";
+"ai.about.title" = "About";
+"ai.about.local" = "Fully local, no network";
+"ai.about.local.detail" = "Models run only on your Mac; correction and translation never leave your machine, honoring Squirrel's offline principle.";
+"ai.about.resident" = "Resident engine";
+"ai.about.resident.detail" = "When enabled, a LaunchAgent keeps the model hot in the background; real-time per-key correction continues even after you close this panel, and can be disabled anytime.";
+"ai.about.free" = "Free models";
+"ai.about.free.detail" = "Only small, free-to-use MLX weights are listed; nothing is hosted or charged.";
+"ai.uc.correct" = "Correct";
+"ai.uc.translate" = "Translate";
+"ai.uc.chat" = "Chat";
+"button.close" = "Close";
+"button.cancel" = "Cancel";
+"ai.store.remove" = "Uninstall";
+"ai.store.removeConfirm" = "Uninstall this model?";
+"ai.store.removeMessage" = "This deletes the downloaded weights for “%1$@” and frees about %2$d MB. You can download it again any time.";
+"ai.engineCore.title" = "AI Engine (AI-Rime Fork)";
+"ai.engineCore.desc" = "On-device AI enhancement core (per-key correction / translation / dialog), forked from BaiZhiXin's AI-Rime (MIT). This panel only references and repackages it. Powered by an on-device MLX model — fully offline, no network, no fees. Bundles the Lua overlay and the Python service.";
+"ai.engineCore.credit" = "BaiZhiXin";
+"ai.store.downloaded" = "Downloaded";
+"ai.store.downloading" = "Downloading…";
+"ai.store.done" = "Download complete";
+"ai.store.downloadMirror" = "Download via mirror";
+"ai.store.viewHF" = "View on HuggingFace";
+"ai.store.viewMS" = "View on ModelScope";
+"ai.hero.title" = "AI Enhancement Engine";
+"ai.hero.subtitle" = "On-device MLX models · per-key AI correction / translation / chat";
+"ai.hero.credit" = "Derived from BaiZhiXin’s AI-Rime (MIT) · repackaged here";
+"menubar.aiEngine" = "Start AI Engine";
+"menubar.openPanel" = "Open Panel";
+"menubar.quit" = "Quit";
+"ai.intro" = "A local MLX small model runs resident on your Mac, providing per-key AI correction, translation and chat — fully offline, nothing uploaded, honoring Squirrel's no-network principle.";
+"ai.config.title" = "Configuration";
+"ai.config.engine" = "AI Enhancement";
+"ai.config.startup" = "Launch at Login";
+"ai.config.candidate" = "AI Candidate Position";
+"ai.config.candidate.option" = "Position %d";
+"ai.config.translate" = "AI Translate Hotkey";
+"ai.config.dialog" = "AI Chat Hotkey";
+"ai.config.hotkey.placeholder" = "e.g. cmd+f";
+"ai.config.correction" = "Per-key Correction";
+"ai.config.temperature" = "Creativity";
+"ai.config.topP" = "Word Range";
+"ai.config.maxTokens" = "Max Reply Length";
+"ai.config.apiURL" = "Model API URL";
+"ai.config.apiURL.placeholder" = "http://localhost:8080/v1";
+"ai.config.trayIcon" = "Tray Icon";
+"ai.config.trayIcon.default" = "Default Mouse";
+"ai.config.trayIcon.mouseHead" = "Mouse Head";
+"ai.config.trayIcon.mouseChinese" = "Mouse (Chinese)";
+"ai.config.trayIcon.ai" = "AI";
+"ai.config.trayIcon.wolf" = "Wolf (Chinese)";
+"ai.config.githubToken" = "GitHub Token";
+"ai.config.githubToken.placeholder" = "ghp_xxx… (optional, leave empty to use mirrors)";
+"ai.config.githubToken.clear" = "Clear";
+"ai.config.githubToken.desc" = "Optional: a GitHub Personal Access Token lets dependency downloads and update checks go straight to the GitHub API (5000/hour), bypassing shared-IP rate limits. Used as a fallback when all public mirrors fail. Public mirrors still work without a token. Stored only in this app's UserDefaults.";
+
+/* AI Enhancement panel: three-part restructure (2.0.0) */
+"ai.deps.title" = "Runtime Dependencies";
+"ai.deps.desc" = "AI enhancement relies on the three dependencies below; each can be installed, updated or uninstalled separately.";
+"ai.python.title" = "Python Dependency (MLX Stack)";
+"ai.python.subtitle" = "wolfprince12 / GitHub Releases";
+"ai.python.desc" = "The Python interpreter and MLX stack required for on-device inference. Downloaded into the Squirrel user directory on demand — one click to install, zero external dependencies.";
+"ai.python.busy" = "Working…";
+"ai.python.installed" = "Installed";
+"ai.python.notInstalled" = "Not installed";
+"ai.python.version" = "Version %@";
+"ai.python.install" = "Install";
+"ai.python.update" = "Update";
+"ai.python.uninstall" = "Uninstall";
+"ai.python.checking" = "Checking for updates…";
+"ai.python.checkNow" = "Check for Update";
+"ai.python.upToDate" = "Up to date";
+"ai.python.updateAvail" = "Update available";
+"ai.python.downloading" = "Downloading Python dependency…";
+"ai.python.extracting" = "Extracting…";
+"ai.python.downloadFailed" = "Could not fetch the Python dependency release (no GitHub Release yet, or network error).";
+"ai.python.extractBad" = "Extracted but python3 not found; the package layout may be wrong.";
+"ai.python.location" = "Location: %@";
+"ai.python.source" = "Source: GitHub Releases (wolfprince12/squirrel-Panel-aienergy-runtime)";
+"ai.store.empty" = "Model list is empty";
+"ai.store.reload" = "Reload";
+"ai.store.loadFailed" = "Could not load the model list. Check if default_models.json exists.";
+"ai.models.title" = "Language Models";
+"ai.models.desc" = "On-device MLX weights. Requires the Python dependency first. Click \"Open Model Store\" to download and pick one.";
+"ai.models.installedCount" = "%d model(s) downloaded";
+"ai.models.needPython" = "Install the Python dependency above first";
+"ai.models.none" = "No models downloaded yet";

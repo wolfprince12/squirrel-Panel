@@ -4,14 +4,17 @@
 //
 
 import SwiftUI
+import AppKit
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  case appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
+  // AI 增强引擎置顶（2.0.0 起作为面板核心入口）
+  case aiEnhanced, appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
 
   var id: String { rawValue }
 
   var title: LocalizedStringKey {
     switch self {
+    case .aiEnhanced: return "nav.aiEnhanced"
     case .appearance: return "nav.appearance"
     case .schemas: return "nav.schemas"
     case .riceIce: return "nav.riceIce"
@@ -26,6 +29,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
   var symbol: String {
     switch self {
+    case .aiEnhanced: return "brain"
     case .appearance: return "paintpalette"
     case .schemas: return "character.book.closed"
     case .riceIce: return "tree"
@@ -40,6 +44,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
   var tint: Color {
     switch self {
+    case .aiEnhanced: return .mint
     case .appearance: return .orange
     case .schemas: return .green
     case .riceIce: return .teal
@@ -55,131 +60,176 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
 struct RootView: View {
   @Environment(SettingsStore.self) private var store
-  /// 底部操作栏的启用态取决于 `store.isDirty`，而它含 `rimeIce?.isDirty`。
+  /// RootView 的 toolbar 与状态提示依赖 store.isDirty / statusMessage。
   /// `SettingsStore` 与 `RimeIceConfigStore` 是两个独立的 @Observable 数据源：
   /// 用户在雾凇面板改控件时只有 `ice` 的相关属性变化，不订阅它的话
-  /// `RootView.body`（footer 所在）不会重求值，「应用及部署」按钮会一直停在禁用态。
+  /// RootView body（toolbar 所在）不会重求值，「应用及部署」按钮会一直停在禁用态。
   /// 这里只为订阅变更通知而持有，不直接读取。
   @Environment(RimeIceConfigStore.self) private var ice
   @Environment(UpdateCenter.self) private var updateCenter
-  @State private var selection: PanelSection = .appearance
+  @Environment(AIConfigStore.self) private var aiStore
+  @State private var selection: PanelSection = .aiEnhanced
   @State private var showingYAML = false
 
+  private var allSections: [PanelSection] { PanelSection.allCases }
+
+  private var appVersion: String {
+    Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+  }
+
   var body: some View {
-    // 不再使用 NavigationSplitView：在 macOS + 英文系统 + PD 虚拟机环境下，
-    // NavigationSplitView 的 sidebar 列会出现折叠/初始偏移 bug，只渲染后几项。
-    // 改用显式 HStack 固定 sidebar 宽度，彻底消除 SwiftUI 自动分栏布局的不确定性。
-    HStack(spacing: 0) {
-      // MARK: Sidebar
-      VStack(spacing: 0) {
-        ScrollView(.vertical, showsIndicators: true) {
-          VStack(spacing: 2) {
-            // 为窗口左上角红黄绿按钮留出顶部安全距离；用窗口背景色填充避免透色。
-            Color(nsColor: .windowBackgroundColor)
-              .frame(height: 40)
-
-            ForEach(PanelSection.allCases) { section in
-              SidebarItem(
-                section: section,
-                isSelected: selection == section,
-                action: { selection = section }
-              )
-            }
-          }
-          .padding(.horizontal, 8)
-          .padding(.bottom, 8)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-        Text("footer.hint")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 10)
-          .fixedSize(horizontal: false, vertical: true)
-          .frame(maxWidth: .infinity, alignment: .center)
-          .background(Color(nsColor: .windowBackgroundColor))
-      }
-      .frame(width: 220)
-      .background(Color(nsColor: .windowBackgroundColor))
-
-      // MARK: Detail
-      VStack(spacing: 0) {
-        banners
-
-        Group {
-          switch selection {
-          case .appearance: AppearancePage()
-          case .schemas: SchemaPage()
-          case .riceIce: RimeIcePage()
-          case .behavior: BehaviorPage()
-          case .appOptions: AppOptionsPage()
-          case .dictionary: DictionaryPage()
-          case .maintenance: MaintenancePage()
-          case .backupSync: BackupSyncPage()
-          case .about: AboutPage()
-          }
-        }
-        // 原先 `.transition(.opacity) + .animation(.easeInOut(0.16))` 会让切换瞬间
-        // 旧页与新页同时留在视图树中（即双倍渲染），是外观/输入方案等大页面「开关延迟」
-        // 的最大来源。直接瞬切，避开双倍渲染。
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
-
-        footer
-      }
+    // 2.2.0 起全面采用 macOS 系统设置 / Thaw 同款原生渲染：
+    // - NavigationSplitView + List(selection:) + .listStyle(.sidebar) 获得原生侧边栏；
+    // - 给 sidebar 列固定 min/ideal/max 宽度，规避英文系统 + PD 虚拟机下
+    //   NavigationSplitView 折叠、只渲染后几项的布局 bug；
+    // - .navigationTitle + .toolbar 获得原生标题与返回/前进/操作按钮；
+    // - 左侧品牌区（logo + 应用名 + 版本号）置于 sidebar 顶部，沿用系统原生控件。
+    NavigationSplitView {
+      sidebar
+    } detail: {
+      detailContent
+        .ignoresSafeArea(.container, edges: .top)
     }
     .frame(minWidth: 880, minHeight: 620)
-    .ignoresSafeArea(.container, edges: .top)
-    .onAppear { updateCenter.checkAllOnLaunch() }
+    .onAppear {
+      // 各模块自检轮询由菜单栏小老鼠在启动时统一触发（见 AppDelegate）；
+      // 此处仅在面板唤出时刷新一次 AI 引擎状态。
+      aiStore.refreshStatus()
+    }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
   }
 
-  // MARK: - 侧边栏项目
+  // MARK: - 侧边栏（原生 List + 顶部品牌区）
 
-  private struct SidebarItem: View {
-    let section: PanelSection
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovering = false
-
-    var body: some View {
-      Button(action: action) {
-        HStack(spacing: 10) {
-          Image(systemName: section.symbol)
-            .foregroundStyle(isSelected ? section.tint : section.tint.opacity(0.8))
-            .frame(width: 20, alignment: .center)
-          Text(section.title)
-            .lineLimit(1)
-          Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .contentShape(Rectangle())
-        .background(
-          RoundedRectangle(cornerRadius: 6)
-            .fill(isSelected
-                  ? section.tint.opacity(0.12)
-                  : (isHovering ? Color.primary.opacity(0.06) : Color.clear))
-        )
-        .overlay(alignment: .leading) {
-          if isSelected {
-            RoundedRectangle(cornerRadius: 1.5)
-              .fill(section.tint)
-              .frame(width: 3)
-              .padding(.vertical, 6)
+  private var sidebar: some View {
+    VStack(spacing: 0) {
+      List(selection: $selection) {
+        Section {
+          ForEach(PanelSection.allCases) { section in
+            Label(section.title, systemImage: section.symbol)
+              .listItemTint(section.tint)
+              .tag(section)
           }
+        } header: {
+          sidebarBrand
         }
+        .collapsible(false)
       }
-      .buttonStyle(.plain)
-      .foregroundStyle(isSelected ? .primary : .secondary)
-      .onHover { hovering in
-        withAnimation(.easeInOut(duration: 0.12)) {
-          isHovering = hovering
-        }
-      }
+      .listStyle(.sidebar)
+      .toolbar(removing: .sidebarToggle)
+      .toolbar { Color.clear }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+      sidebarFooter
     }
+    .frame(minWidth: 240, idealWidth: 240, maxWidth: 240)
+    .navigationSplitViewColumnWidth(min: 240, ideal: 240, max: 240)
+  }
+
+  /// 品牌 logo：优先用 Resources/AppLogo.png（圆形，去掉 AppIcon 的圆角方底）；
+  /// 若资源缺失则回退到 AppIcon。
+  private static var appLogo: NSImage {
+    if let url = Bundle.main.url(forResource: "AppLogo", withExtension: "png"),
+       let image = NSImage(contentsOf: url) {
+      return image
+    }
+    return NSApplication.shared.applicationIconImage ?? NSImage()
+  }
+
+  private var sidebarBrand: some View {
+    VStack(alignment: .center, spacing: 10) {
+      Image(nsImage: RootView.appLogo)
+        .resizable()
+        .aspectRatio(contentMode: .fit)
+        .frame(width: 96, height: 96)
+
+      Text("v\(appVersion)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      Text("sidebar.brand.name")
+        .font(.headline)
+        .foregroundStyle(.primary)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 16)
+    .padding(.top, 8)
+    .padding(.bottom, 12)
+  }
+
+  // MARK: - 详情区
+
+  private var detailContent: some View {
+    VStack(spacing: 0) {
+      banners
+
+      Group {
+        switch selection {
+        case .appearance: AppearancePage()
+        case .schemas: SchemaPage()
+        case .riceIce: RimeIcePage()
+        case .behavior: BehaviorPage()
+        case .appOptions: AppOptionsPage()
+        case .dictionary: DictionaryPage()
+        case .maintenance: MaintenancePage()
+        case .backupSync: BackupSyncPage()
+        case .about: AboutPage()
+        case .aiEnhanced: AIEnhancedPage()
+        }
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+  }
+
+  // MARK: - 侧边栏底部操作区（原顶部工具栏的按钮与状态迁移至此）
+
+  private var sidebarFooter: some View {
+    VStack(alignment: .center, spacing: 10) {
+      // ① 应用状态信息文字
+      HStack(spacing: 6) {
+        if store.isApplying {
+          ProgressView().controlSize(.small)
+        }
+        if store.isDirty {
+          Text("footer.dirty")
+            .font(.caption)
+            .foregroundStyle(.orange)
+        } else {
+          Text(LocalizedStringKey(store.statusMessage))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      // ② 查看 YAML + 放弃更改 同排（保持原 HStack，不动这两个按钮样式）
+      HStack(spacing: 8) {
+        Button("button.viewYAML") { showingYAML = true }
+          .controlSize(.small)
+        Button("button.revert") { store.revert() }
+          .controlSize(.small)
+          .disabled(!store.isDirty)
+      }
+
+      // ③ 应用并重新部署 大按钮：固定宽度 140pt（按红线位置）+ 圆角矩形
+      Button {
+        store.apply()
+      } label: {
+        Text("button.applyDeploy")
+          .font(.headline)
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.borderedProminent)
+      .buttonBorderShape(.roundedRectangle(radius: 8))
+      .controlSize(.large)
+      .frame(width: 140)
+      .disabled(!store.isDirty || !store.canWrite)
+    }
+    // 让 footer 撑满 sidebar 整宽（240pt），里面按钮 width:240 才能真正填满
+    .frame(maxWidth: .infinity, alignment: .center)
+    .padding(.horizontal, 0)
+    .padding(.vertical, 12)
   }
 
   // MARK: - 顶部提示条
@@ -207,41 +257,6 @@ struct RootView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
-  }
-
-  // MARK: - 底部操作栏
-
-  private var footer: some View {
-    // P0-1：isDirty 每次访问都会完整重编译三份补丁，footer 内原本读取 3 次。
-    // 这里只取一次复用，避免随每一帧 / 每一个控件改动重复编译。
-    let dirty = store.isDirty
-    return HStack(spacing: 10) {
-      if store.isApplying {
-        ProgressView().controlSize(.small)
-      }
-      if dirty {
-        Text("footer.dirty")
-          .font(.callout)
-          .foregroundStyle(Color.orange)
-          .lineLimit(1)
-      } else {
-        Text(LocalizedStringKey(store.statusMessage))
-          .font(.callout)
-          .foregroundStyle(Color.secondary)
-          .lineLimit(1)
-      }
-      Spacer()
-      if dirty {
-        Button("button.revert") { store.revert() }
-      }
-      Button("button.viewYAML") { showingYAML = true }
-      Button("button.applyDeploy") { store.apply() }
-        .buttonStyle(.borderedProminent)
-        .disabled(!dirty || !store.canWrite)
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
-    .background(.bar)
   }
 }
 

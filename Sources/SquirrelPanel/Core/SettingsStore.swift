@@ -48,6 +48,10 @@ final class SettingsStore {
   /// 用 weak 避免与 RimeIceConfigStore 的 unowned settings 形成循环。
   weak var rimeIce: RimeIceConfigStore?
 
+  /// AI 增强引擎面板（AIConfigStore）的反向引用，用于在统一的「应用并部署」中
+  /// 一并提交 AI 配置、启停引擎并重新部署。
+  weak var aiConfig: AIConfigStore?
+
   /// 载入时的编译快照，用于判断是否有未应用的改动
   private var baselineSquirrel: PatchSet = [:]
   private var baselineDefault: PatchSet = [:]
@@ -145,6 +149,7 @@ final class SettingsStore {
     compileSquirrelPatch() != baselineSquirrel
       || compileDefaultPatch() != baselineDefault
       || rimeIce?.isDirty == true
+      || aiConfig?.hasPendingChanges == true
   }
 
   var canWrite: Bool { squirrelPatch.isWritable && defaultPatch.isWritable }
@@ -619,93 +624,105 @@ final class SettingsStore {
   // MARK: - 应用
 
   func apply() {
-    guard canWrite, rimeIce?.canWrite ?? true else {
+    guard canWrite, rimeIce?.canWrite ?? true, aiConfig?.canWrite ?? true else {
       lastError = unparsableWarning ?? rimeIce?.unparsableWarning
       return
     }
     isApplying = true
     lastError = nil
     statusMessage = "status.saving"
-    do {
-      // 若雾凇拼音面板有未保存改动，先把 save_options 同步进本面板编译结果，
-      // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
-      rimeIce?.contribute(to: self)
-      try rimeIce?.writePatch()
-      // 部署前自动快照：万一本次改动不理想，可从「备份与同步」页一键还原
-      _ = try? BackupManager.createBackup(label: "部署前自动备份")
-      let squirrelSet = compileSquirrelPatch()
-      let defaultSet = compileDefaultPatch()
-      for (key, value) in squirrelSet { squirrelPatch.set(value?.yamlObject, forPath: key) }
-      for (key, value) in defaultSet { defaultPatch.set(value?.yamlObject, forPath: key) }
-      // 开发者（大狼）专属配色与用户自定义配色：把当前正在使用的方案定义注入
-      // squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
-      // 未使用的方案定义则清理，保持补丁干净、避免无用的孤立预设。
-      var activeDevIDs = Set([colorSchemeID])
-      if followSystemAppearance {
-        activeDevIDs.insert(colorSchemeDarkID)
-      }
-      activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
-      let customIDs = UserColorSchemes.ids
-      let allowedPresetIDs = activeDevIDs.union(customIDs)
-      // 清理 preset_color_schemes 残留：用户可能用扁平写法（preset_color_schemes/<id>）
-      // 或嵌套写法，两种都要扫描；只保留当前激活的开发者/用户方案，其余全部摘除。
-      let presetPrefix = "preset_color_schemes/"
-      var existingPresetIDs = Set<String>()
-      if let nested = squirrelPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
-        existingPresetIDs.formUnion(nested.keys)
-      }
-      for key in squirrelPatch.topLevelKeys where key.hasPrefix(presetPrefix) {
-        let id = String(key.dropFirst(presetPrefix.count))
-        if !id.isEmpty { existingPresetIDs.insert(id) }
-      }
-      for id in existingPresetIDs where !allowedPresetIDs.contains(id) {
-        squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
-      }
-      for id in activeDevIDs {
-        if let def = DeveloperColorSchemes.presetDefinition(for: id) {
-          squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
-        }
-      }
-      for id in customIDs {
-        if let def = UserColorSchemes.presetDefinition(for: id) {
-          squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
-        }
-      }
-      UserColorSchemes.managedIDs = customIDs
-      try squirrelPatch.save()
-      try defaultPatch.save()
-      baselineSquirrel = squirrelSet
-      baselineDefault = defaultSet
-      // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
-      managingKeyBindings = tabPagingEnabled
 
-      if environment.isInstalled {
-        statusMessage = "status.deploying"
-        do {
-          try SquirrelBridge.deploy(environment: environment)
-          // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
-          // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
-          // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
-          statusMessage = "status.deployed"
-        } catch let e as PanelError {
-          // 防事故：部署前发现方案源文件缺失，SquirrelBridge.deploy 已中止部署。
-          // 配置已写入磁盘，仅暂停重建方案，避免把输入法打挂。
-          lastError = e.localizedDescription
-          statusMessage = "status.deploySkipped"
-          isApplying = false
-          return
+    // 写盘与部署涉及外部进程（Squirrel CLI / launchctl / Agent），
+    // 在主线程同步等待会导致界面未响应。整体放到后台执行，完成后回主线程更新状态。
+    Task { @MainActor in
+      defer { self.isApplying = false }
+      do {
+        // 若雾凇拼音面板有未保存改动，先把 save_options 同步进本面板编译结果，
+        // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
+        self.rimeIce?.contribute(to: self)
+        try self.rimeIce?.writePatch()
+        let squirrelSet = self.compileSquirrelPatch()
+        let defaultSet = self.compileDefaultPatch()
+        for (key, value) in squirrelSet { self.squirrelPatch.set(value?.yamlObject, forPath: key) }
+        for (key, value) in defaultSet { self.defaultPatch.set(value?.yamlObject, forPath: key) }
+        // 开发者（大狼）专属配色与用户自定义配色：把当前正在使用的方案定义注入
+        // squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
+        // 未使用的方案定义则清理，保持补丁干净、避免无用的孤立预设。
+        var activeDevIDs = Set([self.colorSchemeID])
+        if self.followSystemAppearance {
+          activeDevIDs.insert(self.colorSchemeDarkID)
         }
-      } else {
-        statusMessage = "status.savedWithoutSquirrel"
+        activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
+        let customIDs = UserColorSchemes.ids
+        let allowedPresetIDs = activeDevIDs.union(customIDs)
+        // 清理 preset_color_schemes 残留：用户可能用扁平写法（preset_color_schemes/<id>）
+        // 或嵌套写法，两种都要扫描；只保留当前激活的开发者/用户方案，其余全部摘除。
+        let presetPrefix = "preset_color_schemes/"
+        var existingPresetIDs = Set<String>()
+        if let nested = self.squirrelPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
+          existingPresetIDs.formUnion(nested.keys)
+        }
+        for key in self.squirrelPatch.topLevelKeys where key.hasPrefix(presetPrefix) {
+          let id = String(key.dropFirst(presetPrefix.count))
+          if !id.isEmpty { existingPresetIDs.insert(id) }
+        }
+        for id in existingPresetIDs where !allowedPresetIDs.contains(id) {
+          self.squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
+        }
+        for id in activeDevIDs {
+          if let def = DeveloperColorSchemes.presetDefinition(for: id) {
+            self.squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
+          }
+        }
+        for id in customIDs {
+          if let def = UserColorSchemes.presetDefinition(for: id) {
+            self.squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
+          }
+        }
+        UserColorSchemes.managedIDs = customIDs
+        try self.squirrelPatch.save()
+        try self.defaultPatch.save()
+        self.baselineSquirrel = squirrelSet
+        self.baselineDefault = defaultSet
+        // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
+        self.managingKeyBindings = self.tabPagingEnabled
+
+        // 提交 AI 增强引擎页的 pending 改动（UserDefaults、运行时配置）。
+        // 引擎开关与纠错开关已独立即时生效，不在这里启停引擎。
+        self.aiConfig?.applyPendingChanges()
+
+        if self.environment.isInstalled {
+          self.statusMessage = "status.deploying"
+          do {
+            // 部署会触发 Squirrel 完整重建方案（含 Lua VM 重载），耗时数秒；
+            // 用 deployAsync 真正挂起，让主线程在等待期间保持响应，
+            // 修复「应用并重新部署」程序未响应（原来在 @MainActor Task 内同步
+            // waitUntilExit 会占满 UI 线程）。部署完成后 Rime 重载 Lua 叠加层，
+            // 使 aienergy_config.lua 里的候选槽位等配置真正生效。
+            try await SquirrelBridge.deployAsync(environment: self.environment)
+            // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
+            // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
+            // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
+            self.statusMessage = "status.deployed"
+          } catch let e as PanelError {
+            // 防事故：部署前发现方案源文件缺失，SquirrelBridge.deploy 已中止部署。
+            // 配置已写入磁盘，仅暂停重建方案，避免把输入法打挂。
+            self.lastError = e.localizedDescription
+            self.statusMessage = "status.deploySkipped"
+            return
+          }
+        } else {
+          self.statusMessage = "status.savedWithoutSquirrel"
+        }
+      } catch {
+        self.lastError = error.localizedDescription
+        self.statusMessage = "status.writeFailed"
       }
-    } catch {
-      lastError = error.localizedDescription
-      statusMessage = "status.writeFailed"
     }
-    isApplying = false
   }
 
   func revert() {
+    aiConfig?.discardPendingChanges()
     reload()
     statusMessage = "status.reverted"
   }

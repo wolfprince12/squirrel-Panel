@@ -30,22 +30,27 @@ struct AppearancePage: View {
           DeveloperSchemeGrid()
         }
 
-        // 用户自定义配色：只展示「用户确认采用的」那一套方案，与全局选择完全独立
+        // 用户自定义配色（用户指定数值）：CustomSchemeCard 210pt + 中间空白 200pt + 编辑按钮。
         SettingsGroup("appearance.scheme.custom.title") {
-          HStack(alignment: .center, spacing: 16) {
-            if let scheme = confirmedScheme {
-              let info = UserColorSchemes.info(for: scheme)
-              let isActive = store.colorSchemeID == scheme.id
-              CustomSchemeCard(scheme: info, isActive: isActive) {
-                store.colorSchemeID = scheme.id
+          HStack(alignment: .center, spacing: 0) {
+            Group {
+              if let scheme = confirmedScheme {
+                let info = UserColorSchemes.info(for: scheme)
+                let isActive = store.colorSchemeID == scheme.id
+                CustomSchemeCard(scheme: info, isActive: isActive) {
+                  store.colorSchemeID = scheme.id
+                }
+              } else {
+                CustomEmptyState()
               }
-            } else {
-              CustomEmptyState()
             }
-            Spacer(minLength: 0)
+            .frame(width: 200)
+
+            // 卡片与按钮之间留 160pt 空白（不放 Spacer，用固定 Frame 占位更可控）
+            Color.clear.frame(width: 160)
+
             editorButton
           }
-          .padding(.trailing, 140)
         }
 
         SettingsGroup("appearance.scheme.title") {
@@ -184,7 +189,11 @@ struct AppearancePage: View {
 struct ColorSchemeGrid: View {
   @Environment(SettingsStore.self) private var store
 
-  private let columns = [GridItem(.adaptive(minimum: 148), spacing: 10)]
+  private let columns = [
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10)
+  ]
 
   var body: some View {
     LazyVGrid(columns: columns, spacing: 10) {
@@ -202,7 +211,11 @@ struct ColorSchemeGrid: View {
 struct DeveloperSchemeGrid: View {
   @Environment(SettingsStore.self) private var store
 
-  private let columns = [GridItem(.adaptive(minimum: 148), spacing: 10)]
+  private let columns = [
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10)
+  ]
 
   var body: some View {
     LazyVGrid(columns: columns, spacing: 10) {
@@ -302,7 +315,6 @@ private struct CustomSchemeCard: View {
 
   var body: some View {
     SchemeSwatch(scheme: scheme, isSelected: isActive)
-      .frame(width: 180)
       .overlay(alignment: .topTrailing) {
         if isActive {
           Text("appearance.scheme.custom.active")

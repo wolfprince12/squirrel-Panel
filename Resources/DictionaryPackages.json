@@ -29,5 +29,21 @@
     "homepage": "https://github.com/amzxyz/RIME-LMDG",
     "author": "amzxyz",
     "type": "grammar"
+  },
+  {
+    "id": "ai-energy",
+    "name": "AI 引擎 (AI-Rime 二创)",
+    "name_en": "AI Engine (derived from AI-Rime)",
+    "description": "本地 AI 增强核心（每键纠错 / 翻译 / 对话），衍生自白知新的 AI-Rime（MIT），本面板仅做引用与二次开发封装。由 MLX 本地模型驱动，完全离线、不联网、不收费。内含 Lua 叠加层与 Python 服务。",
+    "description_en": "Local AI enhancement core (per-key correction / translation / chat). Derived from BaiZhiXin's AI-Rime (MIT); this panel only references and repackages it as a secondary work. Powered by on-device MLX models — fully offline, no network, no fees. Bundles Lua overlays and a Python service.",
+    "sourceURL": "https://github.com/BaiZhiXin/AI-Rime/archive/refs/heads/main.zip",
+    "releaseAsset": "",
+    "repoOwner": "BaiZhiXin",
+    "repoName": "AI-Rime",
+    "branch": "main",
+    "defaultSchema": "",
+    "homepage": "https://github.com/BaiZhiXin/AI-Rime",
+    "author": "白知新 (BaiZhiXin)",
+    "type": "aiengine"
   }
 ]

@@ -47,6 +47,22 @@ enum SquirrelBridge {
     }
   }
 
+  /// 异步部署：把同步且会阻塞的部署（含 Squirrel CLI `waitUntilExit`、整套方案重建）
+  /// 放到后台线程执行，返回一个可在主线程 `await` 的挂起点。
+  /// 调用方（如 SettingsStore.apply）即可 `await` 它而不阻塞 UI 线程。
+  static func deployAsync(environment: RimeEnvironment) async throws {
+    try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          try Self.deploy(environment: environment)
+          cont.resume()
+        } catch {
+          cont.resume(throwing: error)
+        }
+      }
+    }
+  }
+
   // MARK: - 部署前校验
 
   /// 当前配置实际启用的方案 id（合并 squirrel.yaml / default.custom.yaml / default.yaml）

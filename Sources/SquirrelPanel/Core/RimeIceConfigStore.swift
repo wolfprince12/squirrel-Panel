@@ -599,6 +599,11 @@ final class RimeIceConfigStore {
 
   // MARK: - 写：界面 → 补丁
 
+  /// AI 增强引擎（派生自白知新 AI-Rime）是否应被注入雾凇方案。
+  /// 由 AIConfigStore 在「引擎已启用 且 ai-energy 包已安装」时置 true；
+  /// compileIcePatch() 据此把 lua 处理器/滤镜并入本类独占的 rime_ice.custom.yaml。
+  var aiEngineActive: Bool = false
+
   /// 界面上的开关是否全部停在出厂默认。
   ///
   /// 出厂默认分两种，缺一不可：
@@ -667,6 +672,17 @@ final class RimeIceConfigStore {
 
     let algebra = mergedAlgebra()
     set["speller/algebra"] = (algebra == template.algebra) ? PatchValue?.none : .stringList(algebra)
+
+    // AI 增强引擎（派生自白知新 AI-Rime）注入：把 lua 处理器/滤镜并入雾凇方案。
+    // 走本类单一所有者通道，与词库开关等托管项共存、互不覆盖（CustomYAMLFile 路径级合并）。
+    if aiEngineActive {
+      var filters = mergedFilters()
+      if !filters.contains("lua_filter@*AIEnergy_filter") { filters.append("lua_filter@*AIEnergy_filter") }
+      set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
+      set["engine/processors/@after 0"] = .string("lua_processor@*AIEnergy_processor")
+    } else {
+      set["engine/processors/@after 0"] = PatchValue?.none
+    }
 
     return set
   }

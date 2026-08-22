@@ -4,10 +4,11 @@
 //
 //  配置快照备份 / 恢复 / 对比。
 //
-//  设计目标：把 ~/Library/Rime 整个用户目录打一次整目录快照到
-//  ~/Library/Rime/backups/<时间戳>/，并写 manifest.json 记录元信息。
+//  设计目标：只备份用户**可编辑的配置文件**（yaml 配置、*.custom.yaml 覆盖、
+//  AI 引擎配置 json/lua 等），写入 ~/Library/Rime/backups/<时间戳>/，并写
+//  manifest.json 记录元信息。刻意**排除**安装自带 / 大体积产物（mlx 模型、语法模型、
+//  系统词典、build 目录、安装文件等），避免每次备份膨胀到 1GB+。
 //  支持整量恢复、按文件部分恢复、以及单文件行级 diff 预览。
-//  部署（apply）前由 SettingsStore 自动触发一次「部署前自动备份」。
 //
 
 import Foundation
@@ -75,7 +76,9 @@ final class BackupManager {
 
   // MARK: - 创建 / 列表
 
-  /// 创建一次整目录快照。排除：backups 自身、build、.restore_temp 临时目录、*.bak 链。
+  /// 创建一次「配置文件」快照。只备份用户可编辑配置，排除安装产物与大体积数据：
+  /// aienergy（mlx 模型）、*.gram 语法模型、cn_dicts/en_dicts/opencc（词典）、build、
+  /// *.userdb（词库）、*.dict.yaml / *.schema.yaml（词库与方案定义）、*.bak、__pycache__ 等。
   /// - Parameter label: 备份标签，nil 表示自动备份。
   @discardableResult
   static func createBackup(label: String? = nil) throws -> BackupInfo {
@@ -216,17 +219,30 @@ final class BackupManager {
   }
 
   /// 复制目录路径时去掉开头的 "/"，得到相对路径
+  ///
+  /// 只保留用户可编辑的配置文件，排除安装自带 / 大体积产物：
+  /// - aienergy：AI 引擎的 mlx 模型与运行时数据（可达 1.4GB+）
+  /// - *.gram：语法模型（可达数百 MB）
+  /// - cn_dicts / en_dicts / opencc：系统词典与字符转换表（安装自带）
+  /// - build：Rime 编译产物
+  /// - *.userdb：librime 运行时学习词库（非用户可编辑配置，且 LOCK 会被 librime 持有）
+  /// - *.dict.yaml / *.schema.yaml：词库与方案定义（安装自带，体积大）
+  /// - *.bak、__pycache__、backups、.restore_temp：备份自身与缓存
   private static func shouldExclude(_ rel: String) -> Bool {
     let comps = rel.split(separator: "/").map(String.init)
+    let lower = rel.lowercased()
     if comps.contains("backups") { return true }
     if comps.contains("build") { return true }
+    if comps.contains("aienergy") { return true }
+    if comps.contains("cn_dicts") { return true }
+    if comps.contains("en_dicts") { return true }
+    if comps.contains("opencc") { return true }
+    if comps.contains("__pycache__") { return true }
     if comps.contains(where: { $0.hasPrefix(".restore_temp") }) { return true }
     if rel.hasSuffix(".bak") { return true }
-    // librime 的运行时学习数据库（leveldb + 锁文件 LOCK），不是用户可编辑配置，
-    // 且 LOCK 会被 librime 在同步/写入期间持有，与本备份的 copyItem 互斥
-    // （"未能将 'LOCK' 拷贝为 'rime_ice.userdb'"）。设备同步由「备份与同步」面板的
-    // installation.yaml 通道负责，这里彻底排除整个 *.userdb 子树。
-    if comps.contains(where: { $0.hasSuffix(".userdb") }) { return true }
+    if lower.hasSuffix(".gram") { return true }
+    if lower.hasSuffix(".userdb") { return true }
+    if lower.hasSuffix(".dict.yaml") || lower.hasSuffix(".schema.yaml") { return true }
     return false
   }
 

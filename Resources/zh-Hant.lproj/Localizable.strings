@@ -1,4 +1,4 @@
-/* RootView & Navigation */
+
 "app.name" = "鼠鬚管控制面板";
 "nav.appearance" = "外觀";
 "nav.schemas" = "輸入方案";
@@ -8,16 +8,16 @@
 "nav.dictionary" = "詞庫與標點";
 "nav.about" = "關於";
 "footer.dirty" = "有未套用的變更";
+"footer.hint" = "所有變更寫入 custom.yaml 補丁\n不會覆蓋你手寫的設定";
 "footer.saved" = "設定已儲存";
 "footer.reloaded" = "設定已重新讀取";
 "footer.reset" = "已還原預設設定";
 "button.revert" = "放棄變更";
 "button.viewYAML" = "檢視 YAML";
 "button.applyDeploy" = "套用並重新部署";
-"footer.hint" = "所有變更寫入 custom.yaml 補丁\n不會覆蓋你手寫的設定";
+"toolbar.back" = "返回";
+"toolbar.forward" = "前進";
 "menu.openUserDir" = "在 Finder 中開啟使用者目錄";
-
-/* RimeIcePage（霧鬚管） */
 "riceice.config.title" = "霧凇拼音設定";
 "riceice.basic.title" = "基礎開關";
 "riceice.basic.hint" = "設定每個開關的預設狀態，變更寫入 rime_ice.custom.yaml。";
@@ -39,8 +39,6 @@
 "riceice.emergencyReset" = "恢復霧凇拼音全部預設";
 "riceice.emergencyReset.hint" = "刪除 rime_ice.custom.yaml（含手寫的非託管鍵）並將開關記憶恢復為出廠值，使霧凇拼音完全回到初始狀態。操作前會自動產生 .bak 備份。";
 "error.parse.riceice" = "rime_ice.custom.yaml 解析失敗：%@";
-
-/* RimeIcePage — 詞庫與短語 */
 "riceice.lexicon.title" = "詞庫";
 "riceice.lexicon.hint" = "關掉不需要的詞庫可讓候選更乾淨、部署更快。變更寫入 rime_ice.custom.yaml 的 engine/translators、engine/filters 與 schema/dependencies。";
 "riceice.lexicon.meltEng" = "英文輸入（melt_eng）";
@@ -61,8 +59,6 @@
 "riceice.phrase.delete" = "刪除這一列";
 "riceice.phrase.save" = "儲存短語並部署";
 "riceice.phrase.empty" = "尚無自訂短語。點「新增一列」開始。";
-
-/* RimeIcePage — 語言與拼音 */
 "riceice.lang.title" = "語言與拼音";
 "riceice.lang.hint" = "繁體類型寫入 rime_ice.custom.yaml；切換拼音方案改的是 default.custom.yaml 的 schema_list（全域生效），按下方「套用並重新部署」後生效。";
 "riceice.opencc" = "繁體類型";
@@ -75,8 +71,6 @@
 "riceice.pinyin.rawCode" = "雙拼編碼原樣顯示";
 "riceice.pinyin.rawCode.hint" = "開啟後輸入區直接顯示雙拼按鍵，不再還原成全拼。寫入所選雙拼方案自己的 <方案>.custom.yaml 的 translator/preedit_format。";
 "riceice.pinyin.rawCode.unavailable" = "此選項僅對雙拼方案有效，目前是全拼。";
-
-/* RimeIcePage — 進階 */
 "riceice.advanced.title" = "進階";
 "riceice.advanced.hint" = "以下選項都寫入 rime_ice.custom.yaml。不確定就保持預設——關掉濾鏡會直接改變候選順序。";
 "riceice.lua.title" = "Lua 濾鏡";
@@ -100,8 +94,6 @@
 "riceice.raw.reload" = "重新讀取";
 "riceice.raw.invalid" = "YAML 無法解析：%@";
 "riceice.raw.applied" = "已寫入並重新部署。";
-
-/* Status Messages */
 "status.loaded" = "已讀取目前設定";
 "status.notInstalled" = "未偵測到鼠須管";
 "status.saving" = "正在寫入設定…";
@@ -114,8 +106,6 @@
 "status.squirrelReset" = "鼠須管已還原到初始狀態";
 "status.whitespaceFixed" = "已修復配置文件縮進空白，面板恢復可寫。";
 "status.whitespaceNone" = "未偵測到需要修復的特殊縮進空白。";
-
-/* Error Messages */
 "error.parse.squirrel" = "squirrel.custom.yaml 解析失敗：%@";
 "error.parse.default" = "default.custom.yaml 解析失敗：%@";
 "error.yaml.notMapping" = "檔案頂層不是鍵值對應。";
@@ -126,21 +116,15 @@
 "error.commandFailed" = "指令執行失敗（%@，結束碼 %d）。";
 "mirror.error.unexpected" = "鏡像返回了無法識別的內容，請檢查網路或稍後重試。";
 "mirror.error.empty" = "鏡像返回了空回應。";
-
-/* Banners */
 "banner.squirrelNotInstalled" = "未偵測到鼠須管。設定仍可儲存，安裝後會自動生效。";
 "banner.userDirNotReady" = "鼠須管尚未初始化使用者目錄。首次儲存時會自動建立 ~/Library/Rime。";
 "banner.unparsable" = "%@ YAML 解析失敗。為避免損壞設定，寫入已停用。";
 "banner.openUserDir" = "開啟使用者目錄";
 "banner.download" = "前往下載";
-
-/* Alert */
 "alert.resetTitle" = "還原預設設定？";
 "alert.resetMessage" = "將移除控制面板寫入的全部設定項。你手寫的其他補丁項目會保留，操作前會自動產生 .bak 備份。";
 "alert.cancel" = "取消";
 "alert.reset" = "還原預設";
-
-/* AppearancePage */
 "appearance.preview.title" = "候選窗預覽";
 "appearance.scheme.title" = "配色方案";
 "appearance.scheme.custom" = "自訂";
@@ -164,8 +148,6 @@
 "appearance.layout.candidateFormat.hint" = "可用佔位符：[label] 編號 · [candidate] 候選詞 · [comment] 註釋";
 "appearance.layout.inlinePreedit" = "內嵌編輯";
 "appearance.layout.pageSizeSync" = "同步每頁候選數";
-
-/* SchemaPage */
 "schema.enabled.title" = "已啟用方案";
 "schema.enabled.empty" = "尚未啟用任何方案。從下方列表勾選，或先在鼠須管中完成一次部署。";
 "schema.enabled.hint" = "按住拖動可調整順序，第一項為預設方案。";
@@ -182,8 +164,6 @@
 "schema.caption" = "選單標題";
 "schema.openPlum" = "開啟方案庫（plum）";
 "schema.needDeploy" = "方案檔案變更後需要重新部署才會生效。";
-
-/* BehaviorPage */
 "behavior.pageSize" = "每頁候選數";
 "behavior.pageSize.hint" = "寫入 default.custom.yaml 的 menu/page_size。部分輸入方案會自行覆寫此項。";
 "behavior.capsLock" = "經典 Caps Lock";
@@ -210,8 +190,6 @@
 "button.asciiMode" = "切換英文";
 "button.chineseMode" = "切換中文";
 "button.restartSquirrel" = "重啟鼠須管";
-
-/* AppOptionsPage */
 "appOptions.title" = "依應用配置";
 "appOptions.add" = "新增應用";
 "appOptions.selectApp" = "選擇應用程式";
@@ -222,8 +200,6 @@
 "appOptions.empty" = "尚未有任何應用規則。常見用法：在終端機、程式碼編輯器中預設切換到英文。";
 "appOptions.explain.title" = "選項說明";
 "appOptions.hint" = "選擇應用，為每個應用單獨設定輸入法行為。";
-
-/* DictionaryPage */
 "dictionary.title" = "使用者詞庫";
 "dictionary.location" = "詞庫位於 ~/Library/Rime";
 "dictionary.scannedFrom" = "掃描自 ~/Library/Rime 與 Squirrel.app 的 SharedSupport";
@@ -234,8 +210,6 @@
 "dictionary.sync.dir.hint" = "可以指向 iCloud 雲端或其他同步盤中的資料夾，實現多機同步。";
 "button.syncNow" = "立即同步";
 "button.redeploy" = "重新部署";
-
-/* AboutPage */
 "about.title" = "關於";
 "about.header.update" = "軟體更新";
 "about.header.developer" = "開發者";
@@ -273,8 +247,6 @@
 "about.link.issues" = "回報問題";
 "about.link.rime" = "RIME 官網";
 "about.link.squirrel" = "鼠須管原始碼";
-
-/* Update check */
 "about.update.idle" = "點擊檢查是否有新版本";
 "about.update.checking" = "正在檢查更新…";
 "about.update.upToDate" = "目前已是最新版本";
@@ -296,8 +268,6 @@
 "about.squirrelUpdate.download" = "前往下載";
 "about.squirrelUpdate.check" = "檢查更新";
 "about.squirrelUpdate.retry" = "重試";
-
-/* Developer & Promotion */
 "about.developer.name" = "Mr大狼";
 "about.developer.title" = "導演 / 製作人 / AI 產品創作者";
 "about.developer.bio" = "20餘年影視傳媒與演出製作經驗，現用AI把經驗激烈跨界重構成產品。";
@@ -315,8 +285,6 @@
 "promo.dsondt.subtitle" = "開源專案";
 "promo.dsondt.description" = "帶有長效記憶庫的 Mac 系統 DeepSeek 桌面端";
 "promo.dsondt.action" = "查看 DSonDT";
-
-/* YAML Inspector */
 "yaml.title" = "即將寫入的設定";
 "yaml.subtitle" = "這是點擊「套用並重新部署」後磁碟上的內容，可先核對再落盤。";
 "yaml.squirrel" = "squirrel.custom.yaml";
@@ -329,8 +297,6 @@
 "yaml.copy" = "複製內容";
 "yaml.copied" = "已複製";
 "yaml.close" = "關閉";
-
-/* Generic */
 "generic.open" = "開啟";
 "generic.select" = "選擇";
 "generic.remove" = "移除";
@@ -338,8 +304,6 @@
 "generic.version" = "版本";
 "generic.unknown" = "未知";
 "generic.dev" = "開發版";
-
-/* Added keys for view localization */
 "appearance.scheme.followSystem" = "跟隨系統深淺色，深色模式使用另一套配色";
 "appearance.scheme.dark" = "深色模式配色";
 "appearance.layout.arrangement" = "候選排列";
@@ -369,14 +333,12 @@
 "appearance.behavior.mutualExclusive" = "橫排時高亮互斥";
 "appearance.scheme.author" = "作者：%@";
 "appearance.font.system" = "跟隨系統";
-
 "schema.available.allEnabled" = "本機所有方案都已啟用。";
 "schema.available.rescan" = "重新掃描";
 "schema.switch.title" = "方案切換";
 "schema.installMore" = "安裝更多方案";
 "schema.installMore.hint" = "透過東風破 plum 從官方倉庫取得";
 "schema.notFound" = "方案檔案未找到，可能尚未安裝";
-
 "behavior.switch.commit_code" = "上屏編碼";
 "behavior.switch.commit_code.detail" = "把已輸入的拼音原樣上屏後切換";
 "behavior.switch.commit_text" = "上屏候選";
@@ -391,7 +353,6 @@
 "behavior.switching.title" = "中英文切換";
 "behavior.system.title" = "系統整合";
 "behavior.quickActions.hint" = "這些操作立即生效，不需要點「套用」。";
-
 "appOptions.addFromApps" = "從「應用程式」新增";
 "appOptions.addCommon" = "新增常用應用";
 "appOptions.header.app" = "應用";
@@ -404,7 +365,6 @@
 "appOptions.vimMode.detail" = "該應用失去輸入焦點時自動切回英文，對應 vim_mode。適合 Vim、Emacs 一類的模式編輯器。";
 "appOptions.panel.message" = "選擇要單獨設定輸入狀態的應用";
 "generic.add" = "新增";
-
 "dictionary.empty" = "尚未產生任何使用者詞庫。正常使用鼠須管輸入一段時間後，這裡會列出各方案的學習記錄。";
 "dictionary.neverUsed" = "從未使用";
 "dictionary.lastUpdated" = "最近更新 %@";
@@ -421,12 +381,8 @@
 "dictionary.message.deployStarted" = "已發起部署";
 "dictionary.syncDir.message" = "選擇同步目錄";
 "generic.choose" = "選擇…";
-
-/* Navigation new */
 "nav.deploy" = "部署與診斷";
 "nav.packages" = "第三方詞庫";
-
-/* DeployPage */
 "deploy.title" = "部署與診斷";
 "deploy.redeploy.title" = "重新部署";
 "deploy.redeploy.hint" = "讓變更生效，並檢測部署是否成功、有無不可用的方案。";
@@ -443,16 +399,12 @@
 "deploy.result.ok" = "部署成功，方案均可用";
 "deploy.result.warn" = "部署完成，但存在不可用方案";
 "deploy.result.duration" = "耗時 %@ 毫秒";
-
-/* Alert - Squirrel Reset */
 "alert.squirrelResetTitle" = "恢復鼠須管預設設定？";
 "alert.squirrelResetMessage" = "將刪除所有 *.custom.yaml 檔案（包括 squirrel.custom.yaml 和 default.custom.yaml）。鼠須管會完全回到安裝後的初始狀態。操作前會自動產生 .bak 備份。";
 "alert.squirrelReset" = "恢復初始狀態";
 "alert.iceEmergencyResetTitle" = "恢復霧凇拼音全部預設？";
 "alert.iceEmergencyResetMessage" = "將刪除 rime_ice.custom.yaml（含你手寫的所有設定），並把相關開關記憶回落出廠。鼠須管會重新部署以套用此變更。操作前會自動產生 .bak 備份。";
 "alert.iceEmergencyReset" = "恢復全部預設";
-
-/* PackagePage */
 "package.title" = "第三方詞庫";
 "package.intro" = "這裡列出所有可安裝到鼠須管的第三方詞庫。每次開啟本面板會自動檢查更新；已安裝的包可手動點擊「更新」升級到最新版本。安裝會下載官方封存檔、備份被覆蓋的檔案，並在完成後自動部署。";
 "package.status.notInstalled" = "未安裝";
@@ -475,6 +427,7 @@
 "package.log.install" = "正在安裝 %@";
 "package.log.downloading" = "正在下載詞庫包…";
 "package.log.downloading.grammar" = "正在下載模型包…";
+"package.log.downloading.aiengine" = "正在下載 AI 引擎…";
 "package.log.installed" = "安裝完成，共寫入 %@ 個檔案，並已重新部署。";
 "package.log.uninstall" = "正在解除安裝 %@";
 "package.log.removing" = "正在移除詞庫包檔案並還原備份…";
@@ -490,8 +443,6 @@
 "package.error.grammarMustBeUninstalledFirst" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";
 "package.hint.needsRimeIce" = "請先安裝霧凇拼音（rime-ice）後再安裝語法模型";
 "package.hint.uninstallRimeIceNeedsGrammar" = "解除安裝霧凇拼音前，請先解除安裝萬象語法模型";
-
-/* MaintenancePage（維護面板） */
 "nav.maintenance" = "維護";
 "maintenance.title" = "維護";
 "maintenance.hint" = "用於重新載入設定、修復異常或恢復預設。涉及刪除或重置的操作會先自動備份。";
@@ -507,8 +458,6 @@
 "diagnose.fixHint" = "開啟檔案，檢查對應行的縮排、引號與括號是否匹配。";
 "diagnose.rawLog" = "詳細日誌";
 "diagnose.logEmpty" = "（未捕捉到建置日誌輸出）";
-
-/* DictionaryPage — 用戶動態詞頻 */
 "dictionary.freq.title" = "用戶動態詞頻";
 "dictionary.freq.hint" = "讀取各方案的學習詞庫（文字 / 編碼 / 頻次），可搜尋、依頻次排序、匯出備份，也能直接調整某條詞的權重（寫回 userdb）。忘記誤記的詞請在鼠須管裡用 Shift+Delete。";
 "dictionary.freq.schema" = "方案";
@@ -531,13 +480,10 @@
 "dictionary.freq.noData" = "該方案尚未記錄任何用戶詞。";
 "dictionary.freq.applied" = "詞頻已寫回用戶詞庫";
 "dictionary.freq.exported" = "詞頻表已匯出";
-
-/* DictionaryPage — iCloud 同步引導 */
 "dictionary.icloud.use" = "使用 iCloud 雲碟";
 "dictionary.icloud.hint" = "將同步目錄指向 iCloud 雲碟中的 RimeSync 資料夾，並在安裝標識為空時自動生成唯一標識。多台 Mac 需使用不同標識，儲存後會自動重新部署以生效。";
 "dictionary.icloud.applied" = "已把同步目錄指向 iCloud 雲碟並儲存";
 "dictionary.icloud.filled" = "已填入 iCloud 同步目錄，點擊「儲存」後應用";
-
 // 可編輯用戶詞庫（圖形化編輯）
 "dictionary.files.title" = "使用者詞庫檔案";
 "dictionary.files.hint" = "這些是你手寫維護的詞庫檔案，可圖形化增刪改。儲存後會自動重新部署，無需停止輸入法。";
@@ -574,7 +520,6 @@
 "dictionary.editor.empty" = "該詞庫暫無可編輯條目";
 "dictionary.editor.legend" = "詞語：候選欄中顯示的文字；編碼：輸入時使用的拼音或自訂碼（新增中文將自動生成拼音）；權重：排序優先級，數值越大越靠前，可留空。";
 "dictionary.editor.infoDictAggregator" = "本檔案主要用於掛載系統詞庫，通常只包含少量字母或數字直輸條目。如需新增中文條目，請在「自訂短語」中進行編輯。";
-
 // 用戶自定義配色方案
 "appearance.scheme.custom.title" = "用戶自定義配色";
 "appearance.scheme.custom.open" = "編輯自訂方案";
@@ -656,11 +601,7 @@
 "scheme.field.preedit_back_color.description" = "輸入編碼區背景色";
 "scheme.field.hilited_preedit_text_color.description" = "編碼區高亮文字顏色";
 "scheme.field.hilited_preedit_back_color.description" = "編碼區高亮背景色";
-
-/* Navigation — 備份與同步 */
 "nav.backupSync" = "備份與同步";
-
-/* Punctuation Map（詞庫與標點面板） */
 "punctuation.title" = "標點映射表";
 "punctuation.hint" = "自訂全角 / 半角標點按鍵對應的符號。修改會寫入 default.custom.yaml 的 punctuator，隨「套用並重新部署」生效。";
 "punctuation.fullShape" = "全角標點";
@@ -668,8 +609,6 @@
 "punctuation.keyPlaceholder" = "按鍵";
 "punctuation.valuePlaceholder" = "符號，多個候選用逗號分隔";
 "punctuation.add" = "新增映射";
-
-/* Backup & Sync（備份與同步面板） */
 "backupSync.sync.title" = "同步設定";
 "backupSync.sync.id" = "裝置識別";
 "backupSync.sync.idPlaceholder" = "如 device-001";
@@ -719,8 +658,6 @@
 "backupSync.compare.differences" = "%d 處差異";
 "backupSync.compare.hint" = "左欄為所選備份中的內容，右欄為目前正在使用的設定；紅色為備份中已刪除的行，綠色為目前新增的行。";
 "backup.label.auto" = "自動備份";
-
-/* Behavior — 候選窗按鍵（P2：key_bindings 編輯器） */
 "behavior.candidateKeys.title" = "候選窗按鍵";
 "behavior.candidateKeys.edit" = "編輯候選窗按鍵";
 "behavior.candidateKeys.count" = "已配置 %d 條";
@@ -732,7 +669,6 @@
 "behavior.candidateKeys.preset" = "載入預設";
 "behavior.candidateKeys.preset.default" = "常用候選窗鍵位";
 "behavior.candidateKeys.empty" = "尚未設定候選窗按鍵，將使用鼠須管預設鍵位。";
-
 behavior.key.category.letter = "字母";
 behavior.key.category.digit = "數字";
 behavior.key.category.function = "功能鍵";
@@ -767,3 +703,122 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "behavior.when.composing" = "編輯中 (composing)";
 "behavior.when.always" = "始終 (always)";
 "behavior.when.predict" = "聯想時 (predict)";
+"nav.aiEnhanced" = "AI增強引擎";
+"sidebar.brand.name" = "鼠須管控制面板";
+"ai.nav" = "AI增強引擎";
+"ai.status.running" = "引擎運行中";
+"ai.status.loading" = "啟動中…";
+"ai.status.stopped" = "已停止";
+"ai.status.unknown" = "狀態未知";
+"ai.error.pythonMissing" = "未找到 Python 解釋器";
+"ai.error.mlxMissing" = "目前 Python 未安裝 mlx-lm，無法執行本地模型";
+"ai.error.agentStart" = "啟動引擎失敗：";
+"ai.error.agentBinaryMissing" = "未找到常駐引擎程式";
+"ai.engine.title" = "引擎";
+"ai.engine.enable" = "啟用 AI 增強（常駐本地模型）";
+"ai.status.refresh" = "重新整理狀態";
+"ai.log.open" = "檢視日誌";
+"ai.python.label" = "Python：";
+"ai.python.ok" = "可用";
+"ai.python.bad" = "不可用";
+"ai.python.redetect" = "重新偵測";
+"ai.model.title" = "模型";
+"ai.model.current" = "目前模型";
+"ai.model.hint" = "切換後下次啟動引擎生效";
+"ai.store.open" = "開啟大模型商店";
+"ai.store.title" = "大模型商店";
+"ai.store.current" = "目前";
+"ai.store.use" = "選用";
+"ai.store.using" = "使用中";
+"ai.store.download" = "下載權重";
+"ai.store.note" = "所有模型均為 Apache-2.0 / MIT，免費且可離線執行；啟用引擎時 mlx-lm 會自動下載所選權重。";
+"ai.behavior.title" = "觸發行為";
+"ai.behavior.slot" = "AI 候選注入到第 %d 個候選位";
+"ai.behavior.translate" = "翻譯熱鍵";
+"ai.behavior.dialog" = "對話熱鍵";
+"ai.about.title" = "說明";
+"ai.about.local" = "完全本地、不聯網";
+"ai.about.local.detail" = "模型只在你的 Mac 上執行，糾錯與翻譯不上傳任何伺服器，守住鼠鬚管「不聯網」的原則。";
+"ai.about.resident" = "常駐引擎";
+"ai.about.resident.detail" = "啟用後由 LaunchAgent 在背景熱著模型，關掉本面板也能繼續每鍵即時糾錯；可隨時在面板裡停用。";
+"ai.about.free" = "免費模型";
+"ai.about.free.detail" = "僅收錄免費可商用的小體積 MLX 權重，不託管、不收費。";
+"ai.uc.correct" = "糾錯";
+"ai.uc.translate" = "翻譯";
+"ai.uc.chat" = "對話";
+"button.close" = "關閉";
+"button.cancel" = "取消";
+"ai.store.remove" = "卸載";
+"ai.store.removeConfirm" = "卸載這個模型？";
+"ai.store.removeMessage" = "將刪除「%1$@」已下載的權重檔案，釋放約 %2$d MB 磁碟空間。之後可隨時重新下載。";
+"ai.engineCore.title" = "AI 引擎（AI-Rime 二創）";
+"ai.engineCore.desc" = "本地 AI 增強核心（每鍵糾錯 / 翻譯 / 對話），衍生自白知新的 AI-Rime（MIT），本面板僅做引用與二次開發封裝。由 MLX 本地模型驅動，完全離線、不聯網、不收費。內含 Lua 疊加層與 Python 服務。";
+"ai.engineCore.credit" = "白知新（BaiZhiXin）";
+"ai.store.downloaded" = "已下載";
+"ai.store.downloading" = "下載中…";
+"ai.store.done" = "下載完成";
+"ai.store.downloadMirror" = "用鏡像下載";
+"ai.store.viewHF" = "在 HuggingFace 查看";
+"ai.store.viewMS" = "在 ModelScope 查看";
+"ai.hero.title" = "AI增強引擎";
+"ai.hero.subtitle" = "本機 MLX 小模型 · 每鍵 AI 糾錯 / 翻譯 / 對話";
+"ai.hero.credit" = "衍生自白知新的 AI-Rime（MIT）· 本面板僅引用二創";
+"menubar.aiEngine" = "AI 引擎啟動";
+"menubar.openPanel" = "開啟面板";
+"menubar.quit" = "退出";
+"ai.intro" = "本地 MLX 小模型常駐運行，提供每鍵 AI 糾錯、翻譯與對話；全部在 Mac 本機完成，不聯網、不上傳，守住鼠須管「不聯網」的原則。";
+"ai.config.title" = "配置設定";
+"ai.config.engine" = "AI 增強功能開關";
+"ai.config.startup" = "開機自啟動";
+"ai.config.candidate" = "AI 候選注入位置";
+"ai.config.candidate.option" = "第 %d 位";
+"ai.config.translate" = "AI 翻譯快捷鍵";
+"ai.config.dialog" = "AI 對話快捷鍵";
+"ai.config.hotkey.placeholder" = "如 cmd+f";
+"ai.config.correction" = "每鍵糾錯";
+"ai.config.temperature" = "創造性";
+"ai.config.topP" = "選詞範圍";
+"ai.config.maxTokens" = "回覆長度上限";
+"ai.config.apiURL" = "模型服務地址";
+"ai.config.apiURL.placeholder" = "http://localhost:8080/v1";
+"ai.config.trayIcon" = "駐留程式圖示";
+"ai.config.trayIcon.default" = "預設小老鼠";
+"ai.config.trayIcon.mouseHead" = "小老鼠頭像";
+"ai.config.trayIcon.mouseChinese" = "鼠字";
+"ai.config.trayIcon.ai" = "AI";
+"ai.config.trayIcon.wolf" = "狼字";
+"ai.config.githubToken" = "GitHub Token";
+"ai.config.githubToken.placeholder" = "ghp_xxx…（選填，留空走鏡像）";
+"ai.config.githubToken.clear" = "清空";
+"ai.config.githubToken.desc" = "選填：填入 GitHub Personal Access Token 後，套件下載與更新檢查可直接走 GitHub API（5000 次/小時），不受共用 IP 限流影響。作為所有公開鏡像失敗時的兜底；不填也能用公開鏡像。Token 僅存於本機 UserDefaults。";
+
+/* AI 增強面板：三部分重構（2.0.0） */
+"ai.deps.title" = "運行依賴";
+"ai.deps.desc" = "AI 增強由以下三項依賴支撐，可分別安裝、更新或卸載。";
+"ai.python.title" = "Python 運行依賴（MLX 推理棧）";
+"ai.python.subtitle" = "wolfprince12 / GitHub Releases";
+"ai.python.desc" = "本地推理所依賴的 Python 解释器與 MLX 推理棧，按需下載到鼠須管使用者目錄下，點按即裝、零外部依賴。";
+"ai.python.busy" = "處理中…";
+"ai.python.installed" = "已安裝";
+"ai.python.notInstalled" = "未安裝";
+"ai.python.version" = "版本 %@";
+"ai.python.install" = "安裝";
+"ai.python.update" = "更新";
+"ai.python.uninstall" = "卸載";
+"ai.python.checking" = "檢查更新中…";
+"ai.python.checkNow" = "檢查更新";
+"ai.python.upToDate" = "已是最新";
+"ai.python.updateAvail" = "有更新可用";
+"ai.python.downloading" = "正在下載 Python 運行依賴…";
+"ai.python.extracting" = "正在解壓…";
+"ai.python.downloadFailed" = "無法取得 Python 運行依賴發布資訊（GitHub 暫無 Release 或網路失敗）。";
+"ai.python.extractBad" = "解壓成功但找不到 python3，套件結構可能不符。";
+"ai.python.location" = "位置：%@";
+"ai.store.empty" = "模型清單為空";
+"ai.store.reload" = "重新載入";
+"ai.store.loadFailed" = "無法載入模型清單，請檢查 default_models.json 是否存在。";
+"ai.models.title" = "大模型";
+"ai.models.desc" = "本地 MLX 權重，需先安裝 Python 運行依賴。點擊「開啟大模型商店」下載與選用。";
+"ai.models.installedCount" = "已下載 %d 個模型";
+"ai.models.needPython" = "請先在上方安裝 Python 運行依賴";
+"ai.models.none" = "尚未下載任何模型";

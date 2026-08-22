@@ -18,7 +18,6 @@ struct AboutPage: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        headerCard
         updateCard
         squirrelUpdateCard
         developerCard
@@ -29,37 +28,6 @@ struct AboutPage: View {
       }
       .padding(20)
     }
-  }
-
-  // MARK: - 顶部 Logo 与版本
-
-  private var headerCard: some View {
-    HStack(spacing: 20) {
-      if let image = logoImage {
-        Image(nsImage: image)
-          .resizable()
-          .aspectRatio(contentMode: .fit)
-          .frame(width: 88, height: 88)
-          .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-          .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-      }
-      VStack(alignment: .leading, spacing: 4) {
-        Text("app.name")
-          .font(.title2.bold())
-        Text("v\(panelVersion)")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-      Spacer()
-    }
-    .padding(20)
-    .background(Color(nsColor: .controlBackgroundColor))
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-  }
-
-  private var logoImage: NSImage? {
-    guard let url = Bundle.main.url(forResource: "AppLogo", withExtension: "png") else { return nil }
-    return NSImage(contentsOf: url)
   }
 
   // MARK: - 软件更新检查
@@ -223,23 +191,7 @@ struct AboutPage: View {
   private var promotionSection: some View {
     SettingsGroup("about.header.moreWorks") {
       VStack(spacing: 12) {
-        PromotionRow(
-          icon: "message.fill",
-          iconColor: .green,
-          title: "promo.yaozhi.title",
-          subtitle: "promo.yaozhi.subtitle",
-          description: "promo.yaozhi.description",
-          actionTitle: "promo.yaozhi.saveQR",
-          action: { saveQRCodeToDownloads() }
-        )
-        if let qr = qrCodeImage {
-          Image(nsImage: qr)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(maxWidth: 240)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
-        }
+        yaozhiCard
         Divider()
         PromotionRow(
           icon: "doc.text.fill",
@@ -260,6 +212,39 @@ struct AboutPage: View {
           actionTitle: "promo.dsondt.action",
           action: { openURL("https://github.com/wolfprince12/DSonDT") }
         )
+      }
+    }
+  }
+
+  /// 爻知云公众号推广：最简排版——左半文字、右半直接展示 Resources/YaozhiQRCode.jpg
+  /// （这张图已包含绿底、二维码、微信气泡、"微信搜一搜"和搜索框，无需额外绘制任何面板）。
+  private var yaozhiCard: some View {
+    HStack(alignment: .center, spacing: 16) {
+      // 左：标题 + 描述
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 8) {
+          Text("爻知云 AI")
+            .font(.title3).bold()
+            .foregroundStyle(.primary)
+          Text("微信服务号")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        Text("关注获取 AI 创作助手、工作流技巧与项目动态。")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      // 右：直接显示用户提供的微信推广图
+      if let qr = qrCodeImage {
+        Image(nsImage: qr)
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(height: 140)
+          .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
       }
     }
   }
