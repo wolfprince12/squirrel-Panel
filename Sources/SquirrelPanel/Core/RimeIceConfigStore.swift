@@ -157,6 +157,12 @@ final class RimeIceConfigStore {
   /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
   var fuzzySelection: Set<String> = []
 
+  // MARK: - UI 状态：AI 联想层（Phase 2）
+
+  /// 是否把 AIEnergy_processor 挂载进 rime_ice.custom.yaml 的 engine/processors/@after 0。
+  /// 由「AI 增强」页总开关（ai.engineEnabled）驱动；开启后打字到短语边界会浮现浮动联想条。
+  var associateActive: Bool = false
+
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
   private var doublePinyinPatch: CustomYAMLFile?
@@ -435,6 +441,11 @@ final class RimeIceConfigStore {
     }
     luaFilters = lua
 
+    // 联想层挂载态以磁盘实际为准：rime_ice.custom.yaml 的 engine/processors/@after 0
+    // 是否为我们的 processor。面板「AI 增强」开关据此回显，避免重开面板后开关与磁盘脱节。
+    associateActive = (icePatch.value(forPath: "engine/processors/@after 0") as? String)
+      == "lua_processor@*AIEnergy_processor"
+
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
     baselineIce = compileIcePatch()
@@ -662,6 +673,12 @@ final class RimeIceConfigStore {
     let filters = mergedFilters()
     set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
 
+    // AI 联想层：开启时把触发器挂到 engine/processors/@after 0。
+    // 该 processor 始终 return 2（不拦截按键、不注入候选），仅写请求文件触发浮动条。
+    set["engine/processors/@after 0"] = associateActive
+      ? .string("lua_processor@*AIEnergy_processor")
+      : PatchValue?.none
+
     let dependencies = mergedDependencies()
     set["schema/dependencies"] = (dependencies == template.dependencies) ? PatchValue?.none : .stringList(dependencies)
 
@@ -676,18 +693,16 @@ final class RimeIceConfigStore {
   /// 并把 `lua_filter@*AIEnergy_filter` 并入 `engine/filters`。
   /// 本版已不再注入，这里在每次写盘前兜底剥离这两行（写前自动 .bak），
   /// 保证已部署配置干净、不依赖用户手动点「应用」。
+  /// 清理旧版「AI-Rime」残留注入。注意：本版（AI 联想层）**复用**了
+  /// `lua_processor@*AIEnergy_processor@after 0` 这个挂载点，因此不能在这里剥离它；
+  /// 这里只剥离旧版专属的 `lua_filter@*AIEnergy_filter`（候选注入那条线已彻底砍掉）。
   func removeLegacyAIEnergyPatch() {
     guard isInstalled, icePatch.isWritable else { return }
-    let procPath = "engine/processors/@after 0"
-    let hadProcessor = (icePatch.value(forPath: procPath) as? String) == "lua_processor@*AIEnergy_processor"
     var filters = (icePatch.value(forPath: "engine/filters") as? [String]) ?? []
     let hadFilter = filters.contains("lua_filter@*AIEnergy_filter")
-    guard hadProcessor || hadFilter else { return }
-    if hadProcessor { icePatch.set(nil, forPath: procPath) }
-    if hadFilter {
-      filters.removeAll { $0 == "lua_filter@*AIEnergy_filter" }
-      icePatch.set(filters.isEmpty ? nil : filters, forPath: "engine/filters")
-    }
+    guard hadFilter else { return }
+    filters.removeAll { $0 == "lua_filter@*AIEnergy_filter" }
+    icePatch.set(filters.isEmpty ? nil : filters, forPath: "engine/filters")
     try? icePatch.save()
   }
 
@@ -865,6 +880,9 @@ final class RimeIceConfigStore {
     //    这一步额外负责扫掉历史遗留（例如旧版本写过、现已不再编译的键），
     //    用户手写的其他条目不受影响。
     icePatch.removeManaged(keys: Self.managedIceKeys)
+    // 一并清掉 AI 联想层挂载点（恢复默认即不再注入联想触发器）
+    icePatch.set(nil, forPath: "engine/processors/@after 0")
+    associateActive = false
     // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
     // 4. 注意：此处**不**调 settings.apply()。

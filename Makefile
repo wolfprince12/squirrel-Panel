@@ -89,8 +89,7 @@ clean:
 ## 绝不 rm -rf 整个目录、绝不反向用旧副本覆盖我们的最新改动。
 prepare-engine:
 	@mkdir -p "$(RESOURCES)/AIEnergyEngine/lua"
-	@cp -f "$(RESOURCES)/bzx_ai.py" "$(RESOURCES)/AIEnergyEngine/bzx_ai.py" 2>/dev/null || true
-	@echo "✅ 已同步内置 AI 引擎包"
+	@echo "✅ 已就绪：AIEnergyEngine 源即权威副本（lua 叠加层 + 续写服务 + 规则兜底），无需 vendored 内核"
 
 ## 将受控 Python + MLX 推理栈打包进 App（D6）。失败不致命：回退系统 Python。
 ## 仅本地开发/调试用；release 打包已不再调用它。

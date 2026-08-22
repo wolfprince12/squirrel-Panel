@@ -1,26 +1,29 @@
 --[[
-    AIEnergy_processor.lua - 自研前端（overlay，不修改 bzx_*.lua）
+    AIEnergy_processor.lua — AI 联想层触发器（Phase 2 MVP）
 
-    按键交互（设计文档 D3，具体键位全部由控制面板配置，见 aienergy_config.lua）：
-      · 纠错 = 停顿触发：选中候选变化时发送 correct 请求到 /tmp IPC，
-        服务侧防抖（450ms）后才推理；飞行中取消（旧请求自动被服务丢弃）。
-        纠错默认开启、跟随 AI 增强总开关，无独立关闭。
-      · 翻译 / 对话 = 面板配置的快捷键（默认 Control+t / Control+d，请求 type 为
-        "translate" / "chat"，与服务端 PROMPTS 对齐），均不占用数字键。
-    本 processor 只写请求、不拦截按键（始终返回 kNoop），
-    结果注入由 AIEnergy_filter.lua 完成（候选槽位 candidate_index，由面板配置）。
+    职责：检测「短语边界」后，把上下文写入请求文件
+    ~/Library/Rime/.aienergy_associate.json，由常驻的 SP-AIEnergyAgent 读取并拉起
+    浮动联想条。
+
+    设计要点：
+      · 仅触发，不拦截：始终 return 2（kNoop），绝不吞掉按键。
+      · 绝不注入候选（旧的 AIEnergy_filter 已彻底移除，候选注入这条路已砍）。
+      · 自包含：不再 require AIEnergy_ipc / AIEnergy_state。
+      · 触发时机：候选被提交（短语边界）→ 发 show；新一轮输入开始 → 发 hide。
+        说明：Rime lua 没有可靠空闲计时器，真正的「停顿 N 毫秒」需计时器（见计划
+        Phase 3），本 MVP 用 commit 边界近似：条会在「上一个短语提交、开始打下一个」
+        时浮现，足够验证整条链路。
+
+    注意：本文件由控制面板 / Agent 部署到 ~/Library/Rime/lua/，并在
+    rime_ice.custom.yaml 的 engine/processors/@after 0 挂载。
 --]]
 
 local M = {}
-local ipc_mod = require("AIEnergy_ipc")
-local state_mod = require("AIEnergy_state")
 
--- 生成唯一请求 id（飞行中取消的配对键）
-local function gen_reqid()
-  return tostring(os.time()) .. "_" .. tostring(math.random(100000, 999999))
-end
+-- 请求文件路径（与 SP-AIEnergyAgent 约定的同一文件）
+local REQ_PATH = (os.getenv("HOME") or "") .. "/Library/Rime/.aienergy_associate.json"
 
--- 字符串转义，安全塞进 JSON 字符串
+-- 最小 JSON 字符串转义（上下文可能含引号/反斜杠/换行）
 local function json_escape(s)
   s = s:gsub("\\", "\\\\")
   s = s:gsub('"', '\\"')
@@ -29,79 +32,49 @@ local function json_escape(s)
   return s
 end
 
--- 发送一次请求到 /tmp/aienergy_rime_req.txt
-local function send_request(type_, text)
-  if not text or #text == 0 then return end
-  local reqid = gen_reqid()
-  state_mod.set_pending(reqid, text)
-  local payload = string.format('{"reqid":"%s","type":"%s","text":"%s"}',
-    reqid, type_, json_escape(text))
-  local ipc = ipc_mod.new("aienergy_rime")
-  ipc:send(payload)
-end
-
--- 规范化组合键为 { key, mods }（大小写与修饰键顺序无关），便于与面板配置比对。
-local MOD_MAP = {
-  control = "control", ctrl = "control",
-  alt = "alt", option = "alt",
-  super = "super", cmd = "super", command = "super", meta = "super",
-  shift = "shift",
-  lock = "lock", caps = "lock",
-}
-local function canon(repr)
-  if not repr or #repr == 0 then return nil end
-  local parts = {}
-  for p in repr:gmatch("[^%+]+") do parts[#parts + 1] = p end
-  if #parts == 0 then return nil end
-  local key = parts[#parts]:lower()
-  local mods = {}
-  for i = 1, #parts - 1 do
-    local m = parts[i]:lower()
-    m = MOD_MAP[m] or m
-    mods[m] = true
+-- 写入请求文件（action: "show" 带上下文 / "hide"）
+local function write_request(action, context)
+  local payload
+  if context and #context > 0 then
+    payload = string.format('{"action":"%s","context":"%s","ts":%d}',
+      action, json_escape(context), os.time())
+  else
+    payload = string.format('{"action":"%s","ts":%d}', action, os.time())
   end
-  return { key = key, mods = mods }
+  local ok, f = pcall(io.open, REQ_PATH, "w")
+  if not ok or not f then return end
+  f:write(payload)
+  f:close()
 end
 
--- 两个组合键是否等价（修饰键集合与主键一致即视为相同）
-local function same_hotkey(a, b)
-  if not a or not b then return false end
-  if a.key ~= b.key then return false end
-  for k in pairs(a.mods) do if not b.mods[k] then return false end end
-  for k in pairs(b.mods) do if not a.mods[k] then return false end end
-  return true
-end
+-- 状态：上一次是否在组词（composing）中、最近一次候选文本
+local was_composing = false
+local last_phrase = ""
 
 function M.init(env)
-  state_mod.reload_config()
 end
 
 function M.func(key, env)
   if key:release() then return 2 end
 
   local ctx = env.engine.context
-  if not ctx:has_menu() then return 2 end
-  local st = state_mod.get_state()
-
-  -- 翻译 / 对话：由控制面板配置的快捷键触发（不再写死 t / d）
-  local cur = canon(key:repr())
-  if cur and st.translation_hotkey and same_hotkey(cur, canon(st.translation_hotkey)) then
+  local composing = ctx:has_menu()
+  if composing then
     local cand = ctx.get_selected_candidate and ctx:get_selected_candidate()
-    if cand then send_request("translate", cand.text) end
-    return 2
-  elseif cur and st.dialog_hotkey and same_hotkey(cur, canon(st.dialog_hotkey)) then
-    local cand = ctx.get_selected_candidate and ctx:get_selected_candidate()
-    if cand then send_request("chat", cand.text) end
-    return 2
+    local text = (cand and cand.text) or (ctx.input or "")
+    last_phrase = text
+    -- 新的一轮输入刚开始：先隐藏上一条联想条
+    if not was_composing then
+      write_request("hide")
+    end
+  else
+    -- 组词刚刚结束（候选被提交 = 短语边界）：请求续写联想
+    if was_composing and last_phrase and #last_phrase > 0 then
+      write_request("show", last_phrase)
+    end
   end
 
-  -- 停顿触发纠错：选中候选文本变化时发送 correct 请求（服务侧防抖 450ms 后才推理）。
-  local cand = ctx.get_selected_candidate and ctx:get_selected_candidate()
-  local text = (cand and cand.text) or (ctx.input or "")
-  if text and text ~= st.pending_text then
-    send_request("correct", text)
-  end
-
+  was_composing = composing
   return 2  -- kNoop：绝不拦截按键
 end
 

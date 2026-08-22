@@ -182,10 +182,7 @@ func recordChildPID(_ name: String, _ p: Process?) {
   try? "\(p.processIdentifier)".write(to: childPIDFileURL(name), atomically: true, encoding: .utf8)
 }
 
-func terminateChildren() {
-  // Phase 2: 终止 AI 联想层服务子进程（替换原 mlx / AIEnergy_service.py）。
-  // 当前版本引擎未接入，留作占位。
-}
+// terminateChildren 已移入 AgentAppDelegate（需访问实例持有的子进程）。
 
 /// 模型目录是否真的可用于推理：必须同时有 config.json 和权重文件。
 /// 只判断目录存在是不够的——面板下载前会先 mkdir，空目录会让本地模型服务
@@ -206,16 +203,21 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   private var heartbeatTimer: Timer?
   private var lastStartAttempt: Date?
   private var associateBar: AssociateBarController?
+  private var requestWatcher: DispatchSourceFileSystemObject?
+  private var associateServiceTask: Process?
+  private var autoHideWorkItem: DispatchWorkItem?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     print("[SP-AIEnergyAgent] Bundle.main = \(Bundle.main.bundleURL.path)")
     NSApp.setActivationPolicy(.accessory)
     setupStatusItem()
+    deployAssociateProcessor()
     loadConfigAndApply()
     startConfigWatcher()
     registerDistributedObserver()
     associateBar = AssociateBarController()
     registerAssociateObserver()
+    startAssociateWatcher()
     startHeartbeat()
   }
 
@@ -381,10 +383,166 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func startEngine(_ cfg: RuntimeConfig) {
-    // Phase 2: 启动 AI 联想层服务（替换原 mlx_lm server + AIEnergy_service.py）。
-    // 当前版本引擎未接入，留作占位；状态由 heartbeat 在接入后维护。
+    // Phase 2: 启动 AI 联想层续写服务（替换原 mlx_lm server + AIEnergy_service.py）。
+    // 服务只读本地请求、返回续写建议；浮动条由本 Agent 负责显示与插入。
     terminateChildren()
-    print("[SP-AIEnergyAgent] 引擎待 Phase 2 接入：模型 \(cfg.modelID)")
+    startAssociateService()
+  }
+
+  // MARK: - AI 联想层：部署 / 服务 / 请求监听
+
+  /// 定位 Agent 内置资源（.app 走 Contents/Resources；开发态回退到仓库 Resources）。
+  private func agentResource(_ subpath: String) -> URL {
+    let primary = appResourcesDir().appendingPathComponent(subpath)
+    if FileManager.default.fileExists(atPath: primary.path) { return primary }
+    let dev = Bundle.main.bundleURL
+      .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("Resources/\(subpath)")
+    return dev
+  }
+
+  private var associateRimeLuaDir: URL {
+    URL(fileURLWithPath: NSHomeDirectory())
+      .appendingPathComponent("Library/Rime/lua", isDirectory: true)
+  }
+  private var associateRequestFileURL: URL {
+    URL(fileURLWithPath: NSHomeDirectory())
+      .appendingPathComponent("Library/Rime/.aienergy_associate.json")
+  }
+
+  /// 把联想层触发器（AIEnergy_processor.lua）部署到鼠须管用户目录，供 Rime 加载。
+  /// 写前对已有文件做 .bak，避免覆盖用户手改。
+  private func deployAssociateProcessor() {
+    let src = agentResource("AIEnergyEngine/lua/AIEnergy_processor.lua")
+    guard FileManager.default.fileExists(atPath: src.path) else {
+      print("[SP-AIEnergyAgent] 找不到 AIEnergy_processor.lua 源：\(src.path)")
+      return
+    }
+    let luaDir = associateRimeLuaDir
+    try? FileManager.default.createDirectory(at: luaDir, withIntermediateDirectories: true)
+    let dst = luaDir.appendingPathComponent("AIEnergy_processor.lua")
+    if FileManager.default.fileExists(atPath: dst.path) {
+      let bak = dst.appendingPathExtension("bak")
+      try? FileManager.default.removeItem(at: bak)
+      try? FileManager.default.copyItem(at: dst, to: bak)
+    }
+    do {
+      try FileManager.default.copyItem(at: src, to: dst)
+      print("[SP-AIEnergyAgent] 已部署 AIEnergy_processor.lua → \(dst.path)")
+    } catch {
+      print("[SP-AIEnergyAgent] 部署 lua 失败：\(error)")
+    }
+  }
+
+  /// 启动本地续写服务（AIEnergy_service.py，127.0.0.1:port）。无模型时走规则兜底，
+  /// 整条链路仍可端到端验证。
+  private func startAssociateService() {
+    guard let cfg = config else { return }
+    lastStartAttempt = Date()
+    let script = agentResource("AIEnergyEngine/AIEnergy_service.py")
+    guard FileManager.default.fileExists(atPath: script.path) else {
+      print("[SP-AIEnergyAgent] 找不到 AIEnergy_service.py：\(script.path)")
+      return
+    }
+    terminateChildren()
+    let proc = Process()
+    proc.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)
+    var args = [script.path, "--port", "\(cfg.port)"]
+    if !cfg.modelPath.isEmpty { args += ["--model", cfg.modelPath] }
+    proc.arguments = args
+    proc.environment = childEnvironment()
+    let log = logHandle("aienergy_service.log")
+    proc.standardOutput = log
+    proc.standardError = log
+    proc.terminationHandler = { [weak self] _ in
+      self?.associateServiceTask = nil
+    }
+    do {
+      try proc.run()
+      associateServiceTask = proc
+      recordChildPID("service", proc)
+      print("[SP-AIEnergyAgent] 续写服务已启动 PID \(proc.processIdentifier) port \(cfg.port)")
+      writeStatus(running: true, message: "associate service running")
+    } catch {
+      print("[SP-AIEnergyAgent] 启动续写服务失败：\(error)")
+      writeStatus(running: false, message: "service failed", error: error.localizedDescription)
+    }
+  }
+
+  /// 终止续写服务子进程（按 pid 文件跨进程回收孤儿）。
+  private func terminateChildren() {
+    if let p = associateServiceTask, p.isRunning {
+      p.terminate()
+      try? FileManager.default.removeItem(at: childPIDFileURL("service"))
+    }
+    associateServiceTask = nil
+  }
+
+  /// 监听联想请求文件：Lua 触发器在短语边界写入 {action:"show",context} 或 {action:"hide"}。
+  private func startAssociateWatcher() {
+    let url = associateRequestFileURL
+    if !FileManager.default.fileExists(atPath: url.path) {
+      FileManager.default.createFile(atPath: url.path, contents: nil)
+    }
+    let fd = open(url.path, O_EVTONLY)
+    guard fd >= 0 else { return }
+    let source = DispatchSource.makeFileSystemObjectSource(
+      fileDescriptor: fd, eventMask: [.write, .extend], queue: DispatchQueue.global(qos: .userInitiated))
+    source.setEventHandler { [weak self] in
+      // 文件被同名重写，延迟读避免读到半截 JSON
+      DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.05) {
+        self?.handleAssociateRequest()
+      }
+    }
+    source.setCancelHandler { close(fd) }
+    source.resume()
+    requestWatcher = source
+  }
+
+  private func handleAssociateRequest() {
+    let url = associateRequestFileURL
+    guard let data = try? Data(contentsOf: url),
+          let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let action = obj["action"] as? String else { return }
+    if action == "hide" {
+      DispatchQueue.main.async { [weak self] in self?.associateBar?.hide() }
+      return
+    }
+    guard action == "show",
+          let context = obj["context"] as? String, !context.isEmpty else { return }
+    autoHideWorkItem?.cancel()
+    fetchAndShow(context: context)
+  }
+
+  /// POST 上下文到本地续写服务，取回建议后浮现浮动条。
+  private func fetchAndShow(context: String) {
+    guard let cfg = config else { return }
+    guard let u = URL(string: "http://127.0.0.1:\(cfg.port)/associate") else { return }
+    var req = URLRequest(url: u)
+    req.httpMethod = "POST"
+    req.timeoutInterval = 3
+    req.httpBody = try? JSONSerialization.data(withJSONObject: ["context": context])
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    let task = localSession.dataTask(with: req) { [weak self] data, _, _ in
+      guard let data,
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let sugs = obj["suggestions"] as? [String], !sugs.isEmpty else { return }
+      let anchor = SquirrelWindowLocator.candidateWindowRect()
+        ?? self?.defaultAnchor()
+        ?? NSRect(x: 400, y: 400, width: 320, height: 44)
+      DispatchQueue.main.async {
+        self?.associateBar?.show(suggestions: sugs, anchor: anchor)
+        self?.scheduleAutoHide()
+      }
+    }
+    task.resume()
+  }
+
+  private func scheduleAutoHide() {
+    autoHideWorkItem?.cancel()
+    let item = DispatchWorkItem { @MainActor [weak self] in self?.associateBar?.hide() }
+    autoHideWorkItem = item
+    DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: item)
   }
 
   // MARK: - 心跳与自愈
@@ -401,9 +559,14 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func heartbeat() {
-    // Phase 2: 自检 AI 联想层服务存活并自愈（替换原 mlx health 检查）。
+    // 自检 AI 联想层服务存活并自愈：开启但服务掉线则拉起。
     guard let cfg = config, cfg.enabled else { return }
     if let last = lastStartAttempt, Date().timeIntervalSince(last) < 10 { return }
+    let alive = associateServiceTask?.isRunning ?? false
+    if !alive {
+      lastStartAttempt = Date()
+      startAssociateService()
+    }
   }
 
   // MARK: - 配置监听

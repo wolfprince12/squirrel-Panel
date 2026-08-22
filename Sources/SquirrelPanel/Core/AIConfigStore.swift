@@ -89,6 +89,17 @@ final class AIConfigStore {
       writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
       // 通知常驻进程立即刷新配置
       notifyAgentConfigChanged()
+
+      // AI 联想层：同步挂载/卸载 Rime processor（面板托管 rime_ice.custom.yaml），
+      // 并即时部署，使 Squirrel 立即开始/停止触发浮动联想条。
+      if let ice = AppServices.shared.iceStore {
+        let on = engineEnabled
+        ice.associateActive = on
+        try? ice.writePatch()
+        if on, RimeEnvironment.detect().isInstalled {
+          try? SquirrelBridge.deploy(environment: RimeEnvironment.detect())
+        }
+      }
     }
   }
   var modelID: String {
