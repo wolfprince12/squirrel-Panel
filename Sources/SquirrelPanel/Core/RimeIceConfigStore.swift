@@ -599,11 +599,6 @@ final class RimeIceConfigStore {
 
   // MARK: - 写：界面 → 补丁
 
-  /// AI 增强引擎（派生自白知新 AI-Rime）是否应被注入雾凇方案。
-  /// 由 AIConfigStore 在「引擎已启用 且 ai-energy 包已安装」时置 true；
-  /// compileIcePatch() 据此把 lua 处理器/滤镜并入本类独占的 rime_ice.custom.yaml。
-  var aiEngineActive: Bool = false
-
   /// 界面上的开关是否全部停在出厂默认。
   ///
   /// 出厂默认分两种，缺一不可：
@@ -673,18 +668,27 @@ final class RimeIceConfigStore {
     let algebra = mergedAlgebra()
     set["speller/algebra"] = (algebra == template.algebra) ? PatchValue?.none : .stringList(algebra)
 
-    // AI 增强引擎（派生自白知新 AI-Rime）注入：把 lua 处理器/滤镜并入雾凇方案。
-    // 走本类单一所有者通道，与词库开关等托管项共存、互不覆盖（CustomYAMLFile 路径级合并）。
-    if aiEngineActive {
-      var filters = mergedFilters()
-      if !filters.contains("lua_filter@*AIEnergy_filter") { filters.append("lua_filter@*AIEnergy_filter") }
-      set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
-      set["engine/processors/@after 0"] = .string("lua_processor@*AIEnergy_processor")
-    } else {
-      set["engine/processors/@after 0"] = PatchValue?.none
-    }
-
     return set
+  }
+
+  /// 一次性清理旧版「AI-Rime」残留注入：上一版会把
+  /// `lua_processor@*AIEnergy_processor` 挂到 `engine/processors/@after 0`，
+  /// 并把 `lua_filter@*AIEnergy_filter` 并入 `engine/filters`。
+  /// 本版已不再注入，这里在每次写盘前兜底剥离这两行（写前自动 .bak），
+  /// 保证已部署配置干净、不依赖用户手动点「应用」。
+  func removeLegacyAIEnergyPatch() {
+    guard isInstalled, icePatch.isWritable else { return }
+    let procPath = "engine/processors/@after 0"
+    let hadProcessor = (icePatch.value(forPath: procPath) as? String) == "lua_processor@*AIEnergy_processor"
+    var filters = (icePatch.value(forPath: "engine/filters") as? [String]) ?? []
+    let hadFilter = filters.contains("lua_filter@*AIEnergy_filter")
+    guard hadProcessor || hadFilter else { return }
+    if hadProcessor { icePatch.set(nil, forPath: procPath) }
+    if hadFilter {
+      filters.removeAll { $0 == "lua_filter@*AIEnergy_filter" }
+      icePatch.set(filters.isEmpty ? nil : filters, forPath: "engine/filters")
+    }
+    try? icePatch.save()
   }
 
   /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options。
@@ -705,6 +709,7 @@ final class RimeIceConfigStore {
     if phrases.isDirty { try phrases.save() }
     try writeDoublePinyinPatch()
     guard isInstalled, icePatch.isWritable else { return }
+    removeLegacyAIEnergyPatch()
     let set = compileIcePatch()
     // 干净安装 + 全部托管项都回落出厂 = 一个键都不用写。此时凭空创建一份只有注释头、
     // 没有任何 patch 段的 rime_ice.custom.yaml 纯属垃圾文件：用户从没打开过雾凇面板，

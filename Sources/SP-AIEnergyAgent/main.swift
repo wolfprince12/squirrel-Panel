@@ -4,7 +4,7 @@
 //
 //  长期驻留系统的独立后台进程：
 //  - 在系统栏显示小老鼠图标（可由用户切换图标）；
-//  - 读取运行时配置，拉起并监管 mlx_lm server + AIEnergy_service.py；
+//  - 读取运行时配置，为主面板提供常驻外壳（AI 引擎由后续阶段接入）；
 //  - 监听配置文件变化，与主面板解耦；
 //  - 主面板关闭或重启不影响本进程。
 //
@@ -72,17 +72,11 @@ struct RuntimeConfig {
   var enabled = false
   var modelID = "Qwen2.5-1.5B-Instruct-4bit"
   var modelPath = ""
-  var apiURL = "http://localhost:8080/v1"
   var pythonExecutable = "/usr/bin/python3"
-  var serviceScript = ""
   var port = 8080
   var temperature = 0.1
   var maxTokens = 512
   var topP = 1.0
-  var correctionEnabled = true
-  var translationHotkey = "ctrl+t"
-  var dialogHotkey = "ctrl+d"
-  var candidateIndex = 9
   var trayIconName = "MenuBarMouseTemplate"
 
   static func load() -> RuntimeConfig? {
@@ -92,17 +86,11 @@ struct RuntimeConfig {
     c.enabled = (obj["enabled"] as? Bool) ?? false
     c.modelID = (obj["modelID"] as? String) ?? c.modelID
     c.modelPath = (obj["modelPath"] as? String) ?? ""
-    c.apiURL = (obj["apiURL"] as? String) ?? c.apiURL
     c.pythonExecutable = (obj["pythonExecutable"] as? String) ?? c.pythonExecutable
-    c.serviceScript = (obj["serviceScript"] as? String) ?? ""
     c.port = (obj["port"] as? Int) ?? 8080
     c.temperature = (obj["temperature"] as? Double) ?? 0.1
     c.maxTokens = (obj["maxTokens"] as? Int) ?? 512
     c.topP = (obj["topP"] as? Double) ?? 1.0
-    c.correctionEnabled = (obj["correctionEnabled"] as? Bool) ?? true
-    c.translationHotkey = (obj["translationHotkey"] as? String) ?? "cmd+f"
-    c.dialogHotkey = (obj["dialogHotkey"] as? String) ?? "ctrl+t"
-    c.candidateIndex = (obj["candidateIndex"] as? Int) ?? 1
     c.trayIconName = (obj["trayIconName"] as? String) ?? "MenuBarMouseTemplate"
     return c
   }
@@ -112,17 +100,11 @@ struct RuntimeConfig {
       "enabled": enabled,
       "modelID": modelID,
       "modelPath": modelPath,
-      "apiURL": apiURL,
       "pythonExecutable": pythonExecutable,
-      "serviceScript": serviceScript,
       "port": port,
       "temperature": temperature,
       "maxTokens": maxTokens,
       "topP": topP,
-      "correctionEnabled": correctionEnabled,
-      "translationHotkey": translationHotkey,
-      "dialogHotkey": dialogHotkey,
-      "candidateIndex": candidateIndex,
       "trayIconName": trayIconName,
       "startupAtLogin": false,
       "updateCheckEnabled": false,
@@ -158,29 +140,11 @@ let localSession: URLSession = {
   return URLSession(configuration: cfg)
 }()
 
-func mlxHealthy(port: Int) -> Bool {
-  guard let url = URL(string: "http://127.0.0.1:\(port)/health") else { return false }
-  var req = URLRequest(url: url, timeoutInterval: 2)
-  req.httpMethod = "GET"
-  let sem = DispatchSemaphore(value: 0)
-  var ok = false
-  let task = localSession.dataTask(with: req) { _, resp, _ in
-    ok = (resp as? HTTPURLResponse)?.statusCode == 200
-    sem.signal()
-  }
-  task.resume()
-  sem.wait()
-  return ok
-}
-
 // MARK: - 进程管理
 
-var mlxTask: Process?
-var serviceTask: Process?
-
 /// 子进程环境：清掉代理变量并把回环加入 no_proxy。
-/// mlx server 与 Python 服务之间全部走 127.0.0.1，若继承了用户的代理设置，
-/// requests / httpx 会把本地请求也发给代理，导致 502 或长时间超时。
+/// 子进程与本地服务之间全部走 127.0.0.1，若继承了用户的代理设置，
+/// 请求会被发给代理，导致 502 或长时间超时。
 func childEnvironment() -> [String: String] {
   var env = ProcessInfo.processInfo.environment
   for k in ["http_proxy", "https_proxy", "all_proxy",
@@ -218,181 +182,19 @@ func recordChildPID(_ name: String, _ p: Process?) {
   try? "\(p.processIdentifier)".write(to: childPIDFileURL(name), atomically: true, encoding: .utf8)
 }
 
-/// 找到正 LISTEN 在指定 TCP 端口上的进程 PID。
-private func pidsListening(on port: Int) -> [Int32] {
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-  p.arguments = ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN", "-t"]
-  let pipe = Pipe()
-  p.standardOutput = pipe
-  p.standardError = nil
-  try? p.run(); p.waitUntilExit()
-  let data = pipe.fileHandleForReading.readDataToEndOfFile()
-  guard let s = String(data: data, encoding: .utf8) else { return [] }
-  return s.split(separator: "\n").compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
-}
-
-/// 判断某 PID 是否像我们的 mlx server（命令含 `mlx_lm server`）。
-private func isMLXServerProcess(_ pid: Int32) -> Bool {
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: "/bin/ps")
-  p.arguments = ["-o", "command=", "-p", "\(pid)"]
-  let pipe = Pipe()
-  p.standardOutput = pipe
-  p.standardError = nil
-  try? p.run(); p.waitUntilExit()
-  let data = pipe.fileHandleForReading.readDataToEndOfFile()
-  guard let s = String(data: data, encoding: .utf8) else { return false }
-  return s.contains("mlx_lm") && s.contains("server")
-}
-
-/// 找到所有命令行包含指定子串的进程 PID（用 pgrep -f）。
-/// 用于回收「不监听端口、也不含 mlx 字样」的 AIEnergy_service.py 孤儿进程——
-/// 这类进程既不会被按端口回收（它不 LISTEN），也不满足 isMLXServerProcess，
-/// 只能按命令名精确匹配。
-private func pidsMatching(command substring: String) -> [Int32] {
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-  p.arguments = ["-f", substring]
-  let pipe = Pipe()
-  p.standardOutput = pipe
-  p.standardError = nil
-  try? p.run(); p.waitUntilExit()
-  let data = pipe.fileHandleForReading.readDataToEndOfFile()
-  guard let s = String(data: data, encoding: .utf8) else { return [] }
-  return s.split(separator: "\n").compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
-}
-
-/// 回收上一次遗留的孤儿子进程：
-/// 1) pid 文件里记录过的、确实是我们启动的进程（崩溃/强杀后 pid 文件还在的情况）；
-/// 2) 端口占用者——对于更早版本启动、pid 文件已丢失的孤儿（例如上次测试遗留的 mlx
-///    server），pid 文件机制管不到，必须按端口回收，否则新 server 永远撞
-///    `Address already in use`，而旧 server 若加载失败又会让所有请求 hang 住。
-/// 按端口只杀「确为我们的 mlx server」的进程，避免误杀用户其它 8080 服务。
-func reapOrphanChildren(port: Int) {
-  for name in ["mlx", "service"] {
-    let f = childPIDFileURL(name)
-    defer { try? FileManager.default.removeItem(at: f) }
-    guard let s = try? String(contentsOf: f, encoding: .utf8),
-          let pid = Int32(s.trimmingCharacters(in: .whitespacesAndNewlines)),
-          pid > 1, pid != ProcessInfo.processInfo.processIdentifier,
-          kill(pid, 0) == 0 else { continue }
-    print("[SP-AIEnergyAgent] 回收遗留 \(name) 进程 PID \(pid)")
-    kill(pid, SIGTERM)
-  }
-  let mine = [mlxTask?.processIdentifier, serviceTask?.processIdentifier].compactMap { $0 }
-  let me = ProcessInfo.processInfo.processIdentifier
-  for pid in pidsListening(on: port) {
-    if pid == me || mine.contains(pid) { continue }
-    if isMLXServerProcess(pid) {
-      print("[SP-AIEnergyAgent] 回收端口 \(port) 占用者 PID \(pid)")
-      kill(pid, SIGTERM)
-    }
-  }
-  // 回收所有 AIEnergy_service.py 孤儿进程：它不 LISTEN 8080、也不含 mlx 字样，
-  // 前面按端口/按 mlx 两路都覆盖不到，必须按命令名精确回收，否则反复启停引擎会
-  // 泄漏出一大批 service 进程，拖垮资源并导致主面板无法唤起。
-  for pid in pidsMatching(command: "AIEnergy_service.py") {
-    if pid == me || mine.contains(pid) { continue }
-    print("[SP-AIEnergyAgent] 回收遗留 service 进程 PID \(pid)")
-    kill(pid, SIGTERM)
-  }
-}
-
 func terminateChildren() {
-  serviceTask?.terminate()
-  mlxTask?.terminate()
-  serviceTask = nil
-  mlxTask = nil
-  let me = ProcessInfo.processInfo.processIdentifier
-  // 按 pid 文件回收 mlx / service：本实例的 Process 对象可能已失效（如 Agent
-  // 重启、ensureSingleInstance 空壳），pid 文件才是跨实例可靠的回收依据。
-  // 之前只 removeItem 不 kill，导致 Agent 退出后 mlx server 变孤儿残留。
-  for name in ["mlx", "service"] {
-    let f = childPIDFileURL(name)
-    if let s = try? String(contentsOf: f, encoding: .utf8),
-       let pid = Int32(s.trimmingCharacters(in: .whitespacesAndNewlines)),
-       pid > 1, pid != me, kill(pid, 0) == 0 {
-      print("[SP-AIEnergyAgent] 终止 \(name) 进程 PID \(pid)")
-      kill(pid, SIGTERM)
-    }
-    try? FileManager.default.removeItem(at: f)
-  }
-  // 按命令名回收所有 AIEnergy_service.py 孤儿：pid 文件只记录最后一次启动的 PID，
-  // 历史泄漏（heartbeat 反复重启、Agent 被强杀）覆盖不到，必须全量回收。
-  for pid in pidsMatching(command: "AIEnergy_service.py") {
-    if pid == me { continue }
-    kill(pid, SIGTERM)
-  }
+  // Phase 2: 终止 AI 联想层服务子进程（替换原 mlx / AIEnergy_service.py）。
+  // 当前版本引擎未接入，留作占位。
 }
 
 /// 模型目录是否真的可用于推理：必须同时有 config.json 和权重文件。
-/// 只判断目录存在是不够的——面板下载前会先 mkdir，空目录会让 mlx_lm server
-/// 加载失败却仍占住端口监听，此后所有请求都 hang 住。
+/// 只判断目录存在是不够的——面板下载前会先 mkdir，空目录会让本地模型服务
+/// 加载失败，从而无法提供推理。
 func modelUsable(_ path: String) -> Bool {
   let fm = FileManager.default
   guard fm.fileExists(atPath: (path as NSString).appendingPathComponent("config.json")),
         let items = try? fm.contentsOfDirectory(atPath: path) else { return false }
   return items.contains { $0.hasSuffix(".safetensors") || $0.hasSuffix(".npz") }
-}
-
-func launchMLX(_ cfg: RuntimeConfig) -> Process? {
-  guard modelUsable(cfg.modelPath) else { return nil }
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)
-  p.arguments = ["-m", "mlx_lm", "server", "--model", cfg.modelPath, "--port", "\(cfg.port)"]
-  p.environment = childEnvironment()
-  p.standardOutput = logHandle("aienergy_mlx.log")
-  p.standardError = p.standardOutput
-  try? p.run()
-  return p
-}
-
-func launchService(_ cfg: RuntimeConfig) -> Process? {
-  guard !cfg.serviceScript.isEmpty, FileManager.default.fileExists(atPath: cfg.serviceScript) else { return nil }
-  let bzxConfigURL = appSupportDir().appendingPathComponent("aienergy_service_config.json")
-  let bzx: [String: Any] = [
-    "engine": [
-      "api_url": "\(cfg.apiURL)/chat/completions",
-      "api_key": "",
-      // 必须是 mlx_lm server 启动时 --model 的同一个「完整本地路径」。
-      // 实测：传短名（如 Qwen2.5-1.5B-Instruct-4bit）时 server 会把它当 HuggingFace
-      // repo 去联网拉取，返回 404 且每次请求白等 ~13s；传完整路径则 200 且 ~2s。
-      "model": cfg.modelPath,
-      "temperature": cfg.temperature,
-      "max_tokens": cfg.maxTokens,
-      "top_p": cfg.topP,
-    ],
-    "trigger": [
-      // 纠错已改为「停顿触发（防抖 450ms）」，不再 per_key；且此字段 service.py 不消费，
-      // 仅保留语义正确的值。纠错是否启用由 AI 增强总开关决定，无独立关闭。
-      "correction": "auto",
-      "translation_hotkey": cfg.translationHotkey,
-      "dialog_hotkey": cfg.dialogHotkey,
-      "candidate_index": cfg.candidateIndex,
-    ],
-  ]
-  if let data = try? JSONSerialization.data(withJSONObject: bzx, options: .prettyPrinted) {
-    try? data.write(to: bzxConfigURL)
-  }
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)
-  p.arguments = [cfg.serviceScript, "--config", bzxConfigURL.path]
-  p.environment = childEnvironment()
-  p.standardOutput = logHandle("aienergy_service.log")
-  p.standardError = p.standardOutput
-  try? p.run()
-  return p
-}
-
-func mlxAvailable(_ cfg: RuntimeConfig) -> Bool {
-  let p = Process()
-  p.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)
-  p.arguments = ["-c", "import mlx_lm"]
-  p.standardOutput = nil
-  p.standardError = nil
-  do { try p.run(); p.waitUntilExit(); return p.terminationStatus == 0 }
-  catch { return false }
 }
 
 // MARK: - 主应用委托
@@ -564,12 +366,8 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
       return
     }
 
-    guard mlxAvailable(cfg) else {
-      terminateChildren()
-      writeStatus(running: false, message: "mlx_missing", error: "Python 未安装 mlx-lm，无法运行本地模型")
-      return
-    }
-
+    // Phase 2: 启动 AI 联想层服务（替换原 mlx / AIEnergy_service.py）。
+    // 当前版本仅保留常驻外壳，引擎实现待接入。
     startEngine(cfg)
   }
 
@@ -579,24 +377,10 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func startEngine(_ cfg: RuntimeConfig) {
+    // Phase 2: 启动 AI 联想层服务（替换原 mlx_lm server + AIEnergy_service.py）。
+    // 当前版本引擎未接入，留作占位；状态由 heartbeat 在接入后维护。
     terminateChildren()
-    // 先回收上次遗留的孤儿子进程（含按端口回收的旧 mlx server），否则新 mlx server
-    // 会撞上端口占用起不来，导致 AI 完全无响应。
-    reapOrphanChildren(port: cfg.port)
-    lastStartAttempt = Date()
-    print("[SP-AIEnergyAgent] 启动引擎，模型: \(cfg.modelID)")
-
-    guard modelUsable(cfg.modelPath) else {
-      writeStatus(running: false, message: "model_missing",
-                  error: "模型权重不完整，请在「大模型商店」重新下载")
-      return
-    }
-
-    mlxTask = launchMLX(cfg)
-    serviceTask = launchService(cfg)
-    recordChildPID("mlx", mlxTask)
-    recordChildPID("service", serviceTask)
-    writeStatus(running: false, message: "starting…")
+    print("[SP-AIEnergyAgent] 引擎待 Phase 2 接入：模型 \(cfg.modelID)")
   }
 
   // MARK: - 心跳与自愈
@@ -613,24 +397,9 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func heartbeat() {
+    // Phase 2: 自检 AI 联想层服务存活并自愈（替换原 mlx health 检查）。
     guard let cfg = config, cfg.enabled else { return }
     if let last = lastStartAttempt, Date().timeIntervalSince(last) < 10 { return }
-
-    if let mlx = mlxTask, !mlx.isRunning {
-      mlxTask = launchMLX(cfg)
-      recordChildPID("mlx", mlxTask)
-    }
-    if let svc = serviceTask, !svc.isRunning {
-      serviceTask = launchService(cfg)
-      recordChildPID("service", serviceTask)
-    }
-
-    let healthy = mlxHealthy(port: cfg.port)
-    if healthy {
-      writeStatus(running: true, message: "running")
-    } else {
-      writeStatus(running: false, message: "loading_model", error: "mlx 尚未就绪，正在加载权重…")
-    }
   }
 
   // MARK: - 配置监听

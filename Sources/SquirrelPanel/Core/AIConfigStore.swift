@@ -12,13 +12,11 @@ import SwiftUI
 
 enum AIError: LocalizedError {
   case pythonMissing
-  case mlxMissing
   case agentStartFailed(String)
 
   var errorDescription: String? {
     switch self {
     case .pythonMissing: return String(localized: "ai.error.pythonMissing")
-    case .mlxMissing: return String(localized: "ai.error.mlxMissing")
     case .agentStartFailed(let m): return String(localized: "ai.error.agentStart") + m
     }
   }
@@ -31,15 +29,10 @@ final class AIConfigStore {
   private enum Keys {
     static let engineEnabled = "AI.engineEnabled"
     static let modelID = "AI.modelID"
-    static let candidateIndex = "AI.candidateIndex"
-    static let translationHotkey = "AI.translationHotkey"
-    static let dialogHotkey = "AI.dialogHotkey"
-    static let apiURL = "AI.apiURL"
     static let pythonExecutable = "AI.pythonExecutable"
     static let temperature = "AI.temperature"
     static let maxTokens = "AI.maxTokens"
     static let topP = "AI.topP"
-    static let correctionEnabled = "AI.correctionEnabled"
     static let startupAtLogin = "AI.startupAtLogin"
     static let updateCheckEnabled = "AI.updateCheckEnabled"
     static let updateCheckIntervalDays = "AI.updateCheckIntervalDays"
@@ -88,7 +81,7 @@ final class AIConfigStore {
         if pythonValid == true {
           startEngine()
         } else {
-          lastError = String(localized: "ai.error.mlxMissing")
+          lastError = String(localized: "ai.error.pythonMissing")
         }
       } else {
         stopEngine()
@@ -96,41 +89,11 @@ final class AIConfigStore {
       writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
       // 通知常驻进程立即刷新配置
       notifyAgentConfigChanged()
-      syncAISchemaPatch()
     }
   }
   var modelID: String {
     didSet {
       UserDefaults.standard.set(modelID, forKey: Keys.modelID)
-      guard !isApplying else { return }
-      writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-    }
-  }
-  /// 注入到候选列表的槽位（1-based，默认 1）
-  var candidateIndex: Int {
-    didSet {
-      UserDefaults.standard.set(max(1, candidateIndex), forKey: Keys.candidateIndex)
-      guard !isApplying else { return }
-      writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-    }
-  }
-  var translationHotkey: String {
-    didSet {
-      UserDefaults.standard.set(translationHotkey, forKey: Keys.translationHotkey)
-      guard !isApplying else { return }
-      writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-    }
-  }
-  var dialogHotkey: String {
-    didSet {
-      UserDefaults.standard.set(dialogHotkey, forKey: Keys.dialogHotkey)
-      guard !isApplying else { return }
-      writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-    }
-  }
-  var apiURL: String {
-    didSet {
-      UserDefaults.standard.set(apiURL, forKey: Keys.apiURL)
       guard !isApplying else { return }
       writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
     }
@@ -165,16 +128,6 @@ final class AIConfigStore {
       UserDefaults.standard.set(topP, forKey: Keys.topP)
       guard !isApplying else { return }
       writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-    }
-  }
-  /// 每键纠错开关
-  var correctionEnabled: Bool {
-    didSet {
-      guard oldValue != correctionEnabled else { return }
-      UserDefaults.standard.set(correctionEnabled, forKey: Keys.correctionEnabled)
-      guard !isApplying else { return }
-      writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory)
-      notifyAgentConfigChanged()
     }
   }
   /// 开机自启动（小老鼠登录即驻留）
@@ -212,10 +165,6 @@ final class AIConfigStore {
 
   struct Pending {
     var modelID: String
-    var candidateIndex: Int
-    var correctionEnabled: Bool
-    var translationHotkey: String
-    var dialogHotkey: String
     var temperature: Double
     var maxTokens: Int
     var topP: Double
@@ -232,10 +181,6 @@ final class AIConfigStore {
 
   var hasPendingChanges: Bool {
     pending.modelID != modelID
-    || pending.candidateIndex != candidateIndex
-    || pending.correctionEnabled != correctionEnabled
-    || pending.translationHotkey != translationHotkey
-    || pending.dialogHotkey != dialogHotkey
     || pending.temperature != temperature
     || pending.maxTokens != maxTokens
     || pending.topP != topP
@@ -247,10 +192,6 @@ final class AIConfigStore {
   func discardPendingChanges() {
     pending = Pending(
       modelID: modelID,
-      candidateIndex: candidateIndex,
-      correctionEnabled: correctionEnabled,
-      translationHotkey: translationHotkey,
-      dialogHotkey: dialogHotkey,
       temperature: temperature,
       maxTokens: maxTokens,
       topP: topP,
@@ -265,10 +206,6 @@ final class AIConfigStore {
   func applyPendingChanges() {
     isApplying = true
     modelID = pending.modelID
-    candidateIndex = pending.candidateIndex
-    correctionEnabled = pending.correctionEnabled
-    translationHotkey = pending.translationHotkey
-    dialogHotkey = pending.dialogHotkey
     temperature = pending.temperature
     maxTokens = pending.maxTokens
     topP = pending.topP
@@ -369,21 +306,12 @@ final class AIConfigStore {
     let ud = UserDefaults.standard
     let initialEngineEnabled = ud.bool(forKey: Keys.engineEnabled)
     let initialModelID = ud.string(forKey: Keys.modelID) ?? Self.defaultModelID
-    // 设计文档 D4：结果注入候选槽位默认第 9，永不占首候选。
-    let savedSlot = ud.integer(forKey: Keys.candidateIndex)
-    let initialCandidateIndex = savedSlot < 1 ? 9 : savedSlot
-    // 设计文档 D3：翻译/对话用组合键，不占数字键。
-    let initialTranslationHotkey = ud.string(forKey: Keys.translationHotkey) ?? "ctrl+t"
-    let initialDialogHotkey = ud.string(forKey: Keys.dialogHotkey) ?? "ctrl+d"
-    // 用回环 IP 而非 localhost：避免部分环境下 localhost 被解析到 ::1 或被代理接管
-    let initialAPIURL = ud.string(forKey: Keys.apiURL) ?? "http://127.0.0.1:8080/v1"
     let savedPy = ud.string(forKey: Keys.pythonExecutable)
     let initialPythonExecutable = (savedPy != nil && FileManager.default.fileExists(atPath: savedPy!))
       ? savedPy! : Self.detectPython()
     let initialTemperature = ud.object(forKey: Keys.temperature) as? Double ?? 0.1
     let initialMaxTokens = ud.object(forKey: Keys.maxTokens) as? Int ?? 512
     let initialTopP = ud.object(forKey: Keys.topP) as? Double ?? 1.0
-    let initialCorrectionEnabled = ud.object(forKey: Keys.correctionEnabled) as? Bool ?? true
     let initialStartupAtLogin = ud.bool(forKey: Keys.startupAtLogin)
     let initialUpdateCheckEnabled = ud.object(forKey: Keys.updateCheckEnabled) as? Bool ?? true
     let initialUpdateCheckIntervalDays = ud.object(forKey: Keys.updateCheckIntervalDays) as? Int ?? 1
@@ -392,15 +320,10 @@ final class AIConfigStore {
 
     self.engineEnabled = initialEngineEnabled
     self.modelID = initialModelID
-    self.candidateIndex = initialCandidateIndex
-    self.translationHotkey = initialTranslationHotkey
-    self.dialogHotkey = initialDialogHotkey
-    self.apiURL = initialAPIURL
     self.pythonExecutable = initialPythonExecutable
     self.temperature = initialTemperature
     self.maxTokens = initialMaxTokens
     self.topP = initialTopP
-    self.correctionEnabled = initialCorrectionEnabled
     self.startupAtLogin = initialStartupAtLogin
     self.updateCheckEnabled = initialUpdateCheckEnabled
     self.updateCheckIntervalDays = initialUpdateCheckIntervalDays
@@ -409,10 +332,6 @@ final class AIConfigStore {
 
     self.pending = Pending(
       modelID: initialModelID,
-      candidateIndex: initialCandidateIndex,
-      correctionEnabled: initialCorrectionEnabled,
-      translationHotkey: initialTranslationHotkey,
-      dialogHotkey: initialDialogHotkey,
       temperature: initialTemperature,
       maxTokens: initialMaxTokens,
       topP: initialTopP,
@@ -442,7 +361,7 @@ final class AIConfigStore {
   // MARK: - Python 检测
 
   /// 优先使用「按需下载到 Rime 用户目录」的 Python 运行时；否则回退到系统常见 python
-  /// 中已装 mlx_lm 者（便于本机已有环境直接测试）；都没有则返回首个存在的解释器。
+  /// 中已存在的解释器（便于本机已有环境直接测试）；都没有则返回 /usr/bin/python3。
   static func detectPython() -> String {
     if let runtime = runtimePythonPath() {
       return runtime
@@ -453,33 +372,18 @@ final class AIConfigStore {
       "/usr/local/bin/python3",
       "/usr/bin/python3",
     ]
-    // 优先返回已能 import mlx_lm 的
-    for c in candidates where FileManager.default.fileExists(atPath: c) && canImportMLX(c) {
-      return c
-    }
-    // 否则返回首个存在的
+    // 返回首个存在的解释器
     for c in candidates where FileManager.default.fileExists(atPath: c) {
       return c
     }
     return "/usr/bin/python3"
   }
 
-  /// 该 python 是否能 import mlx_lm
-  nonisolated static func canImportMLX(_ python: String) -> Bool {
-    let p = Process()
-    p.executableURL = URL(fileURLWithPath: python)
-    p.arguments = ["-c", "import mlx_lm"]
-    p.standardOutput = nil
-    p.standardError = nil
-    do { try p.run(); p.waitUntilExit(); return p.terminationStatus == 0 }
-    catch { return false }
-  }
-
-  /// 校验当前 python 是否可 import mlx_lm，并回填版本
+  /// 校验当前 python 是否可运行，并回填版本
   func validatePython() {
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: pythonExecutable)
-    proc.arguments = ["-c", "import mlx_lm, sys; print('OK', getattr(mlx_lm,'__version__','?'))"]
+    proc.arguments = ["-c", "import sys; print('OK', sys.version)"]
     let pipe = Pipe()
     proc.standardOutput = pipe
     proc.standardError = Pipe()
@@ -624,7 +528,7 @@ final class AIConfigStore {
 
   /// 卸载 Python 运行时（仅删除 runtimeHome/python，不影响其它数据）
   func removePythonRuntime() {
-    // 先停掉引擎：否则 mlx server 仍持有已被删除的 Python 解释器，状态错乱。
+    // 先停掉引擎：否则常驻子进程仍持有已被删除的 Python 解释器，状态错乱。
     stopEngine()
     try? FileManager.default.removeItem(at: Self.pythonRuntimeDir)
     try? FileManager.default.removeItem(at: Self.runtimeHomeDir.appending(path: "python-runtime-tag.txt"))
@@ -695,26 +599,15 @@ final class AIConfigStore {
 
   func writeRuntimeConfig(rimeDir: URL, forceEnabled: Bool? = nil) {
     let modelDir = Self.modelsDir.appending(path: modelID, directoryHint: .isDirectory).path
-    // 优先使用「AI 引擎包」部署到 Rime 目录的服务脚本（随包更新生效），否则回退到 app 内置副本
-    let deployedService = rimeDir.appending(path: "AIEnergy_service.py").path
-    let bundledService = Bundle.main.url(forResource: "AIEnergy_service", withExtension: "py")?.path ?? ""
-    let serviceScript = FileManager.default.fileExists(atPath: deployedService) ? deployedService : bundledService
     let payload: [String: Any] = [
       "enabled": forceEnabled ?? engineEnabled,
       "modelID": modelID,
       "modelPath": modelDir,
-      "apiURL": apiURL,
       "pythonExecutable": pythonExecutable,
-      "serviceScript": serviceScript,
-      "candidateIndex": candidateIndex,
-      "translationHotkey": translationHotkey,
-      "dialogHotkey": dialogHotkey,
       "rimeDir": rimeDir.path,
-      "port": 8080,
       "temperature": temperature,
       "maxTokens": maxTokens,
       "topP": topP,
-      "correctionEnabled": correctionEnabled,
       "startupAtLogin": startupAtLogin,
       "updateCheckEnabled": updateCheckEnabled,
       "updateCheckIntervalDays": updateCheckIntervalDays,
@@ -727,25 +620,9 @@ final class AIConfigStore {
     let fm = FileManager.default
     try? fm.createDirectory(at: runtimeConfigURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     try? data.write(to: runtimeConfigURL, options: [.atomic])
-    // 同时写出到 Rime 用户目录，供 lua 叠加层读取
+    // 同时写出到 Rime 用户目录，供常驻进程读取
     try? fm.createDirectory(at: rimeConfigURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     try? data.write(to: rimeConfigURL, options: [.atomic])
-    // 额外生成一份 lua 可直接 require 的配置（避免 lua 侧解析 JSON）。
-    // 这样「AI 翻译 / 对话快捷键、候选槽位、纠错开关」完全由控制面板驱动，lua 不再写死。
-    let luaCfg = """
-    -- AUTO-GENERATED by Squirrel Panel. Do not edit.
-    -- 由控制面板「AI 增强」设置写入；lua 叠加层读取，使快捷键 / 候选槽位 / 纠错开关由面板控制。
-    return {
-      translation_hotkey = "\(translationHotkey)",
-      dialog_hotkey     = "\(dialogHotkey)",
-      candidate_index   = \(candidateIndex),
-      correction_on     = \(correctionEnabled ? "true" : "false"),
-    }
-    """
-    let luaURL = rimeDir.appending(path: "lua", directoryHint: .isDirectory)
-      .appending(path: "aienergy_config.lua")
-    try? fm.createDirectory(at: luaURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try? luaCfg.write(to: luaURL, atomically: true, encoding: .utf8)
     // 之前因 XML plist 解析失败留下的陈旧错误可以清掉；配置已重新正确写出。
     if let err = lastError, err.contains("aienergy_config.json") {
       lastError = nil
@@ -779,36 +656,21 @@ final class AIConfigStore {
     }
   }
 
-  /// 可靠地停止 AI 引擎并释放 8080 端口。
+  /// 可靠地停止 AI 引擎。
   ///
-  /// 旧实现只 `engineProcess?.terminate()`，但 Agent 在真实部署中由 launchd / nohup 常驻，
-  /// 面板并不持有其 Process 对象（或持有的是 ensureSingleInstance 后立即退出的空壳），
-  /// 导致关闭开关或卸载时引擎与 mlx server 仍在跑、8080 被占。这里改为多层兜底：
-  /// ① 终止面板可能持有的子进程；② 写出「引擎禁用」配置并广播通知，常驻 Agent 收到后
-  ///    会自行 `terminateChildren`；③ 按 pid 文件强杀常驻 Agent（其退出会 cascade 终止
-  ///    mlx/service）；④ 直接按端口回收 8080 上的 mlx server，作为最后兜底确保端口释放。
+  /// 多层兜底：① 终止面板可能持有的子进程；② 写出「引擎禁用」配置并广播通知，
+  /// 常驻 Agent 收到后自行清理子进程；③ 按 pid 文件强杀常驻 Agent。
   func stopEngine() {
     // ① 面板子进程（若存在）
     engineProcess?.terminate()
     engineProcess = nil
 
-    // ② 通知常驻 Agent：写出 disabled 配置并广播，Agent 会自行 terminateChildren
+    // ② 通知常驻 Agent：写出 disabled 配置并广播，Agent 会自行清理
     writeRuntimeConfig(rimeDir: RimeEnvironment.userDirectory, forceEnabled: false)
     notifyAgentConfigChanged()
 
     // ③ 按 pid 文件强杀常驻 Agent（最可靠路径）
     killAgentByPIDFile()
-
-    // ④ 兜底：直接释放 8080 上的 mlx server
-    freePort(8080)
-
-    // ⑤ 回收所有 AIEnergy_service.py 孤儿进程（不监听端口、不含 mlx 字样，按命令名）。
-    // 这是泄漏根因修复：反复启停引擎会累积 service 进程，拖垮资源、导致主面板无法唤起。
-    let me = ProcessInfo.processInfo.processIdentifier
-    for pid in pidsMatching(command: "AIEnergy_service.py") {
-      if pid == me { continue }
-      kill(pid, SIGTERM)
-    }
 
     engineRunning = false
     engineStatusMessage = String(localized: "ai.status.stopped")
@@ -838,56 +700,6 @@ final class AIConfigStore {
     // 给 Agent 100ms 处理 SIGTERM，仍未退出则强制 SIGKILL，避免状态/端口继续占用。
     Thread.sleep(forTimeInterval: 0.1)
     if kill(pid, 0) == 0 { kill(pid, SIGKILL) }
-  }
-
-  /// 释放指定 TCP 端口：仅杀死确为我们的 `mlx_lm server` 的监听进程，
-  /// 避免误杀用户其它 8080 服务（如本地开发服务器）。
-  private func freePort(_ port: Int) {
-    for pid in pidsListening(on: port) where isMLXServerProcess(pid) {
-      kill(pid, SIGTERM)
-    }
-  }
-
-  private func pidsListening(on port: Int) -> [Int32] {
-    let p = Process()
-    p.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-    p.arguments = ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN", "-t"]
-    let pipe = Pipe()
-    p.standardOutput = pipe
-    p.standardError = nil
-    try? p.run(); p.waitUntilExit()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let s = String(data: data, encoding: .utf8) ?? ""
-    return s.split(separator: "\n").compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
-  }
-
-  private func isMLXServerProcess(_ pid: Int32) -> Bool {
-    let p = Process()
-    p.executableURL = URL(fileURLWithPath: "/bin/ps")
-    p.arguments = ["-o", "command=", "-p", "\(pid)"]
-    let pipe = Pipe()
-    p.standardOutput = pipe
-    p.standardError = nil
-    try? p.run(); p.waitUntilExit()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let s = String(data: data, encoding: .utf8) ?? ""
-    return s.contains("mlx_lm") && s.contains("server")
-  }
-
-  /// 找到所有命令行包含指定子串的进程 PID（用 pgrep -f）。
-  /// 用于回收 AIEnergy_service.py 孤儿进程——它不监听端口、也不含 mlx 字样，
-  /// 前面的 freePort / isMLXServerProcess 两路都覆盖不到，只能按命令名匹配。
-  private func pidsMatching(command substring: String) -> [Int32] {
-    let p = Process()
-    p.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-    p.arguments = ["-f", substring]
-    let pipe = Pipe()
-    p.standardOutput = pipe
-    p.standardError = nil
-    try? p.run(); p.waitUntilExit()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let s = String(data: data, encoding: .utf8) ?? ""
-    return s.split(separator: "\n").compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
   }
 
   /// 移除开机自启动（LaunchAgent）：bootout + 删除 plist。供卸载时彻底清理。
@@ -983,11 +795,10 @@ final class AIConfigStore {
     // 常驻进程写入的 message 是英文内部状态，不能原样显示；按运行布尔值与开关意图做本地化。
     engineStatusMessage = localizedEngineStatus(running: engineRunning, enabled: engineEnabled)
     lastError = obj["error"] as? String
-    syncAISchemaPatch()
   }
 
-  /// 交叉验证：Agent PID 文件对应的进程是否仍在，或 8080 上是否有我们的 mlx server 监听。
-  /// 任一存活即认为引擎实际在运行；否则视为状态文件陈旧。
+  /// 交叉验证：Agent PID 文件对应的进程是否仍在。
+  /// 存活即认为引擎实际在运行；否则视为状态文件陈旧。
   private func isEngineActuallyRunning() -> Bool {
     let pidFile = Self.appSupportDir.appendingPathComponent("sp_aienergy_agent.pid")
     if let s = try? String(contentsOf: pidFile, encoding: .utf8),
@@ -995,35 +806,7 @@ final class AIConfigStore {
        pid > 1, kill(pid, 0) == 0 {
       return true
     }
-    for pid in pidsListening(on: 8080) where isMLXServerProcess(pid) {
-      return true
-    }
     return false
-  }
-
-  /// 将 AI 引擎的 lua 处理器/滤镜注入同步进雾凇方案（rime_ice.custom.yaml）。
-  /// 触发条件：引擎已启用 且 ai-energy 包已安装。由 engineEnabled 变化与状态刷新时调用。
-  /// 走 RimeIceConfigStore 单一所有者通道，保证与词库开关等托管项共存、互不覆盖。
-  func syncAISchemaPatch() {
-    let ice = AppServices.shared.iceStore
-    guard let ice else { return }
-    let env = AppServices.shared.store?.environment
-    let installed: Bool
-    if let pkg = DictionaryPackageManager.loadRegistry().first(where: { $0.id == "ai-energy" }),
-       let env {
-      switch DictionaryPackageManager.status(of: pkg, environment: env) {
-      case .installed: installed = true
-      default: installed = false
-      }
-    } else {
-      installed = false
-    }
-    let active = engineEnabled && installed
-    guard ice.aiEngineActive != active else { return }
-    ice.aiEngineActive = active
-    do { try ice.writePatch() } catch { /* 写盘失败不阻断主流程 */ }
-    // 让 Rime 重新部署以加载 lua 注入（进程不在则经 CLI 触发）。
-    if let env { try? SquirrelBridge.deploy(environment: env) }
   }
 
   // MARK: - 开机自启动（登录项 LaunchAgent）

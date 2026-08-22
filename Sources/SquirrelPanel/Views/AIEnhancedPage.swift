@@ -794,33 +794,9 @@ struct AIEnhancedPage: View {
   private var configSection: some View {
     @Bindable var ai = ai
     SettingsGroup("ai.config.title") {
-      // AI 候选注入位置（纠错默认开启、跟随 AI 增强总开关，无独立开关）
-      HStack(spacing: 8) {
-        Text("ai.config.candidate")
-        Picker("", selection: $ai.pending.candidateIndex) {
-          ForEach(1...10, id: \.self) { i in
-            Text(String(format: String(localized: "ai.config.candidate.option"), i)).tag(i)
-          }
-        }
-        .pickerStyle(.menu)
-        .frame(width: 110)
-      }
-
-      // 翻译 / 对话 快捷键：保留 pending
-      HStack(spacing: 16) {
-        LabeledContent("ai.config.translate") {
-          HotkeyRecorder(hotkey: $ai.pending.translationHotkey)
-            .frame(width: 130, height: 22)
-        }
-        LabeledContent("ai.config.dialog") {
-          HotkeyRecorder(hotkey: $ai.pending.dialogHotkey)
-            .frame(width: 130, height: 22)
-        }
-      }
-
       Divider()
 
-      // 白知新 AI-Rime 可调参数
+      // AI 模型推理参数（联想层复用）
       LabeledContent("ai.config.temperature") {
         HStack(spacing: 8) {
           Slider(value: $ai.pending.temperature, in: 0...1, step: 0.05)
@@ -972,22 +948,23 @@ struct AIEnhancedPage: View {
     engineLogTitle = String(format: String(localized: "package.log.uninstall"), pkg.name)
     engineLog = String(localized: "package.log.removing")
     Task {
-      // 1) 先可靠停掉引擎并释放 8080 端口（旧实现不停止 Agent，端口与进程一直残留）。
-      //    随后关闭「AI 增强」开关：其 didSet 会写出禁用配置、通知常驻 Agent 自停、
-      //    通过 syncAISchemaPatch 还原 schema 注入（移除 lua_processor/lua_filter）、
-      //    并移除开机自启动——保证卸载后输入法配置不残留失效的 lua 引用。
+      // 1) 先可靠停掉引擎，随后关闭「AI 增强」开关：其 didSet 会写出禁用配置、通知常驻
+      //    Agent 自停，并移除开机自启动——卸载后输入法配置不残留失效的引擎引用。
       await MainActor.run {
         ai.stopEngine()
         ai.engineEnabled = false
       }
+      // 2) 剥离旧版 AI-Rime 在 rime_ice.custom.yaml 的残留注入
+      //    （engine/processors/@after 0 与 engine/filters 中的 lua 条目）。
+      AppServices.shared.iceStore?.removeLegacyAIEnergyPatch()
 
-      // 2) 删除所有 AI 注入文件。不依赖 manifest——AI 引擎此前可能未经包管理器记录，
+      // 3) 删除所有 AI 注入文件。不依赖 manifest——AI 引擎此前可能未经包管理器记录，
       //    单纯走 manifest 卸载会因找不到清单而整段跳过，导致文件全留。这里用固定清单直接清理。
+      //    注意：保留 lua/AIEnergy_processor.lua（联想层 Phase 2 将复用）。
       let rime = RimeEnvironment.userDirectory
       let knownFiles = [
         "lua/AIEnergy_filter.lua",
         "lua/AIEnergy_ipc.lua",
-        "lua/AIEnergy_processor.lua",
         "lua/AIEnergy_state.lua",
         "AIEnergy_service.py",
         "bzx_ai.py",
@@ -1001,10 +978,10 @@ struct AIEnhancedPage: View {
       try? fm.removeItem(at: rime.appending(path: ".squirrel-panel/manifests/ai-energy.json"))
       try? fm.removeItem(at: rime.appending(path: ".squirrel-panel/backups/ai-energy"))
 
-      // 3) 部署以重载 Rime，让 build/ 重新生成并去掉 AI 注入。
+      // 4) 部署以重载 Rime，让 build/ 重新生成并去掉 AI 注入。
       try? SquirrelBridge.deploy(environment: store.environment)
 
-      // 4) 清理 App Support 残留；并 best-effort 走原 manifest 兼容卸载（缺失清单也不阻断）。
+      // 5) 清理 App Support 残留；并 best-effort 走原 manifest 兼容卸载（缺失清单也不阻断）。
       await MainActor.run { ai.cleanupAgentArtifacts() }
       try? await DictionaryPackageManager.uninstall(pkg: pkg, environment: store.environment)
 
