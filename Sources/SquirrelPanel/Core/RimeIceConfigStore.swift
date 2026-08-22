@@ -219,6 +219,13 @@ final class RimeIceConfigStore {
   /// 纠错候选注入位置：首位 / 首条之后 / 末尾。
   var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
 
+  /// 纠错强度 / 位置的脏值基线。这两个值**不进** rime_ice.custom.yaml
+  /// （只写 ~/Library/Rime/correction_{strength,position}.txt 供 lua 读取），
+  /// 因此 compileIcePatch() 感知不到它们的变化，必须单独跟踪，否则改它们时
+  /// isDirty 恒为 false → 「应用并重新部署」按钮被禁用 → 配置写不进磁盘。
+  private var baselineCorrectionStrength: CorrectionStrength = .standard
+  private var baselineCorrectionInjectionPosition: CorrectionInjectionPosition = .afterFirst
+
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
   private var doublePinyinPatch: CustomYAMLFile?
@@ -554,6 +561,10 @@ final class RimeIceConfigStore {
     }
 
     baselineIce = compileIcePatch()
+
+    // 纠错强度 / 位置基线：与磁盘实际部署值对齐，保证改它们前 UI 非脏。
+    baselineCorrectionStrength = correctionStrength
+    baselineCorrectionInjectionPosition = correctionInjectionPosition
   }
 
   // MARK: - 读出厂模板
@@ -883,12 +894,19 @@ final class RimeIceConfigStore {
     for (key, value) in set { icePatch.set(value?.yamlObject, forPath: key) }
     try icePatch.save()
     baselineIce = set
+    // 纠错强度 / 位置随本次 apply 一并落盘（deployCorrectionAssets 已写 txt），
+    // 此处同步基线，避免 apply 后 isDirty 仍残留 true、按钮持续点亮。
+    baselineCorrectionStrength = correctionStrength
+    baselineCorrectionInjectionPosition = correctionInjectionPosition
   }
 
   /// 雾凇面板自身的脏值判断（覆盖 B/C/D/E 全部状态）
   var isDirty: Bool {
     if phrases.isDirty { return true }
     if showRawDoubleCode != baselineShowRawDoubleCode { return true }
+    // 纠错强度 / 位置只落 txt、不进 custom.yaml，必须显式纳入脏值判断。
+    if correctionStrength != baselineCorrectionStrength { return true }
+    if correctionInjectionPosition != baselineCorrectionInjectionPosition { return true }
     guard isInstalled else { return false }
     return compileIcePatch() != baselineIce
   }
@@ -1025,6 +1043,7 @@ final class RimeIceConfigStore {
     icePatch.set(nil, forPath: "engine/processors/@after 0")
     correctionEnabled = false
     correctionStrength = .standard
+    correctionInjectionPosition = .afterFirst
     // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
     // 4. 注意：此处**不**调 settings.apply()。
