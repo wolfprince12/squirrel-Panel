@@ -48,10 +48,6 @@ final class SettingsStore {
   /// 用 weak 避免与 RimeIceConfigStore 的 unowned settings 形成循环。
   weak var rimeIce: RimeIceConfigStore?
 
-  /// AI 增强引擎面板（AIConfigStore）的反向引用，用于在统一的「应用并部署」中
-  /// 一并提交 AI 配置、启停引擎并重新部署。
-  weak var aiConfig: AIConfigStore?
-
   /// 载入时的编译快照，用于判断是否有未应用的改动
   private var baselineSquirrel: PatchSet = [:]
   private var baselineDefault: PatchSet = [:]
@@ -149,7 +145,6 @@ final class SettingsStore {
     compileSquirrelPatch() != baselineSquirrel
       || compileDefaultPatch() != baselineDefault
       || rimeIce?.isDirty == true
-      || aiConfig?.hasPendingChanges == true
   }
 
   var canWrite: Bool { squirrelPatch.isWritable && defaultPatch.isWritable }
@@ -624,7 +619,7 @@ final class SettingsStore {
   // MARK: - 应用
 
   func apply() {
-    guard canWrite, rimeIce?.canWrite ?? true, aiConfig?.canWrite ?? true else {
+    guard canWrite, rimeIce?.canWrite ?? true else {
       lastError = unparsableWarning ?? rimeIce?.unparsableWarning
       return
     }
@@ -687,10 +682,6 @@ final class SettingsStore {
         // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
         self.managingKeyBindings = self.tabPagingEnabled
 
-        // 提交 AI 增强引擎页的 pending 改动（UserDefaults、运行时配置）。
-        // 引擎开关与纠错开关已独立即时生效，不在这里启停引擎。
-        self.aiConfig?.applyPendingChanges()
-
         if self.environment.isInstalled {
           self.statusMessage = "status.deploying"
           do {
@@ -698,7 +689,7 @@ final class SettingsStore {
             // 用 deployAsync 真正挂起，让主线程在等待期间保持响应，
             // 修复「应用并重新部署」程序未响应（原来在 @MainActor Task 内同步
             // waitUntilExit 会占满 UI 线程）。部署完成后 Rime 重载 Lua 叠加层，
-            // 使 aienergy_config.lua 里的候选槽位等配置真正生效。
+            // 使纠错 lua 里的词典/强度/位置等配置真正生效。
             try await SquirrelBridge.deployAsync(environment: self.environment)
             // SquirrelReloadNotification 会触发 Squirrel 的 deploy() → loadSettings()，
             // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
@@ -722,7 +713,6 @@ final class SettingsStore {
   }
 
   func revert() {
-    aiConfig?.discardPendingChanges()
     reload()
     statusMessage = "status.reverted"
   }

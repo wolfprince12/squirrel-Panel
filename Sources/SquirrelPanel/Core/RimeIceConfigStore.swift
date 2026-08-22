@@ -88,10 +88,40 @@ enum CorrectionStrength: Int, CaseIterable, Identifiable {
   case basic = 1      // 仅键盘物理相邻错打
   case standard = 2   // 相邻错打 + 系统性音近纠错
   var id: Int { rawValue }
+  /// 稳定、非本地化的名称，写入 ~/Library/Rime/correction_strength.txt 供 lua 读取。
+  var name: String {
+    switch self {
+    case .basic: return "basic"
+    case .standard: return "standard"
+    }
+  }
   var label: String {
     switch self {
     case .basic: return String(localized: "correction.strength.basic")
     case .standard: return String(localized: "correction.strength.standard")
+    }
+  }
+}
+
+/// 纠错候选的注入位置（相对自然候选）。
+enum CorrectionInjectionPosition: Int, CaseIterable, Identifiable {
+  case top = 0        // 始终置顶（首位）
+  case afterFirst = 1 // 第一条自然候选之后（默认）
+  case end = 9        // 末尾
+  var id: Int { rawValue }
+  /// 稳定、非本地化的名称，写入 ~/Library/Rime/correction_position.txt 供 lua 读取。
+  var name: String {
+    switch self {
+    case .top: return "top"
+    case .afterFirst: return "afterFirst"
+    case .end: return "end"
+    }
+  }
+  var label: String {
+    switch self {
+    case .top: return String(localized: "correction.position.top")
+    case .afterFirst: return String(localized: "correction.position.afterFirst")
+    case .end: return String(localized: "correction.position.end")
     }
   }
 }
@@ -186,6 +216,9 @@ final class RimeIceConfigStore {
   /// 纠错强度：基础（仅键盘相邻错打）/ 标准（相邻错打 + 系统性音近）。
   var correctionStrength: CorrectionStrength = .standard
 
+  /// 纠错候选注入位置：首位 / 首条之后 / 末尾。
+  var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
+
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
   private var doublePinyinPatch: CustomYAMLFile?
@@ -220,7 +253,8 @@ final class RimeIceConfigStore {
     "lua_filter@*reduce_english_filter",
     "simplifier@emoji",
     "lua_filter@*search@radical_pinyin",
-    "reverse_lookup_filter@radical_reverse_lookup"
+    "reverse_lookup_filter@radical_reverse_lookup",
+    "lua_filter@*correction"
   ]
 
   /// 托管的 dependencies 条目
@@ -504,13 +538,19 @@ final class RimeIceConfigStore {
 
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
-    // 拼音纠错挂载态以磁盘实际为准：speller/algebra 中是否含纠错规则。
-    let corrSelected = currentAlgebra.filter { Self.correctionRuleSet.contains($0) }
-    correctionEnabled = !corrSelected.isEmpty
-    if let maxLevel = corrSelected.compactMap({ rule in
-      Self.correctionRules.first(where: { $0.rule == rule })?.level.rawValue
-    }).max() {
-      correctionStrength = CorrectionStrength(rawValue: maxLevel) ?? .standard
+    // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*correction。
+    let corrFilter = currentFilters.contains("lua_filter@*correction")
+    correctionEnabled = corrFilter
+
+    // 纠错强度 / 注入位置：以实际部署到 ~/Library/Rime 的文件为准，保证 UI 与运行时一致。
+    let rimeDir = RimeEnvironment.userDirectory
+    if let s = try? String(contentsOf: rimeDir.appendingPathComponent("correction_strength.txt"), encoding: .utf8) {
+      let v = s.trimmingCharacters(in: .whitespacesAndNewlines)
+      correctionStrength = (v == "basic") ? .basic : .standard
+    }
+    if let p = try? String(contentsOf: rimeDir.appendingPathComponent("correction_position.txt"), encoding: .utf8) {
+      let v = p.trimmingCharacters(in: .whitespacesAndNewlines)
+      correctionInjectionPosition = CorrectionInjectionPosition.allCases.first { $0.name == v } ?? .afterFirst
     }
 
     baselineIce = compileIcePatch()
@@ -626,6 +666,8 @@ final class RimeIceConfigStore {
       return enableEmojiDict
     case "lua_filter@*search@radical_pinyin", "reverse_lookup_filter@radical_reverse_lookup":
       return enableRadical
+    case "lua_filter@*correction":
+      return correctionEnabled
     default:
       guard item.hasPrefix("lua_filter@") else { return true }
       let key = String(item.dropFirst("lua_filter@".count))
@@ -651,10 +693,24 @@ final class RimeIceConfigStore {
   }
 
   private func mergedFilters() -> [String] {
-    Self.mergedList(template: template.filters,
+    var result = Self.mergedList(template: template.filters,
                     current: currentList("engine/filters", fallback: template.filters),
                     managed: Self.managedFilters,
                     isEnabled: { self.isFilterEnabled($0) })
+    // 拼音纠错过滤器 `lua_filter@*correction` 是面板自有条目，不在出厂
+    // rime_ice.schema.yaml 的 engine/filters 里；mergedList 只回插「current 或 template
+    // 中存在」的托管项，因此它永远插不进来。这里在合并结果上显式兜底：开启纠错时确保
+    // 它存在，并插入到 `uniquifier` 之前（让注入候选也被去重清理）；关闭时由
+    // isFilterEnabled 在 mergedList 的 current 循环中判定为禁用而剔除
+    //（managed && !enabled → 跳过），无需在此删。
+    if correctionEnabled, !result.contains("lua_filter@*correction") {
+      if let uniqIdx = result.firstIndex(of: "uniquifier") {
+        result.insert("lua_filter@*correction", at: uniqIdx)
+      } else {
+        result.append("lua_filter@*correction")
+      }
+    }
+    return result
   }
 
   private func mergedDependencies() -> [String] {
@@ -666,14 +722,13 @@ final class RimeIceConfigStore {
 
   /// 模糊音：把已选规则**前置**到用户现有 algebra 之前；
   /// 出厂常驻规则（erase / abbrev / v-u 转换 / 自动纠错）原样保留。
+  /// 拼音纠错不再走 algebra（改由 lua_processor + lua_filter 注入），
+  /// 此处仅清理历史纠错 algebra 规则，避免旧版残留。
   private func mergedAlgebra() -> [String] {
     let current = currentList("speller/algebra", fallback: template.algebra)
     let base = current.filter { !Self.fuzzyRuleSet.contains($0) && !Self.correctionRuleSet.contains($0) }
     let fuzzySel = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
-    let corrSel = correctionEnabled
-      ? Self.correctionRules.filter { $0.level.rawValue <= correctionStrength.rawValue }.map(\.rule)
-      : []
-    return fuzzySel + corrSel + base
+    return fuzzySel + base
   }
 
   // MARK: - 写：界面 → 补丁
@@ -741,8 +796,9 @@ final class RimeIceConfigStore {
     let filters = mergedFilters()
     set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
 
-    // 拼音纠错：规则层走 speller/algebra（mergedAlgebra 已并入 correctionRules），
-    // 不再挂浮动条 processor。此处显式清掉历史浮动条挂载点，避免残留。
+    // 拼音纠错（同步查表层，零延迟）：开启时挂载 lua_filter@*correction
+    // （mergedFilters 已并入）；不需要 processor —— 纯静态词典查表，不调用任何
+    // 外部进程。这里恒写 nil，确保任何旧版 AI processor 挂载被清理。
     set["engine/processors/@after 0"] = PatchValue?.none
 
     let dependencies = mergedDependencies()
@@ -754,22 +810,41 @@ final class RimeIceConfigStore {
     return set
   }
 
-  /// 一次性清理旧版「AI-Rime」残留注入：上一版会把
-  /// `lua_processor@*AIEnergy_processor` 挂到 `engine/processors/@after 0`，
-  /// 并把 `lua_filter@*AIEnergy_filter` 并入 `engine/filters`。
-  /// 本版已不再注入，这里在每次写盘前兜底剥离这两行（写前自动 .bak），
-  /// 保证已部署配置干净、不依赖用户手动点「应用」。
-  /// 清理旧版「AI-Rime」残留注入。注意：本版（AI 联想层）**复用**了
-  /// `lua_processor@*AIEnergy_processor@after 0` 这个挂载点，因此不能在这里剥离它；
-  /// 这里只剥离旧版专属的 `lua_filter@*AIEnergy_filter`（候选注入那条线已彻底砍掉）。
-  func removeLegacyAIEnergyPatch() {
-    guard isInstalled, icePatch.isWritable else { return }
-    var filters = (icePatch.value(forPath: "engine/filters") as? [String]) ?? []
-    let hadFilter = filters.contains("lua_filter@*AIEnergy_filter")
-    guard hadFilter else { return }
-    filters.removeAll { $0 == "lua_filter@*AIEnergy_filter" }
-    icePatch.set(filters.isEmpty ? nil : filters, forPath: "engine/filters")
-    try? icePatch.save()
+  /// 部署纠错资源：lua 滤镜 + 错音词典，从 App 资源目录复制到 ~/Library/Rime/。
+  /// 在写补丁前调用，确保 schema 编译时 lua 已就位；幂等。
+  private func deployCorrectionAssets() {
+    guard let resRoot = Bundle.main.resourceURL?
+      .appendingPathComponent("CorrectionEngine") else { return }
+    let luaDir = (NSHomeDirectory() as NSString)
+      .appendingPathComponent("Library/Rime/lua")
+    let rimeDir = (NSHomeDirectory() as NSString)
+      .appendingPathComponent("Library/Rime")
+    try? FileManager.default.createDirectory(atPath: luaDir, withIntermediateDirectories: true)
+    for name in ["correction.lua"] {
+      let src = resRoot.appendingPathComponent("lua/\(name)")
+      guard FileManager.default.fileExists(atPath: src.path) else { continue }
+      let dst = (luaDir as NSString).appendingPathComponent(name)
+      try? FileManager.default.copyItem(atPath: src.path, toPath: dst)
+    }
+    let dictSrc = resRoot.appendingPathComponent("correction_dict.txt")
+    if FileManager.default.fileExists(atPath: dictSrc.path) {
+      let dictDst = (rimeDir as NSString).appendingPathComponent("correction_dict.txt")
+      try? FileManager.default.copyItem(atPath: dictSrc.path, toPath: dictDst)
+    }
+    // 音近混淆层（标准档追加）：同样复制到 Rime 目录。
+    let phSrc = resRoot.appendingPathComponent("correction_dict_phonetic.txt")
+    if FileManager.default.fileExists(atPath: phSrc.path) {
+      let phDst = (rimeDir as NSString).appendingPathComponent("correction_dict_phonetic.txt")
+      try? FileManager.default.copyItem(atPath: phSrc.path, toPath: phDst)
+    }
+    // 写出纠错强度，供 lua 决定加载哪些词典。
+    let strengthDst = (rimeDir as NSString).appendingPathComponent("correction_strength.txt")
+    try? ("\(correctionStrength.name)\n" as NSString).write(
+      toFile: strengthDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
+    // 写出纠错候选注入位置，供 lua 决定把「纠错」候选插到第几位。
+    let posDst = (rimeDir as NSString).appendingPathComponent("correction_position.txt")
+    try? ("\(correctionInjectionPosition.name)\n" as NSString).write(
+      toFile: posDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
   }
 
   /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options。
@@ -790,7 +865,7 @@ final class RimeIceConfigStore {
     if phrases.isDirty { try phrases.save() }
     try writeDoublePinyinPatch()
     guard isInstalled, icePatch.isWritable else { return }
-    removeLegacyAIEnergyPatch()
+    if correctionEnabled { deployCorrectionAssets() }
     let set = compileIcePatch()
     // 干净安装 + 全部托管项都回落出厂 = 一个键都不用写。此时凭空创建一份只有注释头、
     // 没有任何 patch 段的 rime_ice.custom.yaml 纯属垃圾文件：用户从没打开过雾凇面板，

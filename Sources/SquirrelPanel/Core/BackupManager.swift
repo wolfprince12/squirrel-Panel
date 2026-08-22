@@ -77,7 +77,7 @@ final class BackupManager {
   // MARK: - 创建 / 列表
 
   /// 创建一次「配置文件」快照。只备份用户可编辑配置，排除安装产物与大体积数据：
-  /// aienergy（mlx 模型）、*.gram 语法模型、cn_dicts/en_dicts/opencc（词典）、build、
+  /// *.gram 语法模型、cn_dicts/en_dicts/opencc（词典）、build、
   /// *.userdb（词库）、*.dict.yaml / *.schema.yaml（词库与方案定义）、*.bak、__pycache__ 等。
   /// - Parameter label: 备份标签，nil 表示自动备份。
   @discardableResult
@@ -221,7 +221,6 @@ final class BackupManager {
   /// 复制目录路径时去掉开头的 "/"，得到相对路径
   ///
   /// 只保留用户可编辑的配置文件，排除安装自带 / 大体积产物：
-  /// - aienergy：AI 引擎的 mlx 模型与运行时数据（可达 1.4GB+）
   /// - *.gram：语法模型（可达数百 MB）
   /// - cn_dicts / en_dicts / opencc：系统词典与字符转换表（安装自带）
   /// - build：Rime 编译产物
@@ -233,7 +232,6 @@ final class BackupManager {
     let lower = rel.lowercased()
     if comps.contains("backups") { return true }
     if comps.contains("build") { return true }
-    if comps.contains("aienergy") { return true }
     if comps.contains("cn_dicts") { return true }
     if comps.contains("en_dicts") { return true }
     if comps.contains("opencc") { return true }

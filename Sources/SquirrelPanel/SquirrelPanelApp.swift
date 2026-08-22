@@ -25,7 +25,6 @@ final class AppServices {
   var store: SettingsStore!
   var iceStore: RimeIceConfigStore!
   var updateCenter: UpdateCenter!
-  var aiStore: AIConfigStore!
 }
 
 @main
@@ -34,14 +33,12 @@ struct SquirrelPanelApp: App {
   @State private var store: SettingsStore
   @State private var iceStore: RimeIceConfigStore
   @State private var updateCenter: UpdateCenter
-  @State private var aiStore: AIConfigStore
 
   @MainActor
   init() {
     // 单实例检查（最早，早于任何 Store 初始化）：主面板与 Agent 共享 bundle id，
     // 双击 .app 在 hidePanel(.accessory) 后会被 Launch Services 误启动第二个实例。
-    // 必须在 Store 初始化之前退出，否则 AIConfigStore.init 里的 startEngine→stopEngine
-    // 会误杀已有 Agent，且 Dock 出现两个图标。
+    // 必须在 Store 初始化之前退出，否则 Dock 出现两个图标。
     if AppDelegate.isAnotherPanelInstanceRunning() {
       DistributedNotificationCenter.default().postNotificationName(
         .init("io.github.wolfprince12.squirrel-panel.openPanel"),
@@ -53,18 +50,14 @@ struct SquirrelPanelApp: App {
     let store = SettingsStore()
     let iceStore = RimeIceConfigStore(settings: store)
     store.rimeIce = iceStore
-    let aiStore = AIConfigStore()
-    store.aiConfig = aiStore
     _store = State(initialValue: store)
     _iceStore = State(initialValue: iceStore)
     _updateCenter = State(initialValue: UpdateCenter(store: store))
-    _aiStore = State(initialValue: aiStore)
 
     // 装配常驻服务句柄，供 AppDelegate 生命周期使用
     AppServices.shared.store = store
     AppServices.shared.iceStore = iceStore
     AppServices.shared.updateCenter = updateCenter
-    AppServices.shared.aiStore = aiStore
   }
 
   var body: some Scene {
@@ -73,7 +66,6 @@ struct SquirrelPanelApp: App {
         .environment(store)
         .environment(iceStore)
         .environment(updateCenter)
-        .environment(aiStore)
     }
     .defaultSize(width: 960, height: 860)
     .windowResizability(.contentMinSize)
@@ -163,11 +155,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
       }
     }
 
-    // 主面板仅负责启动时各模块自检轮询；AI 引擎由 SP-AIEnergyAgent 常驻进程监管。
-    let ai = AppServices.shared.aiStore
-    ai?.startWatchdog()
+    // 主面板启动时跑各模块自检轮询（更新检查等）。
     AppServices.shared.updateCenter?.checkAllOnLaunch()
-    ai?.checkPythonUpdate()
 
     // 启动即显示面板主窗口的逻辑下放到了 attachMainWindow：必须等 SwiftUI
     // 把工具栏 KVO 观察者装配平衡后再 orderFront，否则会在启动同步路径里
@@ -183,8 +172,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
 
   func applicationWillTerminate(_ notification: Notification) {
-    // 主面板退出时只清理看门狗；SP-AIEnergyAgent 作为独立常驻进程继续运行。
-    AppServices.shared.aiStore?.stopWatchdog()
     // 释放单实例 pid 文件，允许下次正常启动。
     try? FileManager.default.removeItem(at: Self.panelPIDFileURL)
   }

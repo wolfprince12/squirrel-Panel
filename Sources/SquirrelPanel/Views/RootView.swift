@@ -67,7 +67,6 @@ struct RootView: View {
   /// 这里只为订阅变更通知而持有，不直接读取。
   @Environment(RimeIceConfigStore.self) private var ice
   @Environment(UpdateCenter.self) private var updateCenter
-  @Environment(AIConfigStore.self) private var aiStore
   @State private var selection: PanelSection = .aiEnhanced
   @State private var showingYAML = false
 
@@ -92,9 +91,7 @@ struct RootView: View {
     }
     .frame(minWidth: 880, minHeight: 620)
     .onAppear {
-      // 各模块自检轮询由菜单栏小老鼠在启动时统一触发（见 AppDelegate）；
-      // 此处仅在面板唤出时刷新一次 AI 引擎状态。
-      aiStore.refreshStatus()
+      // 面板唤出时刷新一次（各模块自检轮询由菜单栏常驻进程在启动时统一触发）。
     }
     .sheet(isPresented: $showingYAML) { YAMLInspector() }
   }
@@ -225,6 +222,14 @@ struct RootView: View {
       .controlSize(.large)
       .frame(width: 140)
       .disabled(!store.isDirty || !store.canWrite)
+
+      // ④ 底部提示：本面板所有改动只写 custom.yaml 补丁，绝不覆盖用户手写的配置
+      Text("footer.hint")
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.top, 6)
     }
     // 让 footer 撑满 sidebar 整宽（240pt），里面按钮 width:240 才能真正填满
     .frame(maxWidth: .infinity, alignment: .center)
