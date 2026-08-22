@@ -68,6 +68,9 @@ WEIGHT_MIN = 100
 MAX_ENTRIES_KEYBOARD = 250_000
 # 音近层输出上限（标准档追加；15万条足够覆盖高频混淆）
 MAX_ENTER_PHONETIC = 150_000
+# 每个错音最多保留的正词候选数（一对多，供词频权重排序）。
+# 取前 N 条最高频正词；N 越大候选越杂，5 是噪声与覆盖的折中。
+MAX_CANDIDATES_PER_TYPO = 5
 
 
 def spacefree(pinyin: str) -> str:
@@ -137,8 +140,12 @@ def load_words():
 
 
 def build_corrections(words, adj_map, cap):
-    """基于某张混淆表生成 错音 -> (正词, weight)，按权重降序取 Top-N。"""
-    corrections = {}
+    """基于某张混淆表生成 错音 -> [(正词, weight), ...]（一对多，按权重降序）。
+
+    每个错音收集所有「因该混淆规则而误打成此错音」的正词，保留权重最高的前
+    MAX_CANDIDATES_PER_TYPO 条，供运行时按词频权重排序注入多条纠错候选。
+    """
+    corrections = {}  # typo -> list[(hanzi, weight)]
     for sf, (hanzi, weight) in words.items():
         for variant in gen_variants(sf, adj_map):
             if variant == sf:
@@ -146,10 +153,15 @@ def build_corrections(words, adj_map, cap):
             # 跳过错音恰好也是某正词的情况（避免给正确输入塞纠正）
             if variant in words:
                 continue
-            prev = corrections.get(variant)
-            if prev is None or weight > prev[1]:
-                corrections[variant] = (hanzi, weight)
-    ranked = sorted(corrections.items(), key=lambda kv: -kv[1][1])
+            lst = corrections.setdefault(variant, [])
+            lst.append((hanzi, weight))
+    # 每个错音按权重降序截断到前 N 条
+    for typo, lst in corrections.items():
+        lst.sort(key=lambda hw: -hw[1])
+        if len(lst) > MAX_CANDIDATES_PER_TYPO:
+            del lst[MAX_CANDIDATES_PER_TYPO:]
+    # 输出规模上限（按错音数）
+    ranked = sorted(corrections.items(), key=lambda kv: -max(w for _, w in kv[1]))
     if len(ranked) > cap:
         ranked = ranked[:cap]
     return sorted(ranked, key=lambda kv: kv[0])
@@ -162,8 +174,13 @@ def write_dict(items, out_name):
     out_path = os.path.abspath(out_path)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
-        for typo, (hanzi, _w) in items:
-            f.write(f'{typo}\t{hanzi}\n')
+        for typo, cands in items:
+            # 一对多格式：错音\t词1\t权重1\t词2\t权重2...（已按权重降序）
+            parts = [typo]
+            for hanzi, w in cands:
+                parts.append(hanzi)
+                parts.append(str(w))
+            f.write('\t'.join(parts) + '\n')
     print(f'[info] 输出 {out_name}: {len(items)} 条 -> {out_path}', file=sys.stderr)
     return out_path
 

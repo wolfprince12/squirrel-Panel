@@ -156,7 +156,13 @@ struct SnowWolfCorrectionPage: View {
         title: "correction.grammar.title",
         description: "correction.grammar.desc"
       ) {
-        comingSoonBadge
+        Text("correction.supported")
+          .font(.caption2)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 3)
+          .background(Color.green.opacity(0.18))
+          .foregroundStyle(.green)
+          .clipShape(Capsule())
       } bottom: {
         EmptyView()
       }

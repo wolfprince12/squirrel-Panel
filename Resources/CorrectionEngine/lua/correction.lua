@@ -58,8 +58,24 @@ local function load_one(path, into)
     local tab = line:find("\t")
     if tab then
       local typo = line:sub(1, tab - 1)
-      local text = line:sub(tab + 1):gsub("%s+$", "")
-      if #text > 0 then into[typo] = text end
+      local rest = line:sub(tab + 1):gsub("%s+$", "")
+      if #rest > 0 then
+        -- 一对多格式：词1\t权重1\t词2\t权重2...
+        -- 生成器已按权重降序排好，此处按出现顺序收集即可。
+        local cands = {}
+        for token in rest:gmatch("[^\t]+") do
+          cands[#cands + 1] = token
+        end
+        local list = {}
+        local i = 1
+        while i + 1 <= #cands do
+          local hanzi = cands[i]
+          -- cands[i+1] 为权重（数值），仅用于确认顺序，排序已在生成期完成
+          list[#list + 1] = hanzi
+          i = i + 2
+        end
+        if #list > 0 then into[typo] = list end
+      end
     end
   end
   f:close()
@@ -84,9 +100,9 @@ end
 function M.func(input, env)
   local ctx = env.engine.context
   local cur = ctx.input or ""
-  local correction = nil
+  local corrections = nil  -- 有序候选列表（已按词频权重降序）
   if #cur > 0 and dict then
-    correction = dict[cur]
+    corrections = dict[cur]
   end
 
   -- 收集本轮候选，便于按位置注入与去重判断
@@ -95,44 +111,60 @@ function M.func(input, env)
     cands[#cands + 1] = cand
   end
 
-  -- 原输入查不出任何自然候选时（纯错音），直接给出纠正词（置顶）
+  -- 原输入查不出任何自然候选时（纯错音），直接给出纠正词列表（置顶）
   if #cands == 0 then
-    if correction then
-      yield(Candidate("correction", 0, #cur, correction, "纠错"))
+    if corrections then
+      for _, text in ipairs(corrections) do
+        yield(Candidate("correction", 0, #cur, text, "纠错"))
+      end
     end
     return
   end
 
   -- 去重：纠正词已出现在自然候选中则不重复注入
-  local dup = false
-  if correction then
+  local function is_dup(text)
     for _, c in ipairs(cands) do
-      if c.text == correction then dup = true; break end
+      if c.text == text then return true end
+    end
+    return false
+  end
+  -- 过滤掉与自然候选重复的纠正词，保留剩余（仍按权重降序）
+  local remaining = {}
+  if corrections then
+    for _, text in ipairs(corrections) do
+      if not is_dup(text) then remaining[#remaining + 1] = text end
     end
   end
 
   -- 无需注入时原样透传
-  if not (correction and not dup) then
+  if #remaining == 0 then
     for _, cand in ipairs(cands) do yield(cand) end
     return
   end
 
-  local corr = Candidate("correction", 0, #cur, correction, "纠错")
   local pos = read_position()
 
   if pos == "top" then
-    -- 置顶
-    yield(corr)
+    -- 置顶：多条纠正候选按权重降序排在最前
+    for _, text in ipairs(remaining) do
+      yield(Candidate("correction", 0, #cur, text, "纠错"))
+    end
     for _, cand in ipairs(cands) do yield(cand) end
   elseif pos == "end" then
     -- 末尾
     for _, cand in ipairs(cands) do yield(cand) end
-    yield(corr)
+    for _, text in ipairs(remaining) do
+      yield(Candidate("correction", 0, #cur, text, "纠错"))
+    end
   else
-    -- afterFirst：第一条自然候选之后
+    -- afterFirst：第一条自然候选之后依次插入多条纠正候选（仍按权重降序）
     for i, cand in ipairs(cands) do
       yield(cand)
-      if i == 1 then yield(corr) end
+      if i == 1 then
+        for _, text in ipairs(remaining) do
+          yield(Candidate("correction", 0, #cur, text, "纠错"))
+        end
+      end
     end
   end
 end
