@@ -205,6 +205,7 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   private var configWatcher: DispatchSourceFileSystemObject?
   private var heartbeatTimer: Timer?
   private var lastStartAttempt: Date?
+  private var associateBar: AssociateBarController?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     print("[SP-AIEnergyAgent] Bundle.main = \(Bundle.main.bundleURL.path)")
@@ -213,6 +214,8 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
     loadConfigAndApply()
     startConfigWatcher()
     registerDistributedObserver()
+    associateBar = AssociateBarController()
+    registerAssociateObserver()
     startHeartbeat()
   }
 
@@ -288,6 +291,7 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
   private func buildContextMenu() -> NSMenu {
     let menu = NSMenu()
     menu.addItem(NSMenuItem(title: "打开鼠须管控制面板", action: #selector(menuOpenPanel), keyEquivalent: ""))
+    menu.addItem(NSMenuItem(title: "测试浮动联想条", action: #selector(menuDemoBar), keyEquivalent: ""))
     menu.addItem(.separator())
     menu.addItem(NSMenuItem(title: "退出", action: #selector(menuQuit), keyEquivalent: ""))
 
@@ -431,6 +435,57 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
 
   @objc private func configDidChangeExternally(_ notification: Notification) {
     loadConfigAndApply()
+  }
+
+  // MARK: - AI 联想层浮动条（Phase 2 MVP）
+
+  private func registerAssociateObserver() {
+    let center = DistributedNotificationCenter.default()
+    center.addObserver(
+      self,
+      selector: #selector(associateShow(_:)),
+      name: .init("io.github.wolfprince12.squirrel-panel.associate.show"),
+      object: nil
+    )
+    center.addObserver(
+      self,
+      selector: #selector(associateHide(_:)),
+      name: .init("io.github.wolfprince12.squirrel-panel.associate.hide"),
+      object: nil
+    )
+  }
+
+  /// 收到联想建议：定位 Squirrel 候选窗并浮现浮动条。
+  /// userInfo["suggestions"] 为 [String]（2–3 条续写）。
+  @objc private func associateShow(_ notification: Notification) {
+    let texts = (notification.userInfo?["suggestions"] as? [String]) ?? []
+    let anchor = SquirrelWindowLocator.candidateWindowRect() ?? defaultAnchor()
+    Task { @MainActor in
+      self.associateBar?.show(suggestions: texts, anchor: anchor)
+    }
+  }
+
+  @objc private func associateHide(_ notification: Notification) {
+    Task { @MainActor in self.associateBar?.hide() }
+  }
+
+  /// 找不到候选窗时的回退位置：主屏中心偏下，便于演示与兜底。
+  private func defaultAnchor() -> NSRect {
+    guard let screen = NSScreen.main else { return NSRect(x: 400, y: 400, width: 320, height: 44) }
+    return NSRect(
+      x: screen.visibleFrame.midX - 160,
+      y: screen.visibleFrame.midY - 40,
+      width: 320, height: 44
+    )
+  }
+
+  /// 演示：无需真实推理管线，直接弹浮动条验证定位与交互。
+  @objc private func menuDemoBar() {
+    let samples = ["今天天气真不错，", "我们一起去散步，", "这个项目需要尽快推进，", "人工智能正在改变世界"]
+    let anchor = SquirrelWindowLocator.candidateWindowRect() ?? defaultAnchor()
+    Task { @MainActor in
+      self.associateBar?.show(suggestions: samples, anchor: anchor)
+    }
   }
 }
 
