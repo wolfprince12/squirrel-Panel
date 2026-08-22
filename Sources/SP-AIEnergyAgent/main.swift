@@ -444,6 +444,13 @@ class AgentAppDelegate: NSObject, NSApplicationDelegate {
       print("[SP-AIEnergyAgent] 找不到 AIEnergy_service.py：\(script.path)")
       return
     }
+    // Python 运行依赖是续写服务的硬前置；缺失时回报「运行依赖缺失」让面板引导安装，
+    // 而不是抛出系统级 "No such file" 让用户一头雾水。
+    guard FileManager.default.fileExists(atPath: cfg.pythonExecutable) else {
+      print("[SP-AIEnergyAgent] Python 运行依赖缺失：\(cfg.pythonExecutable)")
+      writeStatus(running: false, message: "dependency missing", error: "运行依赖缺失")
+      return
+    }
     terminateChildren()
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: cfg.pythonExecutable)

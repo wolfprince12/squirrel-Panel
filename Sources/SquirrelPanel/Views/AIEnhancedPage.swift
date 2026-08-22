@@ -773,7 +773,12 @@ struct AIEnhancedPage: View {
         }
         .toggleStyle(.switch)
 
-        AIStatusBadge(running: ai.engineRunning, message: ai.engineStatusMessage)
+        AIStatusBadge(
+          running: ai.engineRunning && !ai.pythonDependencyMissing,
+          message: ai.pythonDependencyMissing
+            ? String(localized: "ai.status.dependencyMissing")
+            : ai.engineStatusMessage
+        )
         Spacer()
         Button("ai.status.refresh") { ai.refreshStatus() }
           .controlSize(.small)
@@ -783,7 +788,15 @@ struct AIEnhancedPage: View {
         .controlSize(.small)
       }
 
-      if let err = ai.lastError, !err.isEmpty {
+      if ai.pythonDependencyMissing {
+        HStack(spacing: 8) {
+          Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+          Text("ai.deps.missingHint").font(.caption).foregroundStyle(.secondary)
+          Spacer()
+          Button("ai.python.install") { ai.installOrUpdatePython() }
+            .controlSize(.small).buttonStyle(.borderedProminent)
+        }
+      } else if let err = ai.lastError, !err.isEmpty {
         Label(err, systemImage: "exclamationmark.triangle.fill")
           .font(.caption).foregroundStyle(.red)
       }

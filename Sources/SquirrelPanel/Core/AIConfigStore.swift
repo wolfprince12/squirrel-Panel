@@ -62,6 +62,9 @@ final class AIConfigStore {
   var pythonValid: Bool?
   var pythonVersion: String = ""
   var lastError: String?
+  /// Python 运行依赖缺失（Agent 回报）：面板据此在开关区呈现「点击安装运行依赖」引导，
+  /// 而非把「启动不了」当作致命错误。
+  var pythonDependencyMissing: Bool = false
   private var engineProcess: Process?
   private var watchdogTimer: Timer?
   private var lastStartAttempt: Date?
@@ -77,12 +80,10 @@ final class AIConfigStore {
         startupAtLogin = engineEnabled
       }
       if engineEnabled {
+        // 直接启动常驻 Agent；Python 运行依赖缺失时由 Agent 回报「运行依赖缺失」状态，
+        // 面板据此引导用户一键安装，而非在此致命拦截导致「启动不了」。
         validatePython()
-        if pythonValid == true {
-          startEngine()
-        } else {
-          lastError = String(localized: "ai.error.pythonMissing")
-        }
+        startEngine()
       } else {
         stopEngine()
       }
@@ -805,7 +806,10 @@ final class AIConfigStore {
     engineRunning = fileRunning
     // 常驻进程写入的 message 是英文内部状态，不能原样显示；按运行布尔值与开关意图做本地化。
     engineStatusMessage = localizedEngineStatus(running: engineRunning, enabled: engineEnabled)
-    lastError = obj["error"] as? String
+    let err = obj["error"] as? String
+    lastError = err
+    pythonDependencyMissing = (err?.contains("运行依赖缺失") ?? false)
+      || (err?.localizedCaseInsensitiveContains("python-dependency-missing") ?? false)
   }
 
   /// 交叉验证：Agent PID 文件对应的进程是否仍在。
