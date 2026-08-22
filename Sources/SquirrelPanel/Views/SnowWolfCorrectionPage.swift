@@ -1,8 +1,8 @@
 //
-//  AIEnhancedPage.swift
+//  SnowWolfCorrectionPage.swift
 //  Squirrel Panel
 //
-//  「智能纠错」标签页：拼音实时纠错（规则 + 查表层）。
+//  「雪狼智能纠错模型」标签页：拼音实时纠错（规则 + 查表层）。
 //
 //  机制：同步、零延迟，与百度/搜狗同源——打字按错键（如 w 误触邻键 e，
 //  woshi → eoshi）时，在第一条自然候选之后注入「纠错」候选，点选即填入。
@@ -53,7 +53,7 @@ private struct DependencyCard<Status: View, Bottom: View>: View {
 
 // MARK: - 主页面
 
-struct AIEnhancedPage: View {
+struct SnowWolfCorrectionPage: View {
   @Environment(SettingsStore.self) private var store
   @Environment(UpdateCenter.self) private var updateCenter
   @Environment(RimeIceConfigStore.self) private var ice

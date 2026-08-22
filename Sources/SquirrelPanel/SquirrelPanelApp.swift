@@ -36,17 +36,6 @@ struct SquirrelPanelApp: App {
 
   @MainActor
   init() {
-    // 单实例检查（最早，早于任何 Store 初始化）：主面板与 Agent 共享 bundle id，
-    // 双击 .app 在 hidePanel(.accessory) 后会被 Launch Services 误启动第二个实例。
-    // 必须在 Store 初始化之前退出，否则 Dock 出现两个图标。
-    if AppDelegate.isAnotherPanelInstanceRunning() {
-      DistributedNotificationCenter.default().postNotificationName(
-        .init("io.github.wolfprince12.squirrel-panel.openPanel"),
-        object: nil, userInfo: nil, deliverImmediately: true)
-      exit(0)
-    }
-    AppDelegate.recordPanelInstancePID()
-
     let store = SettingsStore()
     let iceStore = RimeIceConfigStore(settings: store)
     store.rimeIce = iceStore
@@ -99,30 +88,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
   private weak var mainWindow: NSWindow?
 
-  /// 主面板 pid 文件：用于单实例检测。
-  /// 主面板与 SP-AIEnergyAgent 共享 bundle id，双击 .app 在 hidePanel(.accessory)
-  /// 后会被 Launch Services 误启动第二个实例，导致 Dock 出现两个图标。
-  static let panelPIDFileURL: URL = {
-    let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let dir = base.appendingPathComponent("SquirrelPanel", isDirectory: true)
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir.appendingPathComponent("squirrel_panel.pid")
-  }()
-
-  /// 是否已有另一个存活的主面板实例（pid 文件里的 pid 仍存活）。
-  static func isAnotherPanelInstanceRunning() -> Bool {
-    let me = ProcessInfo.processInfo.processIdentifier
-    guard let s = try? String(contentsOf: panelPIDFileURL, encoding: .utf8),
-          let pid = Int32(s.trimmingCharacters(in: .whitespacesAndNewlines)),
-          pid > 1, pid != me else { return false }
-    return kill(pid, 0) == 0
-  }
-
-  static func recordPanelInstancePID() {
-    try? "\(ProcessInfo.processInfo.processIdentifier)".write(
-      to: panelPIDFileURL, atomically: true, encoding: .utf8)
-  }
-
   // MARK: - 生命周期
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -130,18 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     NSSplitViewItem.swizzle()
 
     // 主面板本身作为普通应用：有 Dock 图标，关闭窗口即退出进程。
-    // 系统栏小老鼠图标由 SP-AIEnergyAgent 常驻进程负责显示。
     NSApp.setActivationPolicy(.regular)
-
-    // 监听 Agent 发出的「打开面板」分布式通知。Agent 与主面板共享同一个
-    // bundle id，若走 NSWorkspace.open 会被 Launch Services 误路由到 Agent，
-    // 导致主面板无法唤起。这里收到通知后直接唤出窗口，绕开 Launch Services。
-    DistributedNotificationCenter.default().addObserver(
-      self,
-      selector: #selector(handleOpenPanelNotification(_:)),
-      name: .init("io.github.wolfprince12.squirrel-panel.openPanel"),
-      object: nil
-    )
 
     // SwiftUI Window scene 创建的 NSWindow 在此时已可用；取第一个并设置委托。
     if let window = NSApp.windows.first {
@@ -172,8 +126,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
 
   func applicationWillTerminate(_ notification: Notification) {
-    // 释放单实例 pid 文件，允许下次正常启动。
-    try? FileManager.default.removeItem(at: Self.panelPIDFileURL)
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -206,15 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     return true
   }
 
-  /// 收到 Agent 的「打开面板」通知：在主线程唤出窗口。
-  @objc private func handleOpenPanelNotification(_ notification: Notification) {
-    DispatchQueue.main.async { [weak self] in
-      self?.showPanel()
-    }
-  }
-
-  /// 点击面板红黄绿之外的「关闭」按钮：仅隐藏回常驻形态，不销毁窗口，
-  /// 以便后续从菜单栏小老鼠再次唤出。
+  /// 点击面板红黄绿之外的「关闭」按钮：仅隐藏窗口（保持 .regular，不退出 Dock），
+  /// 以便后续从 Dock 图标 / 双击 .app 再次唤出。
   func windowShouldClose(_ sender: NSWindow) -> Bool {
     hidePanel()
     return false

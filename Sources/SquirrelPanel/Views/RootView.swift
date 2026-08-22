@@ -7,14 +7,14 @@ import SwiftUI
 import AppKit
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  // AI 增强引擎置顶（2.0.0 起作为面板核心入口）
-  case aiEnhanced, appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
+  // 雪狼智能纠错模型置顶（核心入口）
+  case snowWolf, appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
 
   var id: String { rawValue }
 
   var title: LocalizedStringKey {
     switch self {
-    case .aiEnhanced: return "nav.aiEnhanced"
+    case .snowWolf: return "nav.snowWolfCorrection"
     case .appearance: return "nav.appearance"
     case .schemas: return "nav.schemas"
     case .riceIce: return "nav.riceIce"
@@ -29,7 +29,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
   var symbol: String {
     switch self {
-    case .aiEnhanced: return "brain"
+    case .snowWolf: return "brain"
     case .appearance: return "paintpalette"
     case .schemas: return "character.book.closed"
     case .riceIce: return "tree"
@@ -44,7 +44,7 @@ enum PanelSection: String, CaseIterable, Identifiable {
 
   var tint: Color {
     switch self {
-    case .aiEnhanced: return .mint
+    case .snowWolf: return .mint
     case .appearance: return .orange
     case .schemas: return .green
     case .riceIce: return .teal
@@ -67,7 +67,7 @@ struct RootView: View {
   /// 这里只为订阅变更通知而持有，不直接读取。
   @Environment(RimeIceConfigStore.self) private var ice
   @Environment(UpdateCenter.self) private var updateCenter
-  @State private var selection: PanelSection = .aiEnhanced
+  @State private var selection: PanelSection = .snowWolf
   @State private var showingYAML = false
 
   private var allSections: [PanelSection] { PanelSection.allCases }
@@ -171,7 +171,7 @@ struct RootView: View {
         case .maintenance: MaintenancePage()
         case .backupSync: BackupSyncPage()
         case .about: AboutPage()
-        case .aiEnhanced: AIEnhancedPage()
+        case .snowWolf: SnowWolfCorrectionPage()
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)

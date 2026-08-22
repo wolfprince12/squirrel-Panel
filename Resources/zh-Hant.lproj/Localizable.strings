@@ -702,5 +702,5 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "behavior.when.composing" = "編輯中 (composing)";
 "behavior.when.always" = "始終 (always)";
 "behavior.when.predict" = "聯想時 (predict)";
-"nav.aiEnhanced" = "智能糾錯";
+"nav.snowWolfCorrection" = "雪狼智能糾錯";
 "sidebar.brand.name" = "鼠須管控制面板";

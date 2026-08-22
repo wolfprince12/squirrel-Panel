@@ -702,5 +702,5 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "behavior.when.composing" = "Composing (composing)";
 "behavior.when.always" = "Always (always)";
 "behavior.when.predict" = "Predict (predict)";
-"nav.aiEnhanced" = "Smart Correction";
+"nav.snowWolfCorrection" = "SnowWolf Correction";
 "sidebar.brand.name" = "Squirrel Panel";

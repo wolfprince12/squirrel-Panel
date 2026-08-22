@@ -34,12 +34,10 @@ universal:
 	@$(MAKE) bundle BIN=.build/apple/Products/Release/$(EXEC)
 
 ## 组装 .app bundle
-## AI 引擎（Python+MLX+本地大模型）已下线，App 不再包含任何运行时/模型，体积更小。
 bundle:
 	@rm -rf "$(BUNDLE)"
 	@mkdir -p "$(CONTENTS)/MacOS" "$(CONTENTS)/Resources"
 	@cp "$(BIN)" "$(CONTENTS)/MacOS/$(EXEC)"
-	@cp "$(dir $(BIN))SP-AIEnergyAgent" "$(CONTENTS)/MacOS/SP-AIEnergyAgent" 2>/dev/null || true
 	@cp "$(RESOURCES)/AppInfo.plist" "$(CONTENTS)/Info.plist"
 	@cp -R "$(RESOURCES)/"* "$(CONTENTS)/Resources/"
 	@rm -f "$(CONTENTS)/Resources/AppInfo.plist"
