@@ -226,6 +226,11 @@ final class RimeIceConfigStore {
   private var baselineCorrectionStrength: CorrectionStrength = .standard
   private var baselineCorrectionInjectionPosition: CorrectionInjectionPosition = .afterFirst
 
+  /// 是否启用用户自学习（Phase3）：用户采纳纠错候选时记录「错音→正词」，
+  /// 越用越准。只落 ~/Library/Rime/correction_selflearn.txt，同样需单独跟踪基线。
+  var correctionSelfLearning: Bool = true
+  private var baselineCorrectionSelfLearning: Bool = true
+
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
   private var doublePinyinPatch: CustomYAMLFile?
@@ -565,6 +570,12 @@ final class RimeIceConfigStore {
     // 纠错强度 / 位置基线：与磁盘实际部署值对齐，保证改它们前 UI 非脏。
     baselineCorrectionStrength = correctionStrength
     baselineCorrectionInjectionPosition = correctionInjectionPosition
+
+    // 自学习开关基线：读 correction_selflearn.txt（缺省 on）。
+    if let sl = try? String(contentsOf: rimeDir.appendingPathComponent("correction_selflearn.txt"), encoding: .utf8) {
+      correctionSelfLearning = sl.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "off"
+    }
+    baselineCorrectionSelfLearning = correctionSelfLearning
   }
 
   // MARK: - 读出厂模板
@@ -856,6 +867,10 @@ final class RimeIceConfigStore {
     let posDst = (rimeDir as NSString).appendingPathComponent("correction_position.txt")
     try? ("\(correctionInjectionPosition.name)\n" as NSString).write(
       toFile: posDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
+    // 写出自学习开关，供 lua 决定是否记录用户采纳行为。
+    let slDst = (rimeDir as NSString).appendingPathComponent("correction_selflearn.txt")
+    try? ("\(correctionSelfLearning ? "on" : "off")\n" as NSString).write(
+      toFile: slDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
   }
 
   /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options。
@@ -898,6 +913,7 @@ final class RimeIceConfigStore {
     // 此处同步基线，避免 apply 后 isDirty 仍残留 true、按钮持续点亮。
     baselineCorrectionStrength = correctionStrength
     baselineCorrectionInjectionPosition = correctionInjectionPosition
+    baselineCorrectionSelfLearning = correctionSelfLearning
   }
 
   /// 雾凇面板自身的脏值判断（覆盖 B/C/D/E 全部状态）
@@ -907,6 +923,8 @@ final class RimeIceConfigStore {
     // 纠错强度 / 位置只落 txt、不进 custom.yaml，必须显式纳入脏值判断。
     if correctionStrength != baselineCorrectionStrength { return true }
     if correctionInjectionPosition != baselineCorrectionInjectionPosition { return true }
+    // 自学习开关同样只落 txt。
+    if correctionSelfLearning != baselineCorrectionSelfLearning { return true }
     guard isInstalled else { return false }
     return compileIcePatch() != baselineIce
   }
@@ -1044,6 +1062,7 @@ final class RimeIceConfigStore {
     correctionEnabled = false
     correctionStrength = .standard
     correctionInjectionPosition = .afterFirst
+    correctionSelfLearning = true
     // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
     // 4. 注意：此处**不**调 settings.apply()。

@@ -126,6 +126,16 @@ struct SnowWolfCorrectionPage: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+
+        Divider()
+        Toggle(isOn: $ice.correctionSelfLearning) {
+          Text("correction.selflearn.enable")
+        }
+        .toggleStyle(.switch)
+        Text("correction.selflearn.enable.desc")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
       }
     }
   }
@@ -171,7 +181,13 @@ struct SnowWolfCorrectionPage: View {
         title: "correction.selflearn.title",
         description: "correction.selflearn.desc"
       ) {
-        comingSoonBadge
+        Text("correction.supported")
+          .font(.caption2)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 3)
+          .background(Color.green.opacity(0.18))
+          .foregroundStyle(.green)
+          .clipShape(Capsule())
       } bottom: {
         EmptyView()
       }
