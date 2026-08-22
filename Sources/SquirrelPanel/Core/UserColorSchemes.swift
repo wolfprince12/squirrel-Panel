@@ -9,7 +9,7 @@
 //  写入 squirrel.custom.yaml 的 preset_color_schemes/<id>，随方案名生效、
 //  可进入大预览窗、可导出为独立 .yaml、可再导入。
 //
-//  持久化：注册表存于 Application Support/Squirrel Panel/user_color_schemes.json，
+//  持久化：注册表存于 ~/Library/Rime/user_color_schemes.json（用户 Rime 配置目录），
 //  是编辑器的工作集与权威来源；apply() 再把其中全部方案注入 squirrel.custom.yaml，
 //  让鼠须管实际渲染。颜色值始终以字符串 "0xBBGGRR" 保存，避免任何整数化改写。
 //
@@ -79,11 +79,10 @@ enum UserColorSchemes {
   }
 
   private static func registryURL() -> URL? {
-    let fm = FileManager.default
-    guard let dir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-      .appendingPathComponent("Squirrel Panel", isDirectory: true) else { return nil }
-    try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir.appendingPathComponent("user_color_schemes.json")
+    // 注册表随用户自定义数据一律落在 Rime 配置目录（~/Library/Rime），
+    // 不污染 App 的 Application Support 目录。
+    return RimeEnvironment.userDirectory
+      .appendingPathComponent("user_color_schemes.json")
   }
 
   private static func loadRegistry() -> RegistryFile? {
