@@ -38,9 +38,6 @@ struct DictionaryPackage: Identifiable, Codable {
   /// 是否语法模型包（万象语法模型等）
   var isGrammar: Bool { type == "grammar" }
 
-  /// 是否 AI 引擎包（AIEnergy 核心：Lua 叠加层 + Python 服务，部署到 Rime 目录）
-  var isAIEngine: Bool { type == "aiengine" }
-
   /// 语法模型的语言名（由 releaseAsset 去掉 .gram 后缀得到，如 wanxiang-lts-zh-hans）
   var grammarLanguage: String {
     let asset = releaseAsset ?? "wanxiang-lts-zh-hans.gram"
@@ -233,11 +230,6 @@ enum DictionaryPackageManager {
     // 语法模型（万象等）：单文件 .gram + default.custom.yaml 的 grammar 段，走独立分支
     if pkg.isGrammar {
       return try await installGrammar(pkg: pkg, environment: environment)
-    }
-
-    // AI 引擎（AIEnergy）：lua 叠加层 + Python 服务，部署到 Rime 目录，走独立分支
-    if pkg.isAIEngine {
-      return try await installAIEngine(pkg: pkg, environment: environment)
     }
 
     let fm = FileManager.default
@@ -439,257 +431,6 @@ enum DictionaryPackageManager {
     return manifest
   }
 
-  // MARK: - AI 引擎（AIEnergy）
-
-  // MARK: - AI 引擎来源解析辅助
-
-  /// 把单文件从 src 复制到 Rime 目录的 dstRel 位置，按 overwrite 决定是否先备份。
-  /// 返回是否成功写入（源文件缺失时返回 false，不中断整体流程）。
-  private static func copyEngineFile(src: URL, dstRel: String, rime: URL, backupDir: URL, overwrite: Bool) -> Bool {
-    let fm = FileManager.default
-    let dst = rime.appending(path: dstRel)
-    guard fm.fileExists(atPath: src.path(percentEncoded: false)) else {
-      print("[SquirrelPanel] AIEngine skip missing source: \(src.path(percentEncoded: false))")
-      return false
-    }
-    if !overwrite, fm.fileExists(atPath: dst.path(percentEncoded: false)) {
-      let backup = backupDir.appending(path: dstRel)
-      try? fm.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try? fm.removeItem(at: backup)
-      try? fm.copyItem(at: dst, to: backup)
-    }
-    try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try? fm.removeItem(at: dst)
-    try? fm.copyItem(at: src, to: dst)
-    return true
-  }
-
-  /// 解析 AI 引擎来源（设计文档 D2：自研叠加层 + 白知新 bzx/ 内核，不二次封装仓库）。
-  ///  - kernelRoot：在线时从白知新仓库（分支归档 `archive/refs/heads/<branch>.zip`，
-  ///    恒定可用、无需 latest release）拉取并解包后得到的仓库根；离线时为 nil。
-  ///  - overlayRoot：面板内置 `AIEnergyEngine`（构建时拷入 bundle），始终提供自研
-  ///    lua 叠加层与我们的服务进程；离线时内核也自此兜底。
-  /// 返回三元组 (kernelRoot?, overlayRoot, releaseTag?)。
-  private static func resolveAIEngineSource(pkg: DictionaryPackage) async throws -> (kernelRoot: URL?, overlayRoot: URL, releaseTag: String?) {
-    var kernelRoot: URL? = nil
-    if let branch = pkg.branch, !branch.isEmpty,
-       let owner = pkg.repoOwner, let repo = pkg.repoName,
-       !owner.isEmpty, !repo.isEmpty {
-      let archiveURL = "https://github.com/\(owner)/\(repo)/archive/refs/heads/\(branch).zip"
-      let candidates = [archiveURL] + GitHubMirrorFetch.candidateURLs(for: archiveURL)
-      let zipDest = FileManager.default.temporaryDirectory
-        .appending(path: "squirrel-panel-aiengine-\(UUID().uuidString).zip")
-      var downloaded: URL? = nil
-      for c in candidates {
-        do {
-          try await GitHubMirrorFetch.download(from: c, to: zipDest, timeout: 120)
-          downloaded = zipDest
-          break
-        } catch { continue }
-      }
-      if let zipURL = downloaded {
-        let stage = FileManager.default.temporaryDirectory
-          .appending(path: "squirrel-panel-aiengine-ext-\(UUID().uuidString)", directoryHint: .isDirectory)
-        try? FileManager.default.removeItem(at: stage)
-        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
-        let ditto = Process()
-        ditto.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        ditto.arguments = ["-x", "-k", zipURL.path(percentEncoded: false), stage.path(percentEncoded: false)]
-        try ditto.run(); ditto.waitUntilExit()
-        try? FileManager.default.removeItem(at: zipURL)
-        if ditto.terminationStatus == 0 {
-          let root = locatePackageRoot(in: stage)
-          // 校验内核确实存在，避免把残缺 zip 当真源
-          if FileManager.default.fileExists(atPath: root.appending(path: "bzx/bzx_ai.py").path(percentEncoded: false)) {
-            kernelRoot = root
-          } else {
-            try? FileManager.default.removeItem(at: stage)
-          }
-        }
-      }
-    }
-    guard let overlayRoot = Bundle.main.url(forResource: "AIEnergyEngine", withExtension: nil),
-          FileManager.default.fileExists(atPath: overlayRoot.path(percentEncoded: false)) else {
-      throw PackageManagerError.downloadFailed(pkg.sourceURL)
-    }
-    return (kernelRoot, overlayRoot, pkg.branch)
-  }
-
-  /// 收集在线仓库里需要部署的内核相对路径。我们只实际 import `bzx_ai.AIClient`
-  ///（见 AIEnergy_service.py），故内核只取 `bzx/bzx_ai.py`，扁平化为 `bzx_ai.py` 部署；
-  /// 不部署 `bzx_service.py`（我们用自研 AIEnergy_service.py）、`bzx_config.json`（我们自管配置）、
-  /// `bzx_ipc.py`（白知新自有文件 IPC，本服务不走它）。保持最小可信部署面。
-  private static func aiEngineKernelRepoRels(in root: URL) -> [String] {
-    snapshotFiles(in: root).filter { $0 == "bzx/bzx_ai.py" }
-  }
-
-  /// 把内核相对路径扁平化为部署名：bzx/bzx_ai.py -> bzx_ai.py（与内置包布局一致，供 `from bzx_ai import` 命中）。
-  private static func aiEngineKernelFlatRel(_ repoRel: String) -> String {
-    (repoRel as NSString).lastPathComponent
-  }
-
-  /// 安装 AI 引擎（设计文档 D2：自研叠加层 + 白知新 bzx/ 内核，不二次封装）。
-  ///  - 自研叠加层（lua/AIEnergy_*.lua、AIEnergy_service.py）始终来自面板内置包；
-  ///  - 内核 bzx/ 在线时取自白知新仓库实时拉取，离线时回退到内置 vendored bzx_ai.py。
-  /// 内核文件扁平部署（bzx/bzx_ai.py -> bzx_ai.py），与内置包布局一致，供 `from bzx_ai import` 命中。
-  private static func installAIEngine(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
-    guard environment.isInstalled else { throw PackageManagerError.squirrelNotInstalled }
-    let fm = FileManager.default
-    let rime = rimeDir()
-    let backup = backupDir(for: pkg.id)
-    try fm.createDirectory(at: rime, withIntermediateDirectories: true)
-    try fm.createDirectory(at: manifestsDir(), withIntermediateDirectories: true)
-    try fm.createDirectory(at: backup, withIntermediateDirectories: true)
-
-    let (kernelRoot, overlayRoot, releaseTag) = try await resolveAIEngineSource(pkg: pkg)
-    // 记录 main 分支最新 commit，用于后续更新检查（避免 installedCommit 为空导致一直 .unknown）
-    let commitSHA = try? await fetchLatestCommit(pkg: pkg).sha
-
-    // 1) 自研叠加层：始终来自内置包（带备份）
-    let overlayFiles = snapshotFiles(in: overlayRoot).filter { shouldInstall($0) }
-    var addedFiles: [String] = []
-    for rel in overlayFiles {
-      if copyEngineFile(src: overlayRoot.appending(path: rel), dstRel: rel,
-                        rime: rime, backupDir: backup, overwrite: false) {
-        addedFiles.append(rel)
-      }
-    }
-
-    // 2) 内核：在线取仓库 bzx/ 扁平化部署；离线取内置 vendored bzx_ai.py 兜底
-    let kernelRepoRels = kernelRoot.map { aiEngineKernelRepoRels(in: $0) } ?? []
-    if !kernelRepoRels.isEmpty, let kr = kernelRoot {
-      for repoRel in kernelRepoRels {
-        let flat = aiEngineKernelFlatRel(repoRel)
-        if copyEngineFile(src: kr.appending(path: repoRel), dstRel: flat,
-                          rime: rime, backupDir: backup, overwrite: false) {
-          addedFiles.append(flat)
-        }
-      }
-      try? fm.removeItem(at: kr)  // 清理解压目录
-    } else {
-      // 离线兜底：仅内核 bzx_ai.py（其余文件内置包没有，跳过）
-      let flat = "bzx_ai.py"
-      if copyEngineFile(src: overlayRoot.appending(path: flat), dstRel: flat,
-                        rime: rime, backupDir: backup, overwrite: false) {
-        addedFiles.append(flat)
-      }
-    }
-
-    try SquirrelBridge.deploy(environment: environment)
-    try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-    let manifest = PackageManifest(
-      id: pkg.id,
-      addedFiles: addedFiles,
-      backupDir: backup.path(percentEncoded: false),
-      defaultSchema: "",
-      installedAt: Date(),
-      version: "1.0.0",
-      installedCommit: commitSHA,
-      installedTag: releaseTag)
-    let mData = try JSONEncoder().encode(manifest)
-    try mData.write(to: manifestURL(for: pkg.id), options: .atomic)
-    return manifest
-  }
-
-  /// 更新 AI 引擎：重新拉取白知新内核 + 内置叠加层，覆盖部署（保留首次安装的原始备份），
-  /// 删除「旧版有、新版没有」的文件，清理解压目录。
-  private static func updateAIEngine(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
-    let mURL = manifestURL(for: pkg.id)
-    guard let data = try? Data(contentsOf: mURL),
-          let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
-      throw PackageManagerError.notManagedByPanel
-    }
-    guard environment.isInstalled else { throw PackageManagerError.squirrelNotInstalled }
-
-    let fm = FileManager.default
-    let rime = rimeDir()
-    let backup = URL(fileURLWithPath: manifest.backupDir)
-    try fm.createDirectory(at: rime, withIntermediateDirectories: true)
-
-    let (kernelRoot, overlayRoot, releaseTag) = try await resolveAIEngineSource(pkg: pkg)
-    // 更新 main 分支最新 commit，使更新检查能正确比对
-    let commitSHA = try? await fetchLatestCommit(pkg: pkg).sha
-
-    // 收集新版应部署的全部相对路径（叠加层 + 内核扁平名）
-    var newRels: [String] = []
-    newRels.append(contentsOf: snapshotFiles(in: overlayRoot).filter { shouldInstall($0) })
-    let kernelRepoRels = kernelRoot.map { aiEngineKernelRepoRels(in: $0) } ?? []
-    if !kernelRepoRels.isEmpty {
-      newRels.append(contentsOf: kernelRepoRels.map { aiEngineKernelFlatRel($0) })
-    } else {
-      newRels.append("bzx_ai.py")
-    }
-    let newSet = Set(newRels)
-
-    // 删除「旧版有、新版没有」的文件（仅动我们追踪的）
-    for rel in manifest.addedFiles where !newSet.contains(rel) {
-      try? fm.removeItem(at: rime.appending(path: rel))
-    }
-
-    // 覆盖部署叠加层
-    let overlayFiles = snapshotFiles(in: overlayRoot).filter { shouldInstall($0) }
-    for rel in overlayFiles {
-      _ = copyEngineFile(src: overlayRoot.appending(path: rel), dstRel: rel,
-                         rime: rime, backupDir: backup, overwrite: true)
-    }
-    // 覆盖部署内核
-    if let kr = kernelRoot, !kernelRepoRels.isEmpty {
-      for repoRel in kernelRepoRels {
-        let flat = aiEngineKernelFlatRel(repoRel)
-        _ = copyEngineFile(src: kr.appending(path: repoRel), dstRel: flat,
-                           rime: rime, backupDir: backup, overwrite: true)
-      }
-      try? fm.removeItem(at: kr)
-    } else {
-      _ = copyEngineFile(src: overlayRoot.appending(path: "bzx_ai.py"), dstRel: "bzx_ai.py",
-                         rime: rime, backupDir: backup, overwrite: true)
-    }
-
-    try SquirrelBridge.deploy(environment: environment)
-    try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-    var updated = manifest
-    updated.addedFiles = newRels
-    updated.installedCommit = commitSHA
-    updated.installedTag = releaseTag
-    updated.installedAt = Date()
-    updated.version = "1.0.1"
-    let mData = try JSONEncoder().encode(updated)
-    try mData.write(to: mURL, options: .atomic)
-    return updated
-  }
-
-  /// 卸载 AI 引擎：删除本面板新增的文件，还原被覆盖的原始文件，清理清单。
-  private static func uninstallAIEngine(pkg: DictionaryPackage, environment: RimeEnvironment) async throws {
-    let mURL = manifestURL(for: pkg.id)
-    guard let data = try? Data(contentsOf: mURL),
-          let manifest = try? JSONDecoder().decode(PackageManifest.self, from: data) else {
-      throw PackageManagerError.notManagedByPanel
-    }
-    let fm = FileManager.default
-    let rime = rimeDir()
-    let backupBase = URL(fileURLWithPath: manifest.backupDir)
-
-    for rel in manifest.addedFiles {
-      let dst = rime.appending(path: rel)
-      if fm.fileExists(atPath: dst.path(percentEncoded: false)) { try? fm.removeItem(at: dst) }
-    }
-    for rel in manifest.addedFiles {
-      let backup = backupBase.appending(path: rel)
-      let dst = rime.appending(path: rel)
-      if fm.fileExists(atPath: backup.path(percentEncoded: false)) {
-        try? fm.removeItem(at: dst)
-        try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? fm.copyItem(at: backup, to: dst)
-      }
-    }
-
-    try SquirrelBridge.deploy(environment: environment)
-    try? await Task.sleep(nanoseconds: 2_000_000_000)
-    try? fm.removeItem(at: mURL)
-  }
-
   /// 更新语法模型：重新下载 .gram（覆盖）→ 幂等重应用 grammar 配置 → 部署 → 更新清单
   private static func updateGrammar(pkg: DictionaryPackage, environment: RimeEnvironment) async throws -> PackageManifest {
     let fm = FileManager.default
@@ -849,11 +590,6 @@ enum DictionaryPackageManager {
       return try await updateGrammar(pkg: pkg, environment: environment)
     }
 
-    // AI 引擎：重新部署 lua + 服务到 Rime 目录
-    if pkg.isAIEngine {
-      return try await updateAIEngine(pkg: pkg, environment: environment)
-    }
-
     let fm = FileManager.default
     let rime = rimeDir()
     try fm.createDirectory(at: rime, withIntermediateDirectories: true)
@@ -947,10 +683,6 @@ enum DictionaryPackageManager {
       return try await uninstallGrammar(pkg: pkg, environment: environment)
     }
 
-    // AI 引擎：移除 lua + 服务文件并还原备份，走独立分支
-    if pkg.isAIEngine {
-      return try await uninstallAIEngine(pkg: pkg, environment: environment)
-    }
     let fm = FileManager.default
     let rime = rimeDir()
     let backupBase = URL(fileURLWithPath: manifest.backupDir)

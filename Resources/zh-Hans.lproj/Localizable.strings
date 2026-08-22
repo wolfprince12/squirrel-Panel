@@ -392,7 +392,6 @@
 "package.log.install" = "正在安装 %@";
 "package.log.downloading" = "正在下载词库包…";
 "package.log.downloading.grammar" = "正在下载模型包…";
-"package.log.downloading.aiengine" = "正在下载 AI 引擎…";
 "package.log.installed" = "安装完成，共写入 %@ 个文件，并已重新部署。";
 "package.log.uninstall" = "正在卸载 %@";
 "package.log.removing" = "正在移除词库包文件并还原备份…";
@@ -751,9 +750,6 @@ behavior.sendAction.inline_ascii = "临时英文";
 "ai.store.remove" = "卸载";
 "ai.store.removeConfirm" = "卸载这个模型？";
 "ai.store.removeMessage" = "将删除「%1$@」已下载的权重文件，释放约 %2$d MB 磁盘空间。之后可随时重新下载。";
-"ai.engineCore.title" = "AI 联想层引擎（Lua 触发器）";
-"ai.engineCore.desc" = "打字时由短语边界触发联想请求的 Lua 叠加层，并经本地服务返回续写建议；衍生自白知新的 AI-Rime（MIT），本面板仅做引用与二次开发封装。完全离线、不联网、不收费。";
-"ai.engineCore.credit" = "白知新（BaiZhiXin）";
 "ai.store.downloaded" = "已下载";
 "ai.store.downloading" = "下载中…";
 "ai.store.done" = "下载完成";

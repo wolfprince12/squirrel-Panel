@@ -51,20 +51,6 @@ final class UpdateCenter {
     checkAppUpdate()
     checkSquirrelUpdate()
     checkDictionaryUpdates()
-    checkAIEngineUpdate()
-  }
-
-  // MARK: - AI 引擎更新
-
-  /// AI 引擎（ai-energy 包）的更新状态，供「AI 增强」标签页读取
-  var aiEngineUpdateState: PackageUpdateState {
-    dictionaryUpdateStates["ai-energy"] ?? .notApplicable
-  }
-
-  /// 检查 AI 引擎是否有更新（复用通用词库包检查逻辑；未安装则 notApplicable）
-  func checkAIEngineUpdate() {
-    guard let pkg = DictionaryPackageManager.loadRegistry().first(where: { $0.id == "ai-energy" }) else { return }
-    checkDictionaryOne(pkg)
   }
 
   // MARK: - 软件自身更新

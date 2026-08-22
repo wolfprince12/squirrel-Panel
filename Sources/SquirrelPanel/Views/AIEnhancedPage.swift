@@ -2,12 +2,13 @@
 //  AIEnhancedPage.swift
 //  Squirrel Panel
 //
-//  「AI 增强」标签页：本地 MLX 小模型驱动的每键纠错 / 翻译 / 对话，
-//  以及常驻引擎（LaunchAgent）的启停与状态。所有配置独立于 Rime 补丁。
+//  「AI 增强」标签页：本机 AI 联想层（浮动联想条），打字停顿后浮出续写建议，
+//  点击插入、不注入候选。引擎随面板内置（Lua 触发器 + Python 续写服务），
+//  由 SP-AIEnergyAgent 常驻进程部署与监管。
 //
-//  2.0.0 起面板分为三部分：
+//  面板分为三部分：
 //   1) 功能简介
-//   2) 运行依赖（Python+MLX 运行时 / 白知新 AI 引擎 / 大模型）
+//   2) 运行依赖（Python 运行依赖 / 大模型，可选）
 //   3) 配置控制（现有配置模块）
 //
 
@@ -582,11 +583,6 @@ struct AIEnhancedPage: View {
   @Environment(UpdateCenter.self) private var updateCenter
   @State private var showingStore = false
   @State private var models: [AIModel] = []
-  /// AI 引擎包（ai-energy）的安装状态与操作态
-  @State private var engineStatus: PackageStatus = .notInstalled
-  @State private var engineBusy = false
-  @State private var engineLog: String = ""
-  @State private var engineLogTitle: String = ""
 
   var body: some View {
     @Bindable var ai = ai
@@ -606,7 +602,6 @@ struct AIEnhancedPage: View {
     .onAppear {
       models = AIModel.loadAll()
       ai.refreshStatus()
-      reloadEngineStatus()
       // 更新检查由 UpdateCenter + AIConfigStore 在应用启动时统一执行一次，
       // 避免每次切到本标签页都重新联网检查。
     }
@@ -633,96 +628,9 @@ struct AIEnhancedPage: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       PythonRuntimeCard(ai: ai)
-      engineCoreBlock
       modelDependencyCard
-
-      if !engineLog.isEmpty {
-        SettingsGroup(LocalizedStringKey(engineLogTitle)) {
-          ScrollView {
-            Text(engineLog)
-              .font(.system(.caption, design: .monospaced))
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .textSelection(.enabled)
-          }
-          .frame(maxHeight: 160)
-        }
-      }
     }
   }
-
-  /// 白知新 AI 引擎核心（下载安装更新，沿用包管理器）
-  @ViewBuilder
-  private var engineCoreBlock: some View {
-    DependencyCard(
-      title: "ai.engineCore.title",
-      author: String(localized: "ai.engineCore.credit"),
-      description: "ai.engineCore.desc"
-    ) {
-      if case .failed(let msg) = updateCenter.aiEngineUpdateState {
-        Text(msg).font(.caption2).foregroundStyle(.red).lineLimit(2)
-      } else {
-        HStack(spacing: 6) {
-          Circle()
-            .fill(engineStatus.isInstalled ? Color.green : (engineStatus.isExternal ? Color.orange : Color.secondary))
-            .frame(width: 8, height: 8)
-          Text(engineStatusText).font(.caption)
-            .foregroundStyle(engineStatus.isInstalled ? Color.green : .secondary)
-          if updateCenter.aiEngineUpdateState == .available {
-            Text("package.status.updateAvailable")
-              .font(.caption2)
-              .padding(.horizontal, 6).padding(.vertical, 2)
-              .background(Color.orange.opacity(0.15))
-              .foregroundStyle(.orange)
-              .clipShape(RoundedRectangle(cornerRadius: 4))
-          }
-        }
-      }
-    } bottom: {
-      HStack(spacing: 10) {
-        switch engineStatus {
-        case .installed:
-          switch updateCenter.aiEngineUpdateState {
-          case .available:
-            Button("package.button.update", action: updateEngine)
-              .controlSize(.small).buttonStyle(.borderedProminent)
-          case .unknown:
-            EmptyView()
-          case .checking:
-            ProgressView().controlSize(.small)
-            Text("package.status.checking").font(.caption2).foregroundStyle(.secondary)
-          case .upToDate:
-            Text("package.status.upToDate").font(.caption).foregroundStyle(.green)
-          case .notApplicable, .failed:
-            EmptyView()
-          }
-          Button("package.button.uninstall", action: uninstallEngine)
-            .controlSize(.small)
-        case .external:
-          Button("package.button.manage", action: installEngine)
-            .controlSize(.small).buttonStyle(.borderedProminent)
-        case .notInstalled:
-          Button("package.button.install", action: installEngine)
-            .controlSize(.small).buttonStyle(.borderedProminent)
-        }
-        if engineStatus.isInstalled {
-          if updateCenter.aiEngineUpdateState.isChecking {
-            Button("package.button.checking", action: {})
-              .controlSize(.small)
-              .disabled(true)
-          } else {
-            Button("package.button.checkNow") { updateCenter.checkAIEngineUpdate() }
-              .controlSize(.small)
-          }
-        }
-        if engineBusy { ProgressView().controlSize(.small) }
-        Spacer()
-        if let url = URL(string: "https://github.com/BaiZhiXin/AI-Rime") {
-          Link("package.button.homepage", destination: url).controlSize(.small)
-        }
-      }
-    }
-  }
-
   /// 大模型依赖（打开大模型商店下载 / 选用；需先安装 Python 运行时）
   @ViewBuilder
   private var modelDependencyCard: some View {
@@ -890,122 +798,4 @@ struct AIEnhancedPage: View {
     }
   }
 
-  // MARK: - AI 引擎包管理（与词库包管理器同源）
-
-  private var engineStatusText: String {
-    switch engineStatus {
-    case .notInstalled: return String(localized: "package.status.notInstalled")
-    case .installed: return String(localized: "package.status.installed")
-    case .external: return String(localized: "package.status.external")
-    }
-  }
-
-  private func aiEnginePackage() -> DictionaryPackage? {
-    DictionaryPackageManager.loadRegistry().first { $0.id == "ai-energy" }
-  }
-
-  private func reloadEngineStatus() {
-    guard let pkg = aiEnginePackage() else { return }
-    engineStatus = DictionaryPackageManager.status(of: pkg, environment: store.environment)
-  }
-
-  private func installEngine() {
-    guard let pkg = aiEnginePackage() else { return }
-    engineBusy = true
-    engineLogTitle = String(format: String(localized: "package.log.install"), pkg.name)
-    engineLog = String(localized: "package.log.downloading.aiengine")
-    Task {
-      do {
-        let manifest = try await DictionaryPackageManager.install(pkg: pkg, environment: store.environment)
-        await MainActor.run {
-          engineLog = String(format: String(localized: "package.log.installed"), manifest.addedFiles.count)
-          engineBusy = false
-          reloadEngineStatus()
-          updateCenter.checkAIEngineUpdate()
-        }
-      } catch {
-        await MainActor.run {
-          engineLog = String(format: String(localized: "package.log.error"), error.localizedDescription)
-          engineBusy = false
-        }
-      }
-    }
-  }
-
-  private func updateEngine() {
-    guard let pkg = aiEnginePackage() else { return }
-    engineBusy = true
-    engineLogTitle = String(format: String(localized: "package.log.update"), pkg.name)
-    engineLog = String(localized: "package.log.downloading.aiengine")
-    Task {
-      do {
-        _ = try await DictionaryPackageManager.update(pkg: pkg, environment: store.environment)
-        await MainActor.run {
-          engineLog = String(localized: "package.log.updated")
-          engineBusy = false
-          reloadEngineStatus()
-          updateCenter.dictionaryUpdateStates["ai-energy"] = .upToDate
-        }
-      } catch {
-        await MainActor.run {
-          engineLog = String(format: String(localized: "package.log.error"), error.localizedDescription)
-          engineBusy = false
-        }
-      }
-    }
-  }
-
-  private func uninstallEngine() {
-    guard let pkg = aiEnginePackage() else { return }
-    engineBusy = true
-    engineLogTitle = String(format: String(localized: "package.log.uninstall"), pkg.name)
-    engineLog = String(localized: "package.log.removing")
-    Task {
-      // 1) 先可靠停掉引擎，随后关闭「AI 增强」开关：其 didSet 会写出禁用配置、通知常驻
-      //    Agent 自停，并移除开机自启动——卸载后输入法配置不残留失效的引擎引用。
-      await MainActor.run {
-        ai.stopEngine()
-        ai.engineEnabled = false
-      }
-      // 2) 剥离旧版 AI-Rime 在 rime_ice.custom.yaml 的残留注入
-      //    （engine/processors/@after 0 与 engine/filters 中的 lua 条目）。
-      AppServices.shared.iceStore?.removeLegacyAIEnergyPatch()
-
-      // 3) 删除所有 AI 注入文件。不依赖 manifest——AI 引擎此前可能未经包管理器记录，
-      //    单纯走 manifest 卸载会因找不到清单而整段跳过，导致文件全留。这里用固定清单直接清理。
-      //    注意：保留 lua/AIEnergy_processor.lua（联想层 Phase 2 将复用）。
-      let rime = RimeEnvironment.userDirectory
-      let knownFiles = [
-        "lua/AIEnergy_filter.lua",
-        "lua/AIEnergy_ipc.lua",
-        "lua/AIEnergy_state.lua",
-        "AIEnergy_service.py",
-        "bzx_ai.py",
-        "AIEnergy_config.json",
-      ]
-      let fm = FileManager.default
-      for rel in knownFiles { try? fm.removeItem(at: rime.appending(path: rel)) }
-      // 运行时根目录（Python 运行时 + 大模型 + 服务脚本）整目录删除
-      try? fm.removeItem(at: AIConfigStore.runtimeHomeDir)
-      // 面板管理清单与备份（兼容旧安装路径）
-      try? fm.removeItem(at: rime.appending(path: ".squirrel-panel/manifests/ai-energy.json"))
-      try? fm.removeItem(at: rime.appending(path: ".squirrel-panel/backups/ai-energy"))
-
-      // 4) 部署以重载 Rime，让 build/ 重新生成并去掉 AI 注入。
-      try? SquirrelBridge.deploy(environment: store.environment)
-
-      // 5) 清理 App Support 残留；并 best-effort 走原 manifest 兼容卸载（缺失清单也不阻断）。
-      await MainActor.run { ai.cleanupAgentArtifacts() }
-      try? await DictionaryPackageManager.uninstall(pkg: pkg, environment: store.environment)
-
-      await MainActor.run {
-        engineLog = String(localized: "package.log.removed")
-        engineBusy = false
-        reloadEngineStatus()
-        // 卸载后 AI 引擎开关关闭，pending 模型指向默认，避免模型指向已不存在的目录。
-        ai.engineEnabled = false
-        ai.pending.modelID = AIConfigStore.defaultModelID
-      }
-    }
-  }
 }

@@ -29,21 +29,5 @@
     "homepage": "https://github.com/amzxyz/RIME-LMDG",
     "author": "amzxyz",
     "type": "grammar"
-  },
-  {
-    "id": "ai-energy",
-    "name": "AI 联想引擎",
-    "name_en": "AI Association Engine",
-    "description": "本地 AI 联想层（浮动联想条）：在短语边界 / 停顿后给出续写建议，让输入法更懂使用者。由本地 MLX 模型驱动，完全离线、不联网、不收费。内含 Lua 叠加层与 Python 服务。",
-    "description_en": "On-device AI association layer (floating suggestion bar): offers continuation suggestions at phrase boundaries / pauses, making the input method better understand the user. Powered by on-device MLX models — fully offline, no network, no fees. Bundles Lua overlays and a Python service.",
-    "sourceURL": "https://github.com/BaiZhiXin/AI-Rime/archive/refs/heads/main.zip",
-    "releaseAsset": "",
-    "repoOwner": "BaiZhiXin",
-    "repoName": "AI-Rime",
-    "branch": "main",
-    "defaultSchema": "",
-    "homepage": "https://github.com/BaiZhiXin/AI-Rime",
-    "author": "白知新 (BaiZhiXin)",
-    "type": "aiengine"
   }
 ]

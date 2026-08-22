@@ -76,8 +76,7 @@ struct PackageManagerSection: View {
   // MARK: - 词库包管理
 
   func reloadPackages() {
-    // AI 引擎（ai-energy）由「AI 增强引擎」面板独立管理，不在此处展示。
-    packages = DictionaryPackageManager.loadRegistry().filter { $0.id != "ai-energy" }
+    packages = DictionaryPackageManager.loadRegistry()
     var st: [String: PackageStatus] = [:]
     for p in packages {
       st[p.id] = DictionaryPackageManager.status(of: p, environment: store.environment)

@@ -392,7 +392,6 @@
 "package.log.install" = "Installing %@";
 "package.log.downloading" = "Downloading package…";
 "package.log.downloading.grammar" = "Downloading model…";
-"package.log.downloading.aiengine" = "Downloading AI engine…";
 "package.log.installed" = "Installed; wrote %@ files and deployed.";
 "package.log.uninstall" = "Uninstalling %@";
 "package.log.removing" = "Removing package files and restoring backups…";
@@ -751,9 +750,6 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "ai.store.remove" = "Uninstall";
 "ai.store.removeConfirm" = "Uninstall this model?";
 "ai.store.removeMessage" = "This deletes the downloaded weights for “%1$@” and frees about %2$d MB. You can download it again any time.";
-"ai.engineCore.title" = "AI Association Engine (Lua Trigger)";
-"ai.engineCore.desc" = "A Lua overlay that fires association requests at phrase boundaries and returns continuations via a local service; forked from BaiZhiXin's AI-Rime (MIT). Fully offline, no network, no fees.";
-"ai.engineCore.credit" = "BaiZhiXin";
 "ai.store.downloaded" = "Downloaded";
 "ai.store.downloading" = "Downloading…";
 "ai.store.done" = "Download complete";
