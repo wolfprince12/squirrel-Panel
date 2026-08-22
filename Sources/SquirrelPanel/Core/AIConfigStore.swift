@@ -91,13 +91,12 @@ final class AIConfigStore {
       // 通知常驻进程立即刷新配置
       notifyAgentConfigChanged()
 
-      // AI 联想层：同步挂载/卸载 Rime processor（面板托管 rime_ice.custom.yaml），
-      // 并即时部署，使 Squirrel 立即开始/停止触发浮动联想条。
+      // 拼音纠错：同步开关到 Rime 的 speller/algebra（面板托管 rime_ice.custom.yaml），
+      // 并即时部署，使 Squirrel 立即开始/停止按错键自动纠正。
       if let ice = AppServices.shared.iceStore {
-        let on = engineEnabled
-        ice.associateActive = on
+        ice.correctionEnabled = engineEnabled
         try? ice.writePatch()
-        if on, RimeEnvironment.detect().isInstalled {
+        if engineEnabled, RimeEnvironment.detect().isInstalled {
           try? SquirrelBridge.deploy(environment: RimeEnvironment.detect())
         }
       }

@@ -762,9 +762,12 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "menubar.aiEngine" = "Start AI Engine";
 "menubar.openPanel" = "Open Panel";
 "menubar.quit" = "Quit";
-"ai.intro" = "AI association layer: after a pause while typing, continuation suggestions float up; click to insert at the cursor without injecting into the candidate list. Rule-based fallback runs with no model; download a local model to improve quality.";
-"ai.config.title" = "Configuration";
-"ai.config.engine" = "AI Enhancement";
+"ai.intro" = "When enabled, typing a wrong key (e.g. eo instead of wo) shows the correct candidate instantly — no need to delete and retype. Basic covers adjacent-key typos; Standard adds systematic phonetic correction. An optional local model (MLX) adds semantic correction.";
+"ai.config.title" = "Semantic Enhancement";
+"ai.config.engine" = "Enable Pinyin Correction";
+"correction.strength.title" = "Correction Strength";
+"correction.strength.basic" = "Basic (adjacent typos)";
+"correction.strength.standard" = "Standard (adjacent + phonetic)";
 "ai.config.startup" = "Launch at Login";
 "ai.config.candidate" = "AI Candidate Position";
 "ai.config.candidate.option" = "Position %d";
@@ -789,8 +792,8 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "ai.config.githubToken.desc" = "Optional: a GitHub Personal Access Token lets dependency downloads and update checks go straight to the GitHub API (5000/hour), bypassing shared-IP rate limits. Used as a fallback when all public mirrors fail. Public mirrors still work without a token. Stored only in this app's UserDefaults.";
 
 /* AI Enhancement panel: three-part restructure (2.0.0) */
-"ai.deps.title" = "Runtime Dependency";
-"ai.deps.desc" = "The AI association layer needs just one runtime: the Python interpreter (downloaded into the Squirrel user directory on demand, one click to install).";
+"ai.deps.title" = "Semantic Enhancement (optional)";
+"ai.deps.desc" = "A local model (MLX) adds semantic-level correction atop the rule layer. Optional — the rule layer alone works fine.";
 "ai.python.title" = "Python Dependency";
 "ai.python.subtitle" = "wolfprince12 / GitHub Releases";
 "ai.python.desc" = "The Python interpreter required by the on-device continuation service. Downloaded into the Squirrel user directory on demand — one click to install, zero external dependencies.";

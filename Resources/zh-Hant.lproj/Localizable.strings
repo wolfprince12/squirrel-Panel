@@ -762,9 +762,12 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "menubar.aiEngine" = "AI 引擎啟動";
 "menubar.openPanel" = "開啟面板";
 "menubar.quit" = "退出";
-"ai.intro" = "AI 聯想層：打字停頓後浮出續寫建議，點擊即可插入游標處，不注入候選清單；內建規則續寫，無需模型即可運行，可下載本機模型進一步提升品質。";
-"ai.config.title" = "配置設定";
-"ai.config.engine" = "AI 增強功能開關";
+"ai.intro" = "開啟後，打字按錯鍵（如把 eo 打成 wo）會即時顯示正確候選，無需刪除重輸。基礎檔涵蓋鍵盤相鄰錯打，標準檔追加系統性音近糾錯。還可選接入本機大模型做語意級增強。";
+"ai.config.title" = "語意增強設定";
+"ai.config.engine" = "開啟拼音糾錯";
+"correction.strength.title" = "糾錯強度";
+"correction.strength.basic" = "基礎（相鄰錯打）";
+"correction.strength.standard" = "標準（相鄰+音近）";
 "ai.config.startup" = "開機自啟動";
 "ai.config.candidate" = "AI 候選注入位置";
 "ai.config.candidate.option" = "第 %d 位";
@@ -789,8 +792,8 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "ai.config.githubToken.desc" = "選填：填入 GitHub Personal Access Token 後，套件下載與更新檢查可直接走 GitHub API（5000 次/小時），不受共用 IP 限流影響。作為所有公開鏡像失敗時的兜底；不填也能用公開鏡像。Token 僅存於本機 UserDefaults。";
 
 /* AI 增強面板：三部分重構（2.0.0） */
-"ai.deps.title" = "運行依賴";
-"ai.deps.desc" = "AI 聯想層僅依賴一項運行環境：Python 運行時（按需下載到鼠須管使用者目錄，點按即裝）。";
+"ai.deps.title" = "語意增強（可選）";
+"ai.deps.desc" = "接入本機大模型（MLX）做語意級糾錯，作為規則層之外的補充。非必需，僅用規則層也可正常運作。";
 "ai.python.title" = "Python 運行依賴";
 "ai.python.subtitle" = "wolfprince12 / GitHub Releases";
 "ai.python.desc" = "本機續寫服務所需的 Python 解釋器，按需下載到鼠須管使用者目錄下，點按即裝、零外部依賴。";

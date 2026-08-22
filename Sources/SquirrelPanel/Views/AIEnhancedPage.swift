@@ -593,6 +593,7 @@ struct AIEnhancedPage: View {
   @Environment(AIConfigStore.self) private var ai
   @Environment(SettingsStore.self) private var store
   @Environment(UpdateCenter.self) private var updateCenter
+  @Environment(RimeIceConfigStore.self) private var ice
   @State private var showingStore = false
   @State private var models: [AIModel] = []
 
@@ -685,8 +686,9 @@ struct AIEnhancedPage: View {
   @ViewBuilder
   private var engineToggleSection: some View {
     @Bindable var ai = ai
+    @Bindable var ice = ice
     SettingsGroup("ai.config.engine") {
-      // AI 增强功能开关作为独立 Switch，即时生效（不纳入「应用并重新部署」）
+      // 拼音纠错总开关：即时生效，写入 speller/algebra 并部署。
       HStack(spacing: 12) {
         Toggle(isOn: $ai.engineEnabled) {
           Text("ai.config.engine")
@@ -706,6 +708,27 @@ struct AIEnhancedPage: View {
           NSWorkspace.shared.selectFile(AIConfigStore.appSupportDir.appendingPathComponent("aienergy_agent.log").path, inFileViewerRootedAtPath: "")
         }
         .controlSize(.small)
+      }
+
+      // 纠错强度：基础（键盘相邻错打）/ 标准（相邻 + 系统性音近）
+      HStack(spacing: 12) {
+        Text("correction.strength.title").font(.callout)
+        Picker("", selection: $ice.correctionStrength) {
+          ForEach(CorrectionStrength.allCases) { s in
+            Text(s.label).tag(s)
+          }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        Spacer()
+      }
+      .onChange(of: ice.correctionStrength) { _, _ in
+        Task {
+          try? ice.writePatch()
+          if ice.correctionEnabled {
+            try? SquirrelBridge.deploy(environment: RimeEnvironment.detect())
+          }
+        }
       }
 
       if ai.pythonDependencyMissing {

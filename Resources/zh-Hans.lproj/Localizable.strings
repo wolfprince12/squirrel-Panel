@@ -762,9 +762,12 @@ behavior.sendAction.inline_ascii = "临时英文";
 "menubar.aiEngine" = "AI 引擎启动";
 "menubar.openPanel" = "打开面板";
 "menubar.quit" = "退出";
-"ai.intro" = "AI 联想层：打字停顿后浮出续写建议，点击即可插入光标处，不注入候选列表；内置规则续写，无需模型即可运行，可下载本地模型进一步提升质量。";
-"ai.config.title" = "配置设定";
-"ai.config.engine" = "AI 增强功能开关";
+"ai.intro" = "开启后，打字按错键（如把 eo 打成 wo）会即时显示正确候选，无需删除重输。基础档覆盖键盘相邻错打，标准档追加系统性音近纠错。还可选接入本地大模型做语义级增强。";
+"ai.config.title" = "语义增强设置";
+"ai.config.engine" = "开启拼音纠错";
+"correction.strength.title" = "纠错强度";
+"correction.strength.basic" = "基础（相邻错打）";
+"correction.strength.standard" = "标准（相邻+音近）";
 "ai.config.startup" = "开机自启动";
 "ai.config.candidate" = "AI 候选注入位置";
 "ai.config.candidate.option" = "第 %d 位";
@@ -789,8 +792,8 @@ behavior.sendAction.inline_ascii = "临时英文";
 "ai.config.githubToken.desc" = "可选：填入 GitHub Personal Access Token 后，依赖下载与更新检查可直接走 GitHub API（5000 次/小时），不受共享 IP 限流影响。镜像全部失败时作为兜底；不填也能用公开镜像。Token 仅存于本机 UserDefaults。";
 
 /* AI 增强面板：三部分重构（2.0.0） */
-"ai.deps.title" = "运行依赖";
-"ai.deps.desc" = "AI 联想层仅依赖一项运行环境：Python 运行时（按需下载到鼠须管用户目录，点按即装）。";
+"ai.deps.title" = "语义增强（可选）";
+"ai.deps.desc" = "接入本地大模型（MLX）做语义级纠错，作为规则层之外的补充。非必需，仅用规则层也可正常工作。";
 "ai.python.title" = "Python 运行依赖";
 "ai.python.subtitle" = "wolfprince12 / GitHub Releases";
 "ai.python.desc" = "本地续写服务所需的 Python 解释器，按需下载到鼠须管用户目录下，点按即装、零外部依赖。";

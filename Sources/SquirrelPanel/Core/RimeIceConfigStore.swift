@@ -83,6 +83,27 @@ struct FuzzyRule: Identifiable, Hashable {
   let group: FuzzyRuleGroup
 }
 
+/// 拼音纠错强度
+enum CorrectionStrength: Int, CaseIterable, Identifiable {
+  case basic = 1      // 仅键盘物理相邻错打
+  case standard = 2   // 相邻错打 + 系统性音近纠错
+  var id: Int { rawValue }
+  var label: String {
+    switch self {
+    case .basic: return String(localized: "correction.strength.basic")
+    case .standard: return String(localized: "correction.strength.standard")
+    }
+  }
+}
+
+/// 一条拼音纠错规则：单向「错误音节 → 正确音节」派生，不污染正确输入。
+struct CorrectionRule: Identifiable, Hashable {
+  var id: String { rule }
+  let rule: String
+  let label: String
+  let level: CorrectionStrength
+}
+
 @MainActor
 @Observable
 final class RimeIceConfigStore {
@@ -157,11 +178,13 @@ final class RimeIceConfigStore {
   /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
   var fuzzySelection: Set<String> = []
 
-  // MARK: - UI 状态：AI 联想层（Phase 2）
+  // MARK: - UI 状态：拼音纠错（原 AI 联想层重构）
 
-  /// 是否把 AIEnergy_processor 挂载进 rime_ice.custom.yaml 的 engine/processors/@after 0。
-  /// 由「AI 增强」页总开关（ai.engineEnabled）驱动；开启后打字到短语边界会浮现浮动联想条。
-  var associateActive: Bool = false
+  /// 是否启用拼音实时纠错（按错键自动纠正）。由「AI 增强」页总开关驱动。
+  var correctionEnabled: Bool = false
+
+  /// 纠错强度：基础（仅键盘相邻错打）/ 标准（相邻错打 + 系统性音近）。
+  var correctionStrength: CorrectionStrength = .standard
 
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
@@ -274,6 +297,44 @@ final class RimeIceConfigStore {
 
   /// 模糊音规则原文集合，用于从用户现有 algebra 中识别并剥离
   static let fuzzyRuleSet: Set<String> = Set(fuzzyRules.map(\.rule))
+
+  /// 拼音纠错规则表（单向 derive，写进 `speller/algebra`）
+  static let correctionRules: [CorrectionRule] = [
+    // MARK: 键盘物理相邻错打（基础）
+    CorrectionRule(rule: "derive/^eo$/wo/", label: "eo → wo（我/窝）", level: .basic),
+    CorrectionRule(rule: "derive/^mi$/ni/", label: "mi → ni（你）", level: .basic),
+    CorrectionRule(rule: "derive/^gao$/hao/", label: "gao → hao（好）", level: .basic),
+    CorrectionRule(rule: "derive/^hao$/gao/", label: "hao → gao（搞）", level: .basic),
+    CorrectionRule(rule: "derive/^ra$/ta/", label: "ra → ta（他）", level: .basic),
+    CorrectionRule(rule: "derive/^ta$/ra/", label: "ta → ra（然）", level: .basic),
+    CorrectionRule(rule: "derive/^sa$/da/", label: "sa → da（大）", level: .basic),
+    CorrectionRule(rule: "derive/^da$/sa/", label: "da → sa（撒）", level: .basic),
+    CorrectionRule(rule: "derive/^xi$/ci/", label: "xi → ci（词）", level: .basic),
+    CorrectionRule(rule: "derive/^ci$/xi/", label: "ci → xi（西）", level: .basic),
+    CorrectionRule(rule: "derive/^fa$/da/", label: "fa → da（打）", level: .basic),
+    CorrectionRule(rule: "derive/^da$/fa/", label: "da → fa（发）", level: .basic),
+    CorrectionRule(rule: "derive/^li$/ni/", label: "li → ni（尼）", level: .basic),
+    CorrectionRule(rule: "derive/^ni$/li/", label: "ni → li（里）", level: .basic),
+    CorrectionRule(rule: "derive/^ou$/uo/", label: "ou → uo（我）", level: .basic),
+    CorrectionRule(rule: "derive/^ie$/ei/", label: "ie → ei（被）", level: .basic),
+    CorrectionRule(rule: "derive/^ei$/ie/", label: "ei → ie（也）", level: .basic),
+    // MARK: 系统性音近纠错（标准，规则文本与模糊音不撞）
+    CorrectionRule(rule: "derive/^ji$/qi/", label: "ji → qi（七）", level: .standard),
+    CorrectionRule(rule: "derive/^qi$/ji/", label: "qi → ji（机）", level: .standard),
+    CorrectionRule(rule: "derive/^ju$/qu/", label: "ju → qu（去）", level: .standard),
+    CorrectionRule(rule: "derive/^qu$/ju/", label: "qu → ju（居）", level: .standard),
+    CorrectionRule(rule: "derive/^wan$/wang/", label: "wan → wang（王）", level: .standard),
+    CorrectionRule(rule: "derive/^wang$/wan/", label: "wang → wan（完）", level: .standard),
+    CorrectionRule(rule: "derive/^min$/ming/", label: "min → ming（明）", level: .standard),
+    CorrectionRule(rule: "derive/^ming$/min/", label: "ming → min（民）", level: .standard),
+    CorrectionRule(rule: "derive/^zen$/zheng/", label: "zen → zheng（正）", level: .standard),
+    CorrectionRule(rule: "derive/^zheng$/zen/", label: "zheng → zen（怎）", level: .standard),
+    CorrectionRule(rule: "derive/^fen$/feng/", label: "fen → feng（风）", level: .standard),
+    CorrectionRule(rule: "derive/^feng$/fen/", label: "feng → fen（分）", level: .standard),
+  ]
+
+  /// 纠错规则原文集合，用于从 algebra 中识别并剥离（独立于模糊音规则集）
+  static let correctionRuleSet: Set<String> = Set(correctionRules.map(\.rule))
 
   /// 拼音类方案（全拼 rime_ice + 各家双拼）
   static func isPinyinFamily(_ id: String) -> Bool {
@@ -441,12 +502,16 @@ final class RimeIceConfigStore {
     }
     luaFilters = lua
 
-    // 联想层挂载态以磁盘实际为准：rime_ice.custom.yaml 的 engine/processors/@after 0
-    // 是否为我们的 processor。面板「AI 增强」开关据此回显，避免重开面板后开关与磁盘脱节。
-    associateActive = (icePatch.value(forPath: "engine/processors/@after 0") as? String)
-      == "lua_processor@*AIEnergy_processor"
-
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
+
+    // 拼音纠错挂载态以磁盘实际为准：speller/algebra 中是否含纠错规则。
+    let corrSelected = currentAlgebra.filter { Self.correctionRuleSet.contains($0) }
+    correctionEnabled = !corrSelected.isEmpty
+    if let maxLevel = corrSelected.compactMap({ rule in
+      Self.correctionRules.first(where: { $0.rule == rule })?.level.rawValue
+    }).max() {
+      correctionStrength = CorrectionStrength(rawValue: maxLevel) ?? .standard
+    }
 
     baselineIce = compileIcePatch()
   }
@@ -603,9 +668,12 @@ final class RimeIceConfigStore {
   /// 出厂常驻规则（erase / abbrev / v-u 转换 / 自动纠错）原样保留。
   private func mergedAlgebra() -> [String] {
     let current = currentList("speller/algebra", fallback: template.algebra)
-    let base = current.filter { !Self.fuzzyRuleSet.contains($0) }
-    let selected = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
-    return selected + base
+    let base = current.filter { !Self.fuzzyRuleSet.contains($0) && !Self.correctionRuleSet.contains($0) }
+    let fuzzySel = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
+    let corrSel = correctionEnabled
+      ? Self.correctionRules.filter { $0.level.rawValue <= correctionStrength.rawValue }.map(\.rule)
+      : []
+    return fuzzySel + corrSel + base
   }
 
   // MARK: - 写：界面 → 补丁
@@ -673,11 +741,9 @@ final class RimeIceConfigStore {
     let filters = mergedFilters()
     set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
 
-    // AI 联想层：开启时把触发器挂到 engine/processors/@after 0。
-    // 该 processor 始终 return 2（不拦截按键、不注入候选），仅写请求文件触发浮动条。
-    set["engine/processors/@after 0"] = associateActive
-      ? .string("lua_processor@*AIEnergy_processor")
-      : PatchValue?.none
+    // 拼音纠错：规则层走 speller/algebra（mergedAlgebra 已并入 correctionRules），
+    // 不再挂浮动条 processor。此处显式清掉历史浮动条挂载点，避免残留。
+    set["engine/processors/@after 0"] = PatchValue?.none
 
     let dependencies = mergedDependencies()
     set["schema/dependencies"] = (dependencies == template.dependencies) ? PatchValue?.none : .stringList(dependencies)
@@ -880,9 +946,10 @@ final class RimeIceConfigStore {
     //    这一步额外负责扫掉历史遗留（例如旧版本写过、现已不再编译的键），
     //    用户手写的其他条目不受影响。
     icePatch.removeManaged(keys: Self.managedIceKeys)
-    // 一并清掉 AI 联想层挂载点（恢复默认即不再注入联想触发器）
+    // 一并清掉历史浮动条挂载点与拼音纠错规则（恢复默认即回到零纠错）
     icePatch.set(nil, forPath: "engine/processors/@after 0")
-    associateActive = false
+    correctionEnabled = false
+    correctionStrength = .standard
     // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
     // 4. 注意：此处**不**调 settings.apply()。
