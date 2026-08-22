@@ -704,3 +704,25 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "behavior.when.predict" = "Predict (predict)";
 "nav.snowWolfCorrection" = "SnowWolf Correction";
 "sidebar.brand.name" = "Squirrel Panel";
+
+// MARK: - SnowWolf Correction Model
+"correction.intro" = "SnowWolf Correction analyzes your pinyin input and offers correction candidates for keyboard slips and phonetic mistakes—fully offline.";
+"correction.control.title" = "Correction";
+"correction.control.enable" = "Enable Smart Correction";
+"correction.control.enable.desc" = "When on, the candidate list shows likely corrections for the current input.";
+"correction.strength.title" = "Correction Strength";
+"correction.strength.basic" = "Basic";
+"correction.strength.standard" = "Standard";
+"correction.position.title" = "Correction Position";
+"correction.position.top" = "Top";
+"correction.position.afterFirst" = "After 1st";
+"correction.position.end" = "End";
+"correction.position.desc" = "Where the correction candidate appears. Default is after the first candidate.";
+"correction.principle.title" = "How It Works";
+"correction.principle.desc" = "A rule- and table-based synchronous layer: detect adjacent-key typos and phonetic confusion, then re-lookup corrected pinyin and mark the best result as a correction candidate.";
+"correction.roadmap.title" = "Coming Next";
+"correction.grammar.title" = "Wanxiang Grammar Rank";
+"correction.grammar.desc" = "Use an n-gram model to re-rank multiple correction candidates by context.";
+"correction.selflearn.title" = "Self-Learning";
+"correction.selflearn.desc" = "Record your inputs and corrections to build a personalized correction model over time.";
+"correction.comingSoon" = "Coming Soon";

@@ -704,3 +704,25 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "behavior.when.predict" = "聯想時 (predict)";
 "nav.snowWolfCorrection" = "雪狼智能糾錯";
 "sidebar.brand.name" = "鼠須管控制面板";
+
+// MARK: - 雪狼智能糾錯模型
+"correction.intro" = "雪狼智能糾錯模型會分析你的拼音輸入，對鍵盤誤觸和音近錯誤給出「糾錯」候選，完全離線、零連網。";
+"correction.control.title" = "糾錯控制";
+"correction.control.enable" = "啟用智能糾錯";
+"correction.control.enable.desc" = "開啟後，候選列表會根據目前輸入給出可能的糾正結果。";
+"correction.strength.title" = "糾錯強度";
+"correction.strength.basic" = "基礎";
+"correction.strength.standard" = "標準";
+"correction.position.title" = "糾錯候選位置";
+"correction.position.top" = "首位";
+"correction.position.afterFirst" = "首條後";
+"correction.position.end" = "末尾";
+"correction.position.desc" = "「糾錯」候選在候選列表中的位置。預設首條之後，可置頂或移到末尾。";
+"correction.principle.title" = "工作原理";
+"correction.principle.desc" = "基於規則與統計的同步查表層：先偵測鍵盤鄰鍵誤觸與拼音音近錯誤，再對糾正後的拼音重新查詞，把最可能的結果標註為「糾錯」候選。";
+"correction.roadmap.title" = "後續能力";
+"correction.grammar.title" = "萬象語法排序";
+"correction.grammar.desc" = "用 n-gram 語言模型對多個糾錯候選按上下文重新排序。";
+"correction.selflearn.title" = "自主學習";
+"correction.selflearn.desc" = "記錄你的輸入與修正選擇，逐步形成個人化糾錯模型。";
+"correction.comingSoon" = "即將上線";
