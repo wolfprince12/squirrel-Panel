@@ -733,3 +733,7 @@ behavior.sendAction.inline_ascii = "临时英文";
 "schema.deleted.ok" = "已将「%@」移入废纸篓。";
 "schema.deleted.fail" = "将「%@」移入废纸篓失败：%@";
 "schema.deleted.missing" = "未找到「%@」的方案文件。";
+"guidance.fullDiskAccess.title" = "需要「完全磁盘访问权限」";
+"guidance.fullDiskAccess.message" = "将输入方案移入废纸篓需要「完全磁盘访问权限」。\n\n请打开「系统设置 → 隐私与安全性 → 完全磁盘访问权限」，将本应用添加并开启，然后重试删除。\n\n您也可以从废纸篓手动恢复已删除的文件。";
+"guidance.fullDiskAccess.openSettings" = "打开系统设置";
+"guidance.fullDiskAccess.later" = "稍后";

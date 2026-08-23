@@ -733,3 +733,7 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "schema.deleted.ok" = "Moved “%@” to the Trash.";
 "schema.deleted.fail" = "Failed to move “%@” to the Trash: %@";
 "schema.deleted.missing" = "No schema files found for “%@”.";
+"guidance.fullDiskAccess.title" = "Full Disk Access Required";
+"guidance.fullDiskAccess.message" = "Moving an input schema to the Trash requires Full Disk Access.\n\nOpen System Settings → Privacy & Security → Full Disk Access, add this app, then turn it on and retry the delete.\n\nYou can also manually restore deleted files from the Trash.";
+"guidance.fullDiskAccess.openSettings" = "Open System Settings";
+"guidance.fullDiskAccess.later" = "Later";

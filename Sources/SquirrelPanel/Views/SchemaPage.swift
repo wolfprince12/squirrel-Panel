@@ -187,6 +187,28 @@ struct SchemaPage: View {
     } message: { schema in
       Text(String(format: String(localized: "schema.delete.confirm.message"), schema.name))
     }
+    // 首次因 TCC/权限被拒时弹一次性导引：引导用户去开启「完全磁盘访问权限」。
+    .alert(
+      String(localized: "guidance.fullDiskAccess.title"),
+      isPresented: Binding(
+        get: { store.pendingGuidance != nil },
+        set: { if !$0 { store.pendingGuidance = nil } }
+      ),
+      presenting: store.pendingGuidance
+    ) { _ in
+      Button("guidance.fullDiskAccess.openSettings") {
+        // 深链到「系统设置 → 隐私与安全性 → 完全磁盘访问权限」面板。
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+          NSWorkspace.shared.open(url)
+        }
+        store.pendingGuidance = nil
+      }
+      Button("guidance.fullDiskAccess.later", role: .cancel) {
+        store.pendingGuidance = nil
+      }
+    } message: { _ in
+      Text(String(localized: "guidance.fullDiskAccess.message"))
+    }
   }
 }
 

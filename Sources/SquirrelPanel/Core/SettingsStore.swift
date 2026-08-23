@@ -110,6 +110,7 @@ final class SettingsStore {
   /// - 把 `~/Library/Rime` 与 Squirrel.app 包内（内置方案）对应的 `.schema.yaml`
   ///   及配套的 `.custom.yaml` 移到废纸篓（`FileManager.trashItem`）；
   /// - 用户可从废纸篓恢复；内置方案位于受 SIP 保护的 app 包内，移到废纸篓多半会因权限失败，此时给出错误提示。
+  /// - **首次**因 TCC/权限被拒时，置 `pendingGuidance = .fullDiskAccess`，由页面弹一次性导引对话框。
   func trashSchema(_ schema: RimeSchema) {
     // 1. 一并从启用列表移除（若已启用）
     enabledSchemaIDs.removeAll { $0 == schema.id }
@@ -146,9 +147,43 @@ final class SettingsStore {
       statusMessage = String(format: String(localized: "schema.deleted.ok"), schema.name)
     } else if let error = lastError {
       statusMessage = String(format: String(localized: "schema.deleted.fail"), schema.name, error.localizedDescription)
+      // 首次遇到权限被拒：弹一次性导引对话框，引导用户去开启「完全磁盘访问权限」。
+      // 已告知过的不再打扰；用户点"打开系统设置"或"稍后"后，页面会把 pendingGuidance 置 nil。
+      if Self.isPermissionError(error), !hasShownFullDiskAccessGuidance {
+        hasShownFullDiskAccessGuidance = true
+        pendingGuidance = .fullDiskAccess
+      }
     } else {
       statusMessage = String(format: String(localized: "schema.deleted.missing"), schema.name)
     }
+  }
+
+  // MARK: - 一次性导引：完全磁盘访问权限
+
+  /// 触发一次性导引对话框的语义类型。页面观察 `pendingGuidance` 并弹对应 alert。
+  enum PendingGuidance: Equatable {
+    /// 移入废纸篓被 TCC 拒绝：引导用户去「系统设置 → 隐私与安全性 → 完全磁盘访问权限」开启本 App。
+    case fullDiskAccess
+  }
+
+  /// 待显示的导引对话框；用户处理后由页面置 nil。
+  var pendingGuidance: PendingGuidance?
+
+  /// 用户是否已被告知过 FDA 权限（一次性标志，存 UserDefaults，避免反复打扰）。
+  private var hasShownFullDiskAccessGuidance: Bool {
+    get { UserDefaults.standard.bool(forKey: "SquirrelPanel.hasShownFullDiskAccessGuidance") }
+    set { UserDefaults.standard.set(newValue, forKey: "SquirrelPanel.hasShownFullDiskAccessGuidance") }
+  }
+
+  /// 把任意 Error 归类为「权限被拒」：覆盖 Cocoa EPERM/EACCES 与 POSIX EPERM/EACCES，
+  /// 匹配 `trashItem` 在未签名 app 上遇到的 TCC 拒绝（"未能移除 ... 因为你没有访问许可"）。
+  private static func isPermissionError(_ error: Error) -> Bool {
+    let ns = error as NSError
+    // NSFileReadNoPermissionError = 257 / NSFileWriteNoPermissionError = 513
+    if ns.domain == NSCocoaErrorDomain, ns.code == 257 || ns.code == 513 { return true }
+    // POSIX EPERM = 1 / EACCES = 13
+    if ns.domain == NSPOSIXErrorDomain, ns.code == 1 || ns.code == 13 { return true }
+    return false
   }
 
   // MARK: - 按键与行为

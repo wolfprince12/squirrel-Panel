@@ -733,3 +733,7 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "schema.deleted.ok" = "已將「%@」移入垃圾桶。";
 "schema.deleted.fail" = "將「%@」移入垃圾桶失敗：%@";
 "schema.deleted.missing" = "未找到「%@」的方案檔案。";
+"guidance.fullDiskAccess.title" = "需要「完全磁碟存取權限」";
+"guidance.fullDiskAccess.message" = "將輸入方案移入垃圾桶需要「完全磁碟存取權限」。\n\n請打開「系統設定 → 隱私權與安全性 → 完全磁碟存取權限」，將本應用加入並開啟，然後重試刪除。\n\n您也可以從垃圾桶手動復原已刪除的檔案。";
+"guidance.fullDiskAccess.openSettings" = "打開系統設定";
+"guidance.fullDiskAccess.later" = "稍後";
