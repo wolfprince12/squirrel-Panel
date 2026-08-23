@@ -8,15 +8,14 @@
 //  woshi → eoshi）时，在第一条自然候选之后注入「纠错」候选，点选即填入。
 //  不调用任何外部进程 / 模型，打字时确实生效。
 //
-//  两层噪声（由离线生成器产出词典）：
-//    基础档：键盘相邻错打（QWERTY 邻键误触）。
-//    标准档：相邻错打 + 系统性音近混淆（n↔l / r↔l / h↔f）。
+//  纠错词表由离线生成器 tools/gen_correction_dict.py 从 rime-ice 词库全量产出：
+//    对任意常见词的「相邻键 1 次错打」做精确查表，覆盖键盘邻键误触（如 w→e：woshi→eoshi）。
 //
 //  进阶能力（规划中）：语法模型语境排序（类似万象，重排多条候选）、用户自学习。
 //
 //  面板结构：
 //    1) 功能简介
-//    2) 纠错总开关 + 强度
+//    2) 纠错总开关 + 候选位置
 //    3) 纠错原理
 //    4) 进阶能力路线图（规划中）
 //
@@ -104,15 +103,6 @@ struct SnowWolfCorrectionPage: View {
 
       if ice.correctionEnabled {
         Divider()
-        LabeledContent("correction.strength.title") {
-          Picker("", selection: $ice.correctionStrength) {
-            ForEach(CorrectionStrength.allCases) { s in
-              Text(s.label).tag(s)
-            }
-          }
-          .pickerStyle(.segmented)
-          .frame(width: 300)
-        }
         LabeledContent("correction.position.title") {
           Picker("", selection: $ice.correctionInjectionPosition) {
             ForEach(CorrectionInjectionPosition.allCases) { p in
