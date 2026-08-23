@@ -707,7 +707,9 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 
 // MARK: - Amethyst Correction Model
 "correction.intro.title" = "Overview & How It Works";
-"correction.intro" = "Amethyst Correction Model analyzes your pinyin input and offers correction candidates for keyboard slips and phonetic mistakes—fully offline.";
+"correction.intro" = "The Amethyst Correction Model is a real-time, dynamic correction engine built by the author of this panel specifically for the Squirrel (Rime) input method. It builds on Squirrel's native fuzzy-pinyin capabilities and works in tandem with the Wanxiang grammar model to correct your input live, as you type.
+
+Its underlying mechanism is essentially the same as the correction systems shipped by major commercial vendors: it detects adjacent-key mistypes and phonetic confusions, re-queries the dictionary for the corrected pinyin, and injects a \"correction\" candidate—the same approach used by Baidu, Sogou, and similar mainstream input methods. The whole process is fully synchronous, zero-latency, and fully offline; tap to commit, and it takes effect the moment you type.";
 "correction.control.title" = "Correction";
 "correction.control.enable" = "Enable Smart Correction";
 "correction.control.enable.desc" = "When on, the candidate list shows likely corrections for the current input.";

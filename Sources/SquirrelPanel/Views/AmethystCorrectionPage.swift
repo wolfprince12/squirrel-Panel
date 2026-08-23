@@ -50,15 +50,19 @@ struct AmethystCorrectionPage: View {
 
         if let url = Bundle.main.url(forResource: "AmethystCorrectionDemo", withExtension: "png"),
            let nsImage = NSImage(contentsOf: url) {
-          Image(nsImage: nsImage)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-              RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 0.5)
-            )
+          HStack {
+            Spacer()
+            Image(nsImage: nsImage)
+              .resizable()
+              .aspectRatio(contentMode: .fit)
+              .frame(maxWidth: 440)
+              .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+              .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                  .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 0.5)
+              )
+            Spacer()
+          }
         }
       }
     }
