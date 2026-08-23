@@ -216,7 +216,7 @@ struct AboutPage: View {
     }
   }
 
-  /// 爻知云公众号推广：最简排版——左半文字、右半直接展示 Resources/YaozhiQRCode.jpg
+  /// 爻知云公众号推广：最简排版——左半文字、右半直接展示 Resources/YaozhiQRCode.png
   /// （这张图已包含绿底、二维码、微信气泡、"微信搜一搜"和搜索框，无需额外绘制任何面板）。
   private var yaozhiCard: some View {
     HStack(alignment: .center, spacing: 16) {
@@ -250,7 +250,7 @@ struct AboutPage: View {
   }
 
   private var qrCodeImage: NSImage? {
-    guard let url = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "jpg") else { return nil }
+    guard let url = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "png") else { return nil }
     return NSImage(contentsOf: url)
   }
 
@@ -337,12 +337,12 @@ struct AboutPage: View {
   }
 
   private func saveQRCodeToDownloads() {
-    guard let source = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "jpg"),
+    guard let source = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "png"),
           let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
       store.statusMessage = String(localized: "promo.yaozhi.saveFailed")
       return
     }
-    let destination = downloads.appendingPathComponent("爻知云AI_公众号二维码.jpg")
+    let destination = downloads.appendingPathComponent("爻知云AI_公众号二维码.png")
     do {
       if FileManager.default.fileExists(atPath: destination.path) {
         try FileManager.default.removeItem(at: destination)
