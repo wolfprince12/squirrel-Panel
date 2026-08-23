@@ -245,7 +245,11 @@ final class RimeIceConfigStore {
   static let managedIceKeys: Set<String> = [
     "switches", "menu/page_size", "traditionalize/opencc_config",
     "engine/translators", "engine/filters", "schema/dependencies", "speller/algebra",
-    "grammar"
+    "grammar",
+    // 历史残留清理：旧版本曾挂载 AI processor 于 engine/processors/@after 0。切勿用
+    // set(nil, forPath:) 清它（会序列化成 engine/processors: {} 清空内置处理器、导致
+    // 候选框消失）；交由 removeManaged 直接删除该键即可。
+    "engine/processors/@after 0"
   ]
 
   /// 托管的 translators 条目
@@ -832,8 +836,12 @@ final class RimeIceConfigStore {
     // 拼音纠错（derive 机制，内核级零延迟）：纠错规则由 mergedAlgebra 写入
     // speller/algebra；lua_filter@*correction（mergedFilters 已并入）仅做候选位置重排，
     // 不查大词典。不需要 processor —— 纯内核派生 + 轻量重排，不调用任何外部进程。
-    // 这里恒写 nil，确保任何旧版 AI processor 挂载被清理。
-    set["engine/processors/@after 0"] = PatchValue?.none
+    //
+    // ⚠️ 严禁在此写入 engine/processors（含写 nil / @after 0 = none）。Rime 的
+    // engine/processors 由内置默认提供；一旦补丁里出现 engine/processors: {}（哪怕是
+    // 清 key 产生的空映射），合并时会把内置默认处理器整体清空，导致按键完全不被处理、
+    // 候选框彻底消失、中文输入报废。AI 处理器早已物理删除，此处不再需要任何清理，
+    // 因此刻意不碰 engine/processors，让它回退到 Rime 内置默认。
 
     let dependencies = mergedDependencies()
     set["schema/dependencies"] = (dependencies == template.dependencies) ? PatchValue?.none : .stringList(dependencies)
@@ -1066,8 +1074,10 @@ final class RimeIceConfigStore {
     //    这一步额外负责扫掉历史遗留（例如旧版本写过、现已不再编译的键），
     //    用户手写的其他条目不受影响。
     icePatch.removeManaged(keys: Self.managedIceKeys)
-    // 一并清掉历史浮动条挂载点与拼音纠错规则（恢复默认即回到零纠错）
-    icePatch.set(nil, forPath: "engine/processors/@after 0")
+    // 注意：不再对 engine/processors 做任何 set(nil) / @after 0 清理。Rime 的
+    // engine/processors 由内置默认提供，补丁里写 engine/processors: {}（哪怕是清 key
+    // 产生的空映射）会清空内置默认处理器，导致候选框消失、中文报废。AI 处理器已物理
+    // 删除，此处无需清理；保留内置默认即可。
     correctionEnabled = false
     correctionStrength = .standard
     correctionInjectionPosition = .afterFirst
