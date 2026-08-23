@@ -69,7 +69,7 @@ struct RootView: View {
   /// 这里只为订阅变更通知而持有，不直接读取。
   @Environment(RimeIceConfigStore.self) private var ice
   @Environment(UpdateCenter.self) private var updateCenter
-  @State private var selection: PanelSection = .amethyst
+  @State private var selection: PanelSection = .appearance
   @State private var showingYAML = false
 
   private var allSections: [PanelSection] { PanelSection.allCases }

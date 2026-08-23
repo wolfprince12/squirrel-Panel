@@ -562,6 +562,12 @@
 "scheme.status.confirmed" = "Confirmed as your custom scheme";
 "scheme.import.failed.title" = "Import Failed";
 "scheme.import.failed" = "Unrecognized file: it must contain a preset_color_schemes definition.";
+"scheme.enabled.hint" = "You can enable up to three custom schemes at once";
+"scheme.enabled.maxReached.title" = "Enable Limit Reached";
+"scheme.enabled.maxReached" = "You can only enable up to three custom schemes";
+"scheme.list.enable" = "Enable";
+"scheme.list.enabled" = "Enabled";
+"appearance.scheme.custom.emptySlot" = "Not Configured";
 "scheme.field.text_color" = "Text";
 "scheme.field.back_color" = "Background";
 "scheme.field.candidate_text_color" = "Candidate Text";

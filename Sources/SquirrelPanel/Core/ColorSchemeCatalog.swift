@@ -62,9 +62,18 @@ struct RimeColorSchemeInfo: Identifiable, Equatable {
 
   func color(_ value: RimeColor) -> Color { value.swiftUIColor(in: colorSpace) }
 
-  /// 显式 Equatable：以 id 为身份（resolved 是派生的渲染缓存，不参与相等判定）
+  /// 显式 Equatable：必须按完整内容比较，不能只比 id。
+  ///
+  /// 历史原因：曾为性能只比 id，但 SwiftUI 在 body diff 时依赖此值——只要 id 相同，
+  /// 即使 rawColors 已变也会被判等，导致颜色编辑器实时预览不刷新。
+  /// 现在改为内容比较（resolved 是 rawColors 派生缓存，不参与比较）。
   static func == (lhs: RimeColorSchemeInfo, rhs: RimeColorSchemeInfo) -> Bool {
     lhs.id == rhs.id
+      && lhs.name == rhs.name
+      && lhs.author == rhs.author
+      && lhs.colorSpace == rhs.colorSpace
+      && lhs.rawColors == rhs.rawColors
+      && lhs.isCustom == rhs.isCustom
   }
 
   /// 预解析的 SwiftUI Color 缓存（load 阶段算一次）

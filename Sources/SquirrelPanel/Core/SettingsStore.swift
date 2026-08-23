@@ -229,11 +229,29 @@ final class SettingsStore {
   /// 配色目录 / 方案目录后台扫描中（启动与 reload 时短暂为 true，视图可据此显示占位）
   var isLoadingCatalogs = false
 
-  var isDirty: Bool {
-    compileSquirrelPatch() != baselineSquirrel
-      || compileDefaultPatch() != baselineDefault
-      || rimeIce?.isDirty == true
-  }
+  // MARK: - 脏值（写时失效，避免每次 body 重算都跑整条 compile 链）
+  //
+  // 原 `isDirty` 是 computed，每次 SwiftUI 重算 body（切面板 / 拖控件）都同步跑
+  // `compileSquirrelPatch()` + `compileDefaultPatch()` + `rimeIce.isDirty`（各含字典构建 /
+  // 数组遍历）。SettingsStore 有 50+ 被追踪属性，任一变化都让订阅它的整树 body 重算，
+  // 累积出「慢半拍」的黏手感。
+  //
+  // 改为存储属性 `dirty` + 写时失效：仅在「用户真改了某个界面属性」或「apply / revert /
+  // reload / reset」后重算一次，结果缓存进 `dirty`。footer 只订阅 `dirty`（存储属性），
+  // 不再每次都跑到 compile 链；切面板（selection 变化）不触发 dirty 重算 → 卡顿消失。
+  //
+  // 失效由 `observeForDirty()` 驱动：它在 init 后用 `withObservationTracking` 订阅 store
+  // 全部界面属性，任一变化即 `recomputeDirty()`。computed 不读被追踪属性会让 SwiftUI 无法
+  // 感知其变化，故 `isDirty` 不再做 computed，而是直接映射存储属性 `dirty`。
+  private(set) var dirty: Bool = false
+
+  var isDirty: Bool { dirty }
+
+  /// 当前选中配色方案的渲染信息（外观页顶部预览 / 候选预览消费）。
+  /// 原 `currentScheme` 是 computed，每次 body 重算都遍历 3 次数组 + 解析；
+  /// 现缓存为 `_currentSchemeCache`，仅在依赖属性变化时失效重算。
+  private var _currentSchemeCache: RimeColorSchemeInfo?
+  private var _currentSchemeValid = false
 
   var canWrite: Bool { squirrelPatch.isWritable && defaultPatch.isWritable }
 
@@ -255,6 +273,91 @@ final class SettingsStore {
     self.squirrelPatch = CustomYAMLFile(fileURL: RimeEnvironment.userDirectory.appending(path: "squirrel.custom.yaml"))
     self.defaultPatch = CustomYAMLFile(fileURL: RimeEnvironment.userDirectory.appending(path: "default.custom.yaml"))
     reload()
+    // 启动脏值写时失效追踪：订阅全部界面属性，任一变化即重算 dirty / 失效 currentScheme。
+    observeForDirty()
+  }
+
+  // MARK: - 脏值写时失效
+
+  /// 重算并写回 `dirty`。在任何「会改 patch 结果」的路径后调用：
+  /// 用户改属性（observeForDirty 的 onChange）、apply / revert / reload / reset。
+  func recomputeDirty() {
+    dirty = compileSquirrelPatch() != baselineSquirrel
+      || compileDefaultPatch() != baselineDefault
+      || rimeIce?.isDirty == true
+  }
+
+  /// 用 `withObservationTracking` 订阅 store 全部界面属性，任一变化即重算 dirty 并
+  /// 失效 currentScheme。onChange 在属性变更同一 transaction 内同步触发（Swift 6
+  /// Observation 是同步通知），无额外延迟；递归重注册以持续监听。
+  ///
+  /// recompute 合并去重：连续属性变化（如拖动滑块）只延后到下一 runloop 重算一次，
+  /// 避免每帧都跑整条 compile 链造成卡顿。
+  private var _recomputePending = false
+  /// 重新启动脏值追踪。用于 `rimeIce` 在 store 构造完成后才注入的场景：
+  /// 初始 `init()` 注册时 rimeIce 尚为 nil，必须在注入后重启一次以订阅其属性变化。
+  func restartDirtyTracking() {
+    observeForDirty()
+  }
+  private func observeForDirty() {
+    withObservationTracking { [weak self] in
+      // 只读不写，强制注册对全部界面属性的依赖
+      self?.touchAllTracked()
+    } onChange: { [weak self] in
+      // onChange 在非隔离上下文触发，但本类全程 @MainActor，直接同步回主线程执行。
+      MainActor.assumeIsolated {
+        self?.scheduleRecompute()
+        self?.observeForDirty()
+      }
+    }
+  }
+
+  /// 合并多次 recompute 请求：同一 runloop 内多次属性变化只重算一次。
+  private func scheduleRecompute() {
+    guard !_recomputePending else { return }
+    _recomputePending = true
+    Task { @MainActor in
+      _recomputePending = false
+      recomputeDirty()
+      invalidateCurrentScheme()
+    }
+  }
+
+  /// 读一遍所有界面状态属性，供 `observeForDirty` 注册依赖。
+  /// 仅读取、零副作用；新增界面属性时务必在此补一行，否则其变化不会触发 dirty 重算。
+  /// 注意：`rimeIce` 是独立 @Observable，其属性变化**不会**自动反映到 `store.dirty`，
+  /// 必须在此显式读取，否则雾凇/紫毫面板的改动无法让「应用并重新部署」按钮启用。
+  private func touchAllTracked() {
+    // 必须显式读 rimeIce 的引用本身：init 时 rimeIce 尚为 nil（app 在 store 构造后才注入），
+    // 此行让「rimeIce 从 nil 变为有值」这一赋值触发 onChange → 递归重注册时 rimeIce 已有值
+    // → 真正订阅到 ice 内部属性，否则初始注册的追踪器永远漏掉 rimeIce（自愈机制）。
+    _ = rimeIce
+    _ = colorSchemeID; _ = followSystemAppearance; _ = colorSchemeDarkID
+    _ = fontFace; _ = labelFontFace; _ = commentFontFace
+    _ = fontPoint; _ = labelFontPoint; _ = commentFontPoint
+    _ = useLinearLayout; _ = useVerticalText
+    _ = cornerRadius; _ = hilitedCornerRadius; _ = borderHeight; _ = borderWidth
+    _ = lineSpacing; _ = preeditSpacing; _ = alpha
+    _ = candidateFormat; _ = inlinePreedit; _ = inlineCandidate
+    _ = translucency; _ = shadow; _ = shadowSize
+    _ = statusMessageType; _ = showPaging; _ = memorizeSize; _ = mutualExclusive
+    _ = enabledSchemaIDs; _ = switcherHotkeys; _ = switcherCaption; _ = savedSwitchOptions
+    _ = pageSize; _ = goodOldCapsLock; _ = capsLockAction
+    _ = shiftLeftAction; _ = shiftRightAction; _ = controlLeftAction; _ = controlRightAction
+    _ = keyboardLayout; _ = showNotificationsWhen
+    _ = fullShapePunct; _ = halfShapePunct; _ = candidateKeyBindings
+    _ = tabPagingEnabled; _ = appOptions
+
+    // 雾凇 / 紫毫面板（RimeIceConfigStore）的界面状态：必须订阅，
+    // 否则其改动不触发 store.dirty 重算 → 应用按钮保持禁用。
+    if let ice = rimeIce {
+      _ = ice.switches
+      _ = ice.enableMeltEng; _ = ice.enableCnEn; _ = ice.enableRadical
+      _ = ice.enableEmojiDict
+      _ = ice.opencc; _ = ice.activePinyinSchemaID; _ = ice.showRawDoubleCode
+      _ = ice.luaFilters; _ = ice.fuzzySelection
+      _ = ice.correctionEnabled; _ = ice.correctionInjectionPosition; _ = ice.correctionCandidateCount
+    }
   }
 
   func reload() {
@@ -262,31 +365,47 @@ final class SettingsStore {
     environment = RimeEnvironment.detect()
     squirrelPatch.load()
     defaultPatch.load()
-    // 配色目录（单文件解析，成本低）保持主线程同步，外观页网格可即时渲染
-    colorSchemes = ColorSchemeCatalog.load(environment: environment, userPatch: squirrelPatch)
-    // 派生：剔除开发者专属 + 用户自定义，缓存供外观页网格/深色下拉直接消费
-    systemColorSchemes = colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }
+    // 主线程只保留「让界面立即可用」的最小同步集：
+    // 读盘解析出 UI 状态（readIntoUI）+ 编译 baseline（isDirty 判定依赖）。
+    // 这两项与 1.4.0 一致，成本低且必须同步，否则首帧状态错乱。
     readIntoUI()
     baselineSquirrel = compileSquirrelPatch()
     baselineDefault = compileDefaultPatch()
     statusMessage = environment.isInstalled ? "status.loaded" : "status.notInstalled"
-    // 雾凇面板跟着一起重载，保证两边状态一致（应用、还原、重置后都会走到这里）
+    // 雾凇面板跟着一起重载，保证两边状态一致（应用、还原、重置后都会走到这里）。
+    // 保留主线程：RimeIceConfigStore 是 @Observable，属性必须在主线程写，
+    // 且雾凇页非默认页，启动一次的成本不体现在面板切换上。
     rimeIce?.reload()
 
-    // 重活（枚举 + 解析全部 *.schema.yaml）挪到后台线程，
+    // 重活（配色目录解析 30+ 方案 + 枚举全部 *.schema.yaml）全部挪到后台线程，
     // 消除启动 / 重载时主线程同步 I/O 造成的「卡一下」。
-    // 此前这一行在主线程同步跑，正是输入方案面板切换黏手的根因之一。
-    // 方案列表稍后回填，视图会响应式刷新；不新增任何占位 UI（遵守 UI 已定稿铁律）。
+    // 此前 ColorSchemeCatalog.load 在主线程同步跑，是启动后整体黏滞的根因之一；
+    // 现与 schema 扫描合并到同一后台任务，数据就绪后回填，视图响应式刷新。
+    // 遵守 UI 已定稿铁律：不新增任何占位 UI（外观页色卡稍后填回，用户几乎无感）。
     isLoadingCatalogs = true
     let env = environment
+    let userPatch = squirrelPatch
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let colorSchemes = ColorSchemeCatalog.load(environment: env, userPatch: userPatch)
+      let systemColorSchemes = colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }
       let schemas = SchemaCatalog.scan(environment: env)
       DispatchQueue.main.async {
         guard let self else { return }
+        self.colorSchemes = colorSchemes
+        self.systemColorSchemes = systemColorSchemes
         self.availableSchemas = schemas
         self.isLoadingCatalogs = false
       }
     }
+    // 载入完成：重算 dirty（baseline 已更新）+ 失效 currentScheme 缓存
+    // （后台回填 colorSchemes 后外观页会重读 currentScheme，此刻用最新目录）
+    recomputeDirty()
+    invalidateCurrentScheme()
+  }
+
+  /// 失效 `currentScheme` 缓存，下次读取重算。
+  func invalidateCurrentScheme() {
+    _currentSchemeValid = false
   }
 
   // MARK: - 读：补丁 → 界面
@@ -927,14 +1046,19 @@ final class SettingsStore {
   }
 
   var currentScheme: RimeColorSchemeInfo {
+    if _currentSchemeValid, let cached = _currentSchemeCache { return cached }
+    let result: RimeColorSchemeInfo
     // 开发者（大狼）专属方案与用户自定义方案都不在总目录 colorSchemes 中，
     // 需单独解析；否则选中时回退为 .native，顶部预览与实际配色不符。
     if let dev = DeveloperColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
-      return DeveloperColorSchemes.info(for: dev)
+      result = DeveloperColorSchemes.info(for: dev)
+    } else if let custom = UserColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
+      result = UserColorSchemes.info(for: custom)
+    } else {
+      result = colorSchemes.first { $0.id == colorSchemeID } ?? .native
     }
-    if let custom = UserColorSchemes.all.first(where: { $0.id == colorSchemeID }) {
-      return UserColorSchemes.info(for: custom)
-    }
-    return colorSchemes.first { $0.id == colorSchemeID } ?? .native
+    _currentSchemeCache = result
+    _currentSchemeValid = true
+    return result
   }
 }

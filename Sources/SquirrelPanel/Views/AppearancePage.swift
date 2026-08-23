@@ -6,14 +6,40 @@
 import SwiftUI
 import AppKit
 
+/// 临时性能埋点：定位外观页返回时卡顿真凶。
+/// 直接把耗时写入 /tmp/perf_appearance.log（绕开沙箱 log stream 限制）。
+/// 确认真凶并修复后整段删除。
+private let perfBase = CFAbsoluteTimeGetCurrent()
+private let perfFile = "/tmp/perf_appearance.log"
+private func perfTick(_ label: String) {
+  #if DEBUG
+  let now = CFAbsoluteTimeGetCurrent()
+  let line = String(format: "[Perf] +%.3fs %@\n", now - perfBase, label)
+  if let fh = FileHandle(forWritingAtPath: perfFile) {
+    fh.seekToEndOfFile()
+    fh.write(line.data(using: .utf8)!)
+    fh.closeFile()
+  } else {
+    FileManager.default.createFile(atPath: perfFile, contents: line.data(using: .utf8))
+  }
+  #endif
+}
+
 struct AppearancePage: View {
   @Environment(SettingsStore.self) private var store
   @State private var showSchemeEditor = false
-  /// 自定义模块当前展示的「用户确认方案」快照。
-  /// confirmedScheme() 是读盘静态函数：编辑器点「使用此方案」只改了磁盘注册表，
+  /// 自定义模块展示的「已启用方案」快照。
+  /// UserColorSchemes.enabledSchemes() 是读盘静态函数：编辑器启用/禁用只改了磁盘注册表，
   /// SwiftUI 收不到状态变更通知、不会重绘。因此必须用 @State 持有快照，
-  /// 并在弹窗关闭时重新读盘刷新，否则模块预览会停留在旧方案。
-  @State private var confirmedScheme: UserColorScheme? = UserColorSchemes.confirmedScheme()
+  /// 并在弹窗关闭时重新读盘刷新，否则模块预览会停留在旧列表。
+  @State private var enabledSchemes: [UserColorScheme] = UserColorSchemes.enabledSchemes()
+
+  /// 埋点：记录 body 开始求值的时刻（init 先于 body 执行）。
+  private let _perfStart = CFAbsoluteTimeGetCurrent()
+
+  init() {
+    perfTick("AppearancePage.init t0=\(_perfStart)")
+  }
 
   var body: some View {
     @Bindable var store = store
@@ -30,27 +56,21 @@ struct AppearancePage: View {
           DeveloperSchemeGrid()
         }
 
-        // 用户自定义配色（用户指定数值）：CustomSchemeCard 210pt + 中间空白 200pt + 编辑按钮。
+        // 用户自定义配色：与系统/开发者网格一致的三列相对宽度，最多展示 3 张；
+        // 不足 3 张时剩余位置显示「未配置方案」空白框。编辑入口统一移到底部居中。
         SettingsGroup("appearance.scheme.custom.title") {
-          HStack(alignment: .center, spacing: 0) {
-            Group {
-              if let scheme = confirmedScheme {
-                let info = UserColorSchemes.info(for: scheme)
-                let isActive = store.colorSchemeID == scheme.id
-                CustomSchemeCard(scheme: info, isActive: isActive) {
-                  store.colorSchemeID = scheme.id
-                }
-              } else {
-                CustomEmptyState()
-              }
-            }
-            .frame(width: 200)
-
-            // 卡片与按钮之间留 160pt 空白（不放 Spacer，用固定 Frame 占位更可控）
-            Color.clear.frame(width: 160)
-
-            editorButton
+          CustomSchemeGrid(enabledSchemes: enabledSchemes,
+                           activeID: store.colorSchemeID) { id in
+            store.colorSchemeID = id
           }
+          Button(action: { showSchemeEditor = true }) {
+            Label("appearance.scheme.custom.open", systemImage: "paintbrush.fill")
+              .font(.system(size: 12, weight: .medium))
+          }
+          .buttonStyle(.bordered)
+          .controlSize(.small)
+          .frame(maxWidth: .infinity)
+          .help("appearance.scheme.custom.open")
         }
 
         SettingsGroup("appearance.scheme.title") {
@@ -70,8 +90,8 @@ struct AppearancePage: View {
                 }
               }
               Section("appearance.scheme.group.custom") {
-                if let confirmed = confirmedScheme {
-                  let info = UserColorSchemes.info(for: confirmed)
+                ForEach(enabledSchemes) { scheme in
+                  let info = UserColorSchemes.info(for: scheme)
                   Text(info.name).tag(info.id)
                 }
               }
@@ -146,12 +166,22 @@ struct AppearancePage: View {
       }
       .padding(20)
     }
-    .onAppear { confirmedScheme = UserColorSchemes.confirmedScheme() }
+    // 首次出现用 @State 初始化的缓存值立即显示；进入页面后再异步刷新一次，
+    // 避免 onAppear 同步读盘阻塞首帧（返回外观页时不再卡顿）。
+    .onAppear {
+      let dt = CFAbsoluteTimeGetCurrent() - _perfStart
+      perfTick("AppearancePage.onAppear body→appear 同步耗时=\(String(format: "%.3f", dt))s")
+    }
+    .task {
+      let t0 = CFAbsoluteTimeGetCurrent()
+      enabledSchemes = UserColorSchemes.enabledSchemes()
+      perfTick("enabledSchemes.task 耗时=\(String(format: "%.3f", CFAbsoluteTimeGetCurrent()-t0))s")
+    }
     .onChange(of: showSchemeEditor) { _, isShowing in
-      // 弹窗关闭（确认/保存/编辑自定义方案后）重新读盘刷新模块展示，
-      // 否则 SwiftUI 不会因磁盘注册表变更而重绘，预览会停留在旧方案。
+      // 弹窗关闭（启用/禁用/保存/编辑自定义方案后）重新读盘刷新模块展示，
+      // 否则 SwiftUI 不会因磁盘注册表变更而重绘，预览会停留在旧列表。
       if !isShowing {
-        confirmedScheme = UserColorSchemes.confirmedScheme()
+        enabledSchemes = UserColorSchemes.enabledSchemes()
       }
     }
     .sheet(isPresented: $showSchemeEditor) {
@@ -163,23 +193,6 @@ struct AppearancePage: View {
   /// 深色模式配色下拉列表中的「系统配色」分组：复用 store.systemColorSchemes（reload 时已算好）。
   private var systemDarkSchemes: [RimeColorSchemeInfo] {
     store.systemColorSchemes
-  }
-
-  private var editorButton: some View {
-    Button(action: { showSchemeEditor = true }) {
-      Label {
-        Text("appearance.scheme.custom.open")
-          .font(.system(size: 13, weight: .semibold))
-      } icon: {
-        Image(systemName: "paintbrush.fill")
-          .font(.system(size: 16, weight: .semibold))
-      }
-    }
-    .buttonStyle(.borderedProminent)
-    .controlSize(.large)
-    .frame(minWidth: 150, minHeight: 48)
-    .clipShape(Capsule())
-    .help("appearance.scheme.custom.open")
   }
 
 }
@@ -204,6 +217,7 @@ struct ColorSchemeGrid: View {
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
     }
+    .onAppear { perfTick("ColorSchemeGrid.onAppear count=\(store.systemColorSchemes.count)") }
   }
 }
 
@@ -225,6 +239,7 @@ struct DeveloperSchemeGrid: View {
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
     }
+    .onAppear { perfTick("DeveloperSchemeGrid.onAppear count=\(DeveloperColorSchemes.all.count)") }
   }
 }
 
@@ -306,49 +321,86 @@ struct SchemeSwatch: View {
 
 // MARK: - 用户自定义配色模块组件
 
-/// 自定义方案模块中的单卡：本身就是可点选主体，选中态用「使用中」角标表达，
-/// 不再额外堆叠按钮。
-private struct CustomSchemeCard: View {
-  let scheme: RimeColorSchemeInfo
-  let isActive: Bool
-  let action: () -> Void
+/// 自定义配色模块的三卡片网格：展示已启用方案（最多 3 张），
+/// 不足 3 张时剩余位置渲染「未配置方案」空白框。与系统/开发者网格保持一致的相对宽度。
+private struct CustomSchemeGrid: View {
+  let enabledSchemes: [UserColorScheme]
+  let activeID: String
+  let onSelect: (String) -> Void
+
+  private let columns = [
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10)
+  ]
 
   var body: some View {
-    SchemeSwatch(scheme: scheme, isSelected: isActive)
-      .overlay(alignment: .topTrailing) {
-        if isActive {
-          Text("appearance.scheme.custom.active")
-            .font(.system(size: 9, weight: .semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(Color.accentColor))
-            .foregroundStyle(.white)
-            .padding(6)
-        }
+    LazyVGrid(columns: columns, spacing: 10) {
+      // 已启用的方案：直接渲染可点选色卡
+      ForEach(enabledSchemes) { scheme in
+        let info = UserColorSchemes.info(for: scheme)
+        let isActive = info.id == activeID
+        SchemeSwatch(scheme: info, isSelected: isActive)
+          .overlay(alignment: .topTrailing) {
+            if isActive {
+              Text("appearance.scheme.custom.active")
+                .font(.system(size: 9, weight: .semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.accentColor))
+                .foregroundStyle(.white)
+                .padding(6)
+            }
+          }
+          .contentShape(Rectangle())
+          .onTapGesture { onSelect(info.id) }
+          .help("appearance.scheme.custom.tapToSelect")
       }
-      .contentShape(Rectangle())
-      .onTapGesture(perform: action)
-      .help("appearance.scheme.custom.tapToSelect")
+      // 不足 3 张：用空白占位框补齐，提示「未配置方案」
+      ForEach(0..<max(0, 3 - enabledSchemes.count), id: \.self) { _ in
+        CustomEmptySlot()
+      }
+    }
   }
 }
 
-private struct CustomEmptyState: View {
+/// 「未配置方案」空白预览框：复用 SchemeSwatch 骨架但内容置灰、居中显示提示。
+private struct CustomEmptySlot: View {
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      HStack(spacing: 10) {
-        Image(systemName: "paintbrush")
-          .font(.title3)
+    VStack(spacing: 0) {
+      VStack {
+        Spacer()
+        Image(systemName: "plus.square.dashed")
+          .font(.system(size: 22, weight: .regular))
           .foregroundStyle(.secondary)
-        VStack(alignment: .leading, spacing: 2) {
-          Text("appearance.scheme.custom.empty.title")
-            .font(.callout.weight(.medium))
-          Text("appearance.scheme.custom.empty.subtitle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
+        Text("appearance.scheme.custom.emptySlot")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+          .padding(.top, 4)
+        Spacer()
       }
+      .frame(maxWidth: .infinity)
+      .frame(height: 62)
+      .background(Color.primary.opacity(0.04))
+
+      HStack {
+        Text("appearance.scheme.custom.emptySlot")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+        Spacer(minLength: 0)
+      }
+      .padding(.horizontal, 7)
+      .padding(.vertical, 5)
+      .frame(maxWidth: .infinity)
+      .background(Color(nsColor: .controlBackgroundColor))
     }
-    .padding(.vertical, 8)
+    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 7, style: .continuous)
+        .strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5)
+    )
   }
 }
 
@@ -359,30 +411,114 @@ struct FontFamilyPicker: View {
   var titleKey: LocalizedStringKey = "appearance.font.candidate"
   var pickerWidth: CGFloat? = 240
 
+  /// 474 个系统字体族若一次性塞进 Picker/PopUpButton，会在布局阶段同步测量全部
+  /// Text 节点，主线程耗时 ~1.2s/次（切回外观页卡顿真凶）。改为点击弹出、带搜索过滤的
+  /// popover + 懒加载列表：仅渲染可见项，且只在展开时构建，彻底消除同步重活；
+  /// 用 popover 而非 Menu，规避 macOS Menu 内 ScrollView 按钮点击命中不可靠的坑。
   private static let families: [String] = {
     NSFontManager.shared.availableFontFamilies.sorted {
       $0.localizedStandardCompare($1) == .orderedAscending
     }
   }()
 
-  private var picker: some View {
-    Picker("", selection: Binding(
-      get: { Self.families.contains(selection) ? selection : "" },
-      set: { selection = $0 }
-    )) {
-      Text("appearance.font.system").tag("")
-      Divider()
-      ForEach(Self.families, id: \.self) { family in
-        Text(family).tag(family)
-      }
-    }
-    .labelsHidden()
-    .modifier(OptionalWidth(width: pickerWidth))
+  @State private var isPresented = false
+  @State private var query = ""
+
+  private var filtered: [String] {
+    let q = query.trimmingCharacters(in: .whitespaces).localizedLowercase
+    guard !q.isEmpty else { return Self.families }
+    return Self.families.filter { $0.localizedLowercase.contains(q) }
+  }
+
+  private var label: String {
+    selection.isEmpty ? String(localized: "appearance.font.system") : selection
   }
 
   var body: some View {
     LabeledContent(titleKey) {
-      picker
+      Button {
+        isPresented.toggle()
+      } label: {
+        HStack(spacing: 4) {
+          Text(label)
+            .lineLimit(1)
+          Image(systemName: "chevron.down")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .frame(minWidth: 160, alignment: .leading)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+      }
+      .buttonStyle(.plain)
+      .modifier(OptionalWidth(width: pickerWidth))
+      .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+        FontPickerPopover(
+          query: $query,
+          selection: $selection,
+          filtered: filtered,
+          isPresented: $isPresented
+        )
+        .frame(width: 280, height: 340)
+        .padding(8)
+      }
+    }
+  }
+}
+
+/// 字体选择弹层：搜索框 + 懒加载列表。独立结构体便于在 popover 内稳定命中点击。
+private struct FontPickerPopover: View {
+  @Binding var query: String
+  @Binding var selection: String
+  let filtered: [String]
+  @Binding var isPresented: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      TextField(String(localized: "appearance.font.search"), text: $query)
+        .textFieldStyle(.roundedBorder)
+      Divider()
+      // 系统默认项
+      Button {
+        selection = ""
+        isPresented = false
+      } label: {
+        HStack {
+          Text("appearance.font.system")
+          Spacer()
+          if selection.isEmpty { Image(systemName: "checkmark") }
+        }
+      }
+      .buttonStyle(.plain)
+      .padding(.vertical, 2)
+      Divider()
+      // 懒加载列表：仅渲染可见项，避免 474 项全量构建
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          ForEach(filtered, id: \.self) { family in
+            Button {
+              selection = family
+              isPresented = false
+            } label: {
+              HStack {
+                Text(family)
+                  .font(.custom(family, size: 13))
+                Spacer()
+                if family == selection { Image(systemName: "checkmark") }
+              }
+              .contentShape(Rectangle())
+              .padding(.vertical, 3)
+              .padding(.horizontal, 4)
+            }
+            .buttonStyle(.plain)
+            .background(
+              family == selection ? Color.accentColor.opacity(0.15) : Color.clear,
+              in: Rectangle()
+            )
+          }
+        }
+      }
     }
   }
 }
@@ -442,8 +578,11 @@ struct SliderRow: View {
 
   var body: some View {
     HStack {
+      // lineLimit(1) + fixedSize：防止 HStack 空间紧张时被压缩竖排（如「字号」两个字）。
       Text(title)
-      Spacer()
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+      Spacer(minLength: 8)
       Slider(value: $value, in: range, step: step)
         .frame(width: 190)
       Text(formatted)

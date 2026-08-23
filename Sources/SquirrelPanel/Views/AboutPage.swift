@@ -250,8 +250,7 @@ struct AboutPage: View {
   }
 
   private var qrCodeImage: NSImage? {
-    guard let url = Bundle.main.url(forResource: "YaozhiQRCode", withExtension: "png") else { return nil }
-    return NSImage(contentsOf: url)
+    AssetCache.yaozhiQRCode
   }
 
   // MARK: - 运行状态

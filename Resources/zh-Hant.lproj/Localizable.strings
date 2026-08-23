@@ -562,6 +562,12 @@
 "scheme.status.confirmed" = "已確認為自訂方案";
 "scheme.import.failed.title" = "匯入失敗";
 "scheme.import.failed" = "無法識別該檔案：需包含 preset_color_schemes 下的方案定義。";
+"scheme.enabled.hint" = "最多可同時啟用三個配色方案";
+"scheme.enabled.maxReached.title" = "已達啟用上限";
+"scheme.enabled.maxReached" = "最多只能啟用三個配色方案";
+"scheme.list.enable" = "啟用";
+"scheme.list.enabled" = "已啟用";
+"appearance.scheme.custom.emptySlot" = "未配置方案";
 "scheme.field.text_color" = "文字顏色";
 "scheme.field.back_color" = "背景顏色";
 "scheme.field.candidate_text_color" = "候選文字";

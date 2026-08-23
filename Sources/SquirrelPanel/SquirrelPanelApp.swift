@@ -39,6 +39,9 @@ struct SquirrelPanelApp: App {
     let store = SettingsStore()
     let iceStore = RimeIceConfigStore(settings: store)
     store.rimeIce = iceStore
+    // store.init() 内的脏值追踪注册时 rimeIce 尚为 nil，必须注入后重启一次，
+    // 否则紫毫/雾凇面板的改动永不触发「应用并重新部署」按钮启用。
+    store.restartDirtyTracking()
     _store = State(initialValue: store)
     _iceStore = State(initialValue: iceStore)
     _updateCenter = State(initialValue: UpdateCenter(store: store))
@@ -47,6 +50,12 @@ struct SquirrelPanelApp: App {
     AppServices.shared.store = store
     AppServices.shared.iceStore = iceStore
     AppServices.shared.updateCenter = updateCenter
+
+    // 预热图片资源（后台线程，避免占用启动首帧）：紫毫示例图与关于页二维码
+    // 改为内存缓存后，切换面板不再重复读盘。
+    DispatchQueue.global(qos: .utility).async {
+      AssetCache.warmUp()
+    }
   }
 
   var body: some Scene {

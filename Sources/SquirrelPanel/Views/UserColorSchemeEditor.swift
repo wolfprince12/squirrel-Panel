@@ -96,9 +96,15 @@ struct UserColorSchemeEditor: View {
   @Environment(\.dismiss) private var dismiss
   @State private var model = SchemeEditorModel()
   @State private var schemes: [UserColorScheme] = UserColorSchemes.all
+  /// 启用状态快照（方案 id → 是否启用），列表开关直接读写它，避免经过 UserColorSchemes 缓存
+  /// 在内存中被其它写盘路径中途回档，造成「打开慢半拍」。关闭时立即落盘，开启时即时写盘。
+  @State private var areEnabled: [String: Bool] = Dictionary(
+    uniqueKeysWithValues: UserColorSchemes.all.map { ($0.id, UserColorSchemes.isEnabled($0.id)) }
+  )
   @State private var selectedID: String? = UserColorSchemes.all.first?.id
   @State private var statusMessage: String?
   @State private var importErrorMessage: String?
+  @State private var maxReachedMessage: String?
 
   private var selectedScheme: UserColorScheme? {
     guard let id = selectedID else { return nil }
@@ -122,6 +128,13 @@ struct UserColorSchemeEditor: View {
     } message: {
       Text(importErrorMessage ?? "")
     }
+    .alert("scheme.enabled.maxReached.title", isPresented: Binding(
+      get: { maxReachedMessage != nil },
+      set: { if !$0 { maxReachedMessage = nil } })) {
+      Button("common.ok", role: .cancel) {}
+    } message: {
+      Text(maxReachedMessage ?? "")
+    }
   }
 
   // MARK: - 列表
@@ -137,10 +150,22 @@ struct UserColorSchemeEditor: View {
       }
       .padding(12)
 
+      // 顶部提示：最多可同时启用三个配色方案
+      HStack(spacing: 6) {
+        Image(systemName: "info.circle")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Text("scheme.enabled.hint")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      .padding(.horizontal, 12)
+      .padding(.bottom, 6)
+
       Divider()
 
       List(selection: $selectedID) {
-        ForEach(schemes) { scheme in
+        ForEach(schemes, id: \.id) { (scheme: UserColorScheme) in
           HStack(spacing: 10) {
             schemePreviewStripe(scheme)
               .frame(width: 5, height: 32)
@@ -149,7 +174,12 @@ struct UserColorSchemeEditor: View {
             VStack(alignment: .leading, spacing: 2) {
               Text(scheme.name.isEmpty ? scheme.id : scheme.name)
                 .lineLimit(1)
-              if !scheme.author.isEmpty {
+              if UserColorSchemes.isEnabled(scheme.id) {
+                Text("scheme.list.enabled")
+                  .font(.caption2)
+                  .foregroundStyle(Color.accentColor)
+                  .lineLimit(1)
+              } else if !scheme.author.isEmpty {
                 Text(scheme.author)
                   .font(.caption2)
                   .foregroundStyle(.secondary)
@@ -158,6 +188,28 @@ struct UserColorSchemeEditor: View {
             }
 
             Spacer()
+
+            // 启用开关：最多启用 maxEnabledCount 个。关闭永远允许；开启仅当尚未满时即时写盘。
+            // 通过本地 areEnabled 快照读写，避免经过磁盘缓存被中途回档导致「慢半拍」。
+            Toggle("", isOn: Binding(
+              get: { areEnabled[scheme.id, default: false] },
+              set: { on in
+                if on {
+                  guard !UserColorSchemes.isMaxEnabledReached else {
+                    maxReachedMessage = String(localized: "scheme.enabled.maxReached")
+                    return
+                  }
+                  UserColorSchemes.enable(scheme.id)
+                } else {
+                  UserColorSchemes.disable(scheme.id)
+                }
+                areEnabled[scheme.id] = on
+              }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .help("scheme.list.enable")
 
             Button(action: { deleteScheme(scheme) }) {
               Image(systemName: "trash")
@@ -233,10 +285,6 @@ struct UserColorSchemeEditor: View {
         .labelStyle(.iconOnly)
         .help("scheme.action.export")
         .disabled(model.name.isEmpty && model.colors.isEmpty)
-
-        Button("scheme.action.use") { useSelectedScheme() }
-          .disabled(selectedID == nil)
-          .buttonStyle(.bordered)
 
         Button("scheme.action.save") { saveScheme() }
           .keyboardShortcut("s", modifiers: .command)
@@ -346,37 +394,19 @@ struct UserColorSchemeEditor: View {
     let scheme = model.toScheme(existingIDs: Set(schemes.map { $0.id }))
     UserColorSchemes.save(scheme)
     schemes = UserColorSchemes.all
+    areEnabled = Dictionary(uniqueKeysWithValues: schemes.map { ($0.id, UserColorSchemes.isEnabled($0.id)) })
     selectedID = scheme.id
     statusMessage = "scheme.status.saved"
   }
 
-  /// 将当前选中的自定义方案「确认」为外观页自定义模块所展示的那一套。
-  /// 这是纯登记动作：仅写入独立的 confirmedID，与全局 colorSchemeID 完全无关，
-  /// 不会让鼠须管改用此方案，也不会触发任何部署。
-  /// 若要让鼠须管实际渲染该配色，需在外观页自定义模块或主色卡网格中选中它并点「应用并重新部署」。
-  private func useSelectedScheme() {
-    // 确保当前方案已落盘（新建未保存时先保存，拿到稳定 id）
-    let scheme: UserColorScheme
-    if let id = selectedID, let existing = schemes.first(where: { $0.id == id }) {
-      scheme = existing
-    } else {
-      scheme = model.toScheme(existingIDs: Set(schemes.map { $0.id }))
-      UserColorSchemes.save(scheme)
-      schemes = UserColorSchemes.all
-      selectedID = scheme.id
-    }
-    // 仅登记为「确认使用的自定义方案」，供外观页模块展示
-    UserColorSchemes.confirm(scheme.id)
-    statusMessage = "scheme.status.confirmed"
-  }
-
   private func deleteScheme(_ scheme: UserColorScheme) {
-    // 若删除的正是当前确认使用方案，清除独立标记
-    if UserColorSchemes.confirmedID == scheme.id {
-      UserColorSchemes.confirmedID = nil
+    // 若删除的正是当前启用方案，从启用列表摘除
+    if UserColorSchemes.isEnabled(scheme.id) {
+      UserColorSchemes.disable(scheme.id)
     }
     UserColorSchemes.remove(id: scheme.id)
     schemes = UserColorSchemes.all
+    areEnabled = Dictionary(uniqueKeysWithValues: schemes.map { ($0.id, UserColorSchemes.isEnabled($0.id)) })
     if selectedID == scheme.id { selectedID = schemes.first?.id; if let f = schemes.first { model.load(from: f) } }
     // 同步清理 squirrel.custom.yaml 中的注入
     store.apply()
@@ -404,6 +434,7 @@ struct UserColorSchemeEditor: View {
     }
     UserColorSchemes.save(scheme)
     schemes = UserColorSchemes.all
+    areEnabled = Dictionary(uniqueKeysWithValues: schemes.map { ($0.id, UserColorSchemes.isEnabled($0.id)) })
     selectedID = scheme.id
     model.load(from: scheme)
     statusMessage = "scheme.status.imported"

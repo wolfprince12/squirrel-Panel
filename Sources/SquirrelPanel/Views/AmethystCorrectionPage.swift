@@ -48,8 +48,7 @@ struct AmethystCorrectionPage: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
 
-        if let url = Bundle.main.url(forResource: "AmethystCorrectionDemo", withExtension: "png"),
-           let nsImage = NSImage(contentsOf: url) {
+        if let nsImage = AssetCache.amethystCorrectionDemo {
           HStack {
             Spacer()
             Image(nsImage: nsImage)

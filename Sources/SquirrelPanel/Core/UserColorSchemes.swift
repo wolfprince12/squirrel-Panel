@@ -40,16 +40,34 @@ struct UserColorScheme: Identifiable, Codable {
   }
 }
 
-/// 注册表磁盘格式（方案列表 + 已注入过的 id 集合 + 用户确认使用的方案 id）
+/// 注册表磁盘格式（方案列表 + 已注入过的 id 集合 + 已启用的方案 id 列表）
 private struct RegistryFile: Codable {
   var schemes: [UserColorScheme]
   var managedIDs: [String]
-  /// 用户「确认使用」的那一套自定义方案 id。与全局 colorSchemeID 解耦：
-  /// 外观页自定义模块只展示它，点别的方案也不会让它消失。
+  /// 用户在外观页同时启用的自定义方案 id（有序，最多 maxEnabledCount 个）。
+  /// 与全局 colorSchemeID 解耦：启用只是决定哪些方案会出现在外观页网格/深色下拉里，
+  /// 真正「当前套用」仍由全局 colorSchemeID 决定。
+  var enabledIDs: [String]
+  /// 兼容旧版（v2.0 之前）：旧「确认使用单一方案」模型升级时迁移为启用列表第一个元素。
   var confirmedID: String?
+
+  /// 迁移：旧 confirmedID 自动并入 enabledIDs（去重、最多保留 maxEnabledCount 个）
+  mutating func migrateIfNeeded() {
+    guard let old = confirmedID, !old.isEmpty else { return }
+    if !enabledIDs.contains(old) {
+      enabledIDs.insert(old, at: 0)
+      if enabledIDs.count > UserColorSchemes.maxEnabledCount {
+        enabledIDs = Array(enabledIDs.prefix(UserColorSchemes.maxEnabledCount))
+      }
+    }
+    confirmedID = nil
+  }
 }
 
 enum UserColorSchemes {
+
+  /// 可在外观页同时启用的最大自定义配色方案数量
+  static let maxEnabledCount = 3
 
   // MARK: - 内存缓存
 
@@ -66,22 +84,48 @@ enum UserColorSchemes {
     set { persist(managedIDs: Array(newValue)) }
   }
 
-  /// 用户「确认使用」的那一套自定义方案 id（与全局 colorSchemeID 完全独立）
-  static var confirmedID: String? {
-    get { loadRegistry()?.confirmedID }
+  // MARK: - 启用列表（最多 maxEnabledCount 个）
+
+  /// 当前启用的方案 id 列表（有序）
+  static var enabledIDs: [String] {
+    get { loadRegistry()?.enabledIDs ?? [] }
     set {
-      let current = loadRegistry() ?? RegistryFile(schemes: [], managedIDs: [], confirmedID: nil)
-      persist(RegistryFile(schemes: current.schemes, managedIDs: current.managedIDs, confirmedID: newValue))
+      let current = loadRegistry() ?? RegistryFile(schemes: [], managedIDs: [], enabledIDs: [])
+      let clamped = Array(newValue.prefix(maxEnabledCount))
+      persist(RegistryFile(schemes: current.schemes, managedIDs: current.managedIDs, enabledIDs: clamped))
     }
   }
 
-  /// 标记某方案为「确认使用的自定义方案」
-  static func confirm(_ id: String) { confirmedID = id }
+  /// 当前启用的方案（按启用顺序返回，最多 maxEnabledCount 个）
+  static func enabledSchemes() -> [UserColorScheme] {
+    let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+    return enabledIDs.compactMap { byID[$0] }
+  }
 
-  /// 当前确认使用的自定义方案（若有）
-  static func confirmedScheme() -> UserColorScheme? {
-    guard let id = confirmedID else { return nil }
-    return all.first { $0.id == id }
+  /// 是否已达启用上限
+  static var isMaxEnabledReached: Bool {
+    enabledIDs.count >= maxEnabledCount
+  }
+
+  /// 启用某方案；已满则忽略（调用方需自行提示上限）。返回是否成功加入。
+  @discardableResult
+  static func enable(_ id: String) -> Bool {
+    guard !isMaxEnabledReached else { return false }
+    var list = enabledIDs
+    guard !list.contains(id) else { return true }
+    list.append(id)
+    enabledIDs = list
+    return true
+  }
+
+  /// 禁用某方案
+  static func disable(_ id: String) {
+    enabledIDs = enabledIDs.filter { $0 != id }
+  }
+
+  /// 某方案是否已启用
+  static func isEnabled(_ id: String) -> Bool {
+    enabledIDs.contains(id)
   }
 
   private static func registryURL() -> URL? {
@@ -95,9 +139,17 @@ enum UserColorSchemes {
     if let cached = registryCache { return cached }
     guard let url = registryURL(),
           let data = try? Data(contentsOf: url),
-          let reg = try? JSONDecoder().decode(RegistryFile.self, from: data) else {
+          var reg = try? JSONDecoder().decode(RegistryFile.self, from: data) else {
       registryCache = nil
       return nil
+    }
+    // 旧版 confirmedID 模型一次性迁移为启用列表（迁移后即清空旧字段）
+    if reg.confirmedID != nil {
+      reg.migrateIfNeeded()
+      // 同步落盘，避免每次启动都走迁移分支
+      if let encoded = try? JSONEncoder().encode(reg) {
+        try? encoded.write(to: url, options: .atomic)
+      }
     }
     registryCache = reg
     return reg
@@ -126,11 +178,10 @@ enum UserColorSchemes {
   static func remove(id: String) {
     let list = load().filter { $0.id != id }
     let current = loadRegistry()
-    var confirmed = current?.confirmedID
-    if confirmed == id { confirmed = nil }
+    let enabled = current?.enabledIDs.filter { $0 != id } ?? []
     persist(RegistryFile(schemes: list,
                          managedIDs: current?.managedIDs ?? [],
-                         confirmedID: confirmed))
+                         enabledIDs: enabled))
   }
 
   private static func persist(_ reg: RegistryFile) {
@@ -145,14 +196,14 @@ enum UserColorSchemes {
     persist(RegistryFile(
       schemes: schemes,
       managedIDs: managedIDs ?? current?.managedIDs ?? [],
-      confirmedID: current?.confirmedID
+      enabledIDs: current?.enabledIDs ?? []
     ))
   }
 
   private static func persist(managedIDs: [String]) {
     let current = loadRegistry()
     persist(RegistryFile(schemes: current?.schemes ?? [], managedIDs: managedIDs,
-                         confirmedID: current?.confirmedID))
+                         enabledIDs: current?.enabledIDs ?? []))
   }
 
   // MARK: - 转换为界面/注入所需结构
