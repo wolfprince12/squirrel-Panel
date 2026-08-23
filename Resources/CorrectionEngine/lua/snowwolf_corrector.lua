@@ -44,7 +44,10 @@ local POSITION = "afterFirst"
 
 local MIN_LEN = 4    -- 输入长度门槛：太短信息量不足，误纠风险高
 local MAX_LEN = 16   -- 过长不枚举（性能保护，四字词约 12~16 字母）
-local MAX_OUT = 3    -- 最多注入几条纠错候选
+-- 最多注入几条纠错候选。默认 1：只给「最接近」的那一条（按 词频×系数 排序第一），
+-- 避免多条纠错候选把用户原本想打的词挤到后面、增加翻页/选词难度。
+-- 预留 correction_count.txt（由面板「纠错候选数量」控制写入，1~3），缺省=1。
+local MAX_OUT = 1
 
 local LETTERS = "abcdefghijklmnopqrstuvwxyz"
 
@@ -117,8 +120,24 @@ local function loadPosition()
   end
 end
 
+-- 纠错候选数量：读 correction_count.txt（由面板「纠错候选数量」控制写入）。
+-- 仅 1~3 有效，缺省/非法一律回退到 1（只给最接近的那一条）。
+local function loadCount()
+  local home = os.getenv("HOME") or ""
+  local f = io.open(home .. "/Library/Rime/correction_count.txt", "r")
+  if not f then return end
+  local line = f:read("*l")
+  f:close()
+  if not line then return end
+  local v = tonumber(line:match("^%s*(%d+)"))
+  if v and v >= 1 and v <= 3 then
+    MAX_OUT = v
+  end
+end
+
 function M.init(env)
   pcall(loadPosition)
+  pcall(loadCount)
   pcall(loadDict)
 end
 
