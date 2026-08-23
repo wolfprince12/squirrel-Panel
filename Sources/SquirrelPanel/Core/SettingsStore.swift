@@ -38,6 +38,9 @@ final class SettingsStore {
 
   private(set) var environment: RimeEnvironment
   private(set) var colorSchemes: [RimeColorSchemeInfo] = []
+  /// 系统内置配色（已剔除开发者专属 + 用户自定义），供外观页网格与深色下拉直接消费。
+  /// 在 reload() 中与 colorSchemes 同步算一次，避免每次进外观页都对全量数组重算 filter。
+  private(set) var systemColorSchemes: [RimeColorSchemeInfo] = []
   private(set) var availableSchemas: [RimeSchema] = []
 
   private var squirrelPatch: CustomYAMLFile
@@ -261,6 +264,8 @@ final class SettingsStore {
     defaultPatch.load()
     // 配色目录（单文件解析，成本低）保持主线程同步，外观页网格可即时渲染
     colorSchemes = ColorSchemeCatalog.load(environment: environment, userPatch: squirrelPatch)
+    // 派生：剔除开发者专属 + 用户自定义，缓存供外观页网格/深色下拉直接消费
+    systemColorSchemes = colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }
     readIntoUI()
     baselineSquirrel = compileSquirrelPatch()
     baselineDefault = compileDefaultPatch()

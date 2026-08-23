@@ -22,6 +22,21 @@ struct RimeColorSchemeInfo: Identifiable, Equatable {
   let rawColors: [String: RimeColor]
   /// 是否来自用户自定义
   let isCustom: Bool
+  /// 预解析的全部 SwiftUI Color（在 load 阶段算一次，色卡视图直接读，避免每次进面板主线程重算）
+  let resolved: ResolvedColors
+
+  // MARK: - 显式 memberwise init（覆盖自动 init，以便构建 resolved 缓存）
+
+  init(id: String, name: String, author: String?, colorSpace: RimeColorSpace,
+       rawColors: [String: RimeColor], isCustom: Bool) {
+    self.id = id
+    self.name = name
+    self.author = author
+    self.colorSpace = colorSpace
+    self.rawColors = rawColors
+    self.isCustom = isCustom
+    self.resolved = ResolvedColors.resolve(rawColors: rawColors, colorSpace: colorSpace)
+  }
 
   // MARK: - 带回退的取色（回退链与 SquirrelTheme.swift 一致）
 
@@ -46,6 +61,54 @@ struct RimeColorSchemeInfo: Identifiable, Equatable {
   var highlightedComment: RimeColor { raw("hilited_comment_text_color") ?? highlightedCandidateText }
 
   func color(_ value: RimeColor) -> Color { value.swiftUIColor(in: colorSpace) }
+
+  /// 显式 Equatable：以 id 为身份（resolved 是派生的渲染缓存，不参与相等判定）
+  static func == (lhs: RimeColorSchemeInfo, rhs: RimeColorSchemeInfo) -> Bool {
+    lhs.id == rhs.id
+  }
+
+  /// 预解析的 SwiftUI Color 缓存（load 阶段算一次）
+  struct ResolvedColors {
+    let background: Color
+    let text: Color
+    let highlightedText: Color
+    let candidateText: Color
+    let highlightedCandidateText: Color
+    let highlightedCandidateBackground: Color
+    let label: Color
+    let highlightedLabel: Color
+    let comment: Color
+    let highlightedComment: Color
+
+    /// 由原始颜色字段 + 颜色空间直接解析（含与 SquirrelTheme 一致的回退链），不依赖实例
+    static func resolve(rawColors: [String: RimeColor], colorSpace: RimeColorSpace) -> ResolvedColors {
+      let raw: (String) -> RimeColor? = { rawColors[$0] }
+      let background = raw("back_color") ?? RimeColor(red: 1, green: 1, blue: 1, alpha: 1)
+      let highlightedPreeditBackground = raw("hilited_back_color")
+      let highlightedCandidateBackground = raw("hilited_candidate_back_color") ?? highlightedPreeditBackground
+      let text = raw("text_color") ?? RimeColor(red: 0, green: 0, blue: 0, alpha: 1)
+      let highlightedText = raw("hilited_text_color") ?? text
+      let candidateText = raw("candidate_text_color") ?? text
+      let highlightedCandidateText = raw("hilited_candidate_text_color") ?? highlightedText
+      let label = raw("label_color") ?? candidateText
+      let highlightedLabel = raw("hilited_candidate_label_color") ?? highlightedCandidateText
+      let comment = raw("comment_text_color") ?? candidateText
+      let highlightedComment = raw("hilited_comment_text_color") ?? highlightedCandidateText
+      let toColor: (RimeColor) -> Color = { $0.swiftUIColor(in: colorSpace) }
+      return ResolvedColors(
+        background: toColor(background),
+        text: toColor(text),
+        highlightedText: toColor(highlightedText),
+        candidateText: toColor(candidateText),
+        highlightedCandidateText: toColor(highlightedCandidateText),
+        highlightedCandidateBackground: toColor(highlightedCandidateBackground ?? background),
+        label: toColor(label),
+        highlightedLabel: toColor(highlightedLabel),
+        comment: toColor(comment),
+        highlightedComment: toColor(highlightedComment)
+      )
+    }
+  }
 
   /// 系统默认配色（native）不定义任何颜色，交给系统绘制
   static let native = RimeColorSchemeInfo(

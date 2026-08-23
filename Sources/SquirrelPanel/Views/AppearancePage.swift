@@ -160,9 +160,9 @@ struct AppearancePage: View {
     }
   }
 
-  /// 深色模式配色下拉列表中的「系统配色」分组：仅含内置方案。
+  /// 深色模式配色下拉列表中的「系统配色」分组：复用 store.systemColorSchemes（reload 时已算好）。
   private var systemDarkSchemes: [RimeColorSchemeInfo] {
-    store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }
+    store.systemColorSchemes
   }
 
   private var editorButton: some View {
@@ -198,8 +198,8 @@ struct ColorSchemeGrid: View {
   var body: some View {
     LazyVGrid(columns: columns, spacing: 10) {
       // 系统配色网格：只含内置方案，绝不混入用户自定义方案。
-      // 自定义方案仅在「深色模式配色」下拉列表中单独显示（见 darkModeSchemes）。
-      ForEach(store.colorSchemes.filter { !DeveloperColorSchemes.ids.contains($0.id) && !$0.isCustom }) { scheme in
+      // 复用 store.systemColorSchemes（reload 时算好的派生数组），避免每次进面板重算 filter。
+      ForEach(store.systemColorSchemes) { scheme in
         SchemeSwatch(scheme: scheme, isSelected: scheme.id == store.colorSchemeID)
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
@@ -240,24 +240,24 @@ struct SchemeSwatch: View {
       VStack(alignment: .leading, spacing: 3) {
         Text("shu xu guan")
           .font(.system(size: 9))
-          .foregroundStyle(scheme.color(scheme.text))
+          .foregroundStyle(scheme.resolved.text)
         Text("1 鼠须管")
           .font(.system(size: 11))
-          .foregroundStyle(scheme.color(scheme.highlightedCandidateText))
+          .foregroundStyle(scheme.resolved.highlightedCandidateText)
           .padding(.horizontal, 5)
           .padding(.vertical, 1)
           .background(
             RoundedRectangle(cornerRadius: 3)
-              .fill(scheme.highlightedCandidateBackground.map { scheme.color($0) } ?? .clear)
+              .fill(scheme.resolved.highlightedCandidateBackground)
           )
         Text("2 输入法")
           .font(.system(size: 11))
-          .foregroundStyle(scheme.color(scheme.candidateText))
+          .foregroundStyle(scheme.resolved.candidateText)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(8)
       .frame(height: 62)
-      .background(scheme.color(scheme.background))
+      .background(scheme.resolved.background)
 
       HStack(spacing: 4) {
         Text(scheme.name)
