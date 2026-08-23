@@ -90,6 +90,9 @@ struct RootView: View {
     } detail: {
       detailContent
         .ignoresSafeArea(.container, edges: .top)
+        // macOS 27+ 在 detail 列顶部默认渲染 toolbar material（带浅灰半透明背景），
+        // 用 .toolbarBackground(.hidden, for: .windowToolbar) 抑制；macOS 14 上为 no-op。
+        .toolbarBackground(.hidden, for: .windowToolbar)
     }
     .frame(minWidth: 880, minHeight: 620)
     .onAppear {
@@ -115,8 +118,6 @@ struct RootView: View {
         .collapsible(false)
       }
       .listStyle(.sidebar)
-      .toolbar(removing: .sidebarToggle)
-      .toolbar { Color.clear }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
 
       sidebarFooter
