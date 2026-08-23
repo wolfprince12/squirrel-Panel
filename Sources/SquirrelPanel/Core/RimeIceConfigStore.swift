@@ -187,15 +187,15 @@ final class RimeIceConfigStore {
   /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
   var fuzzySelection: Set<String> = []
 
-  // MARK: - UI 状态：雪狼智能纠错 v2
+  // MARK: - UI 状态：紫毫纠错模型
 
   /// 是否启用拼音实时纠错（按错键自动纠正）。
-  /// 由「雪狼智能纠错」页总开关驱动；开启时挂上 algebra derive 规则 + lua_filter@*snowwolf_corrector。
+  /// 由「紫毫纠错模型」页总开关驱动；开启时挂上 algebra derive 规则 + lua_filter@*amethyst_corrector。
   var correctionEnabled: Bool = false
   /// 纠错候选注入位置：首位 / 次位。
   var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
   /// 最多注入几条纠错候选：1 / 2 / 3（默认 1，只给最接近的）。
-  /// 由「雪狼智能纠错」页分段 Picker 驱动；开启时写 ~/Library/Rime/correction_count.txt 供 lua 读取。
+  /// 由「紫毫纠错模型」页分段 Picker 驱动；开启时写 ~/Library/Rime/correction_count.txt 供 lua 读取。
   var correctionCandidateCount: Int = 1
 
   /// 纠错候选注入位置的脏值基线。该值**不进** rime_ice.custom.yaml
@@ -309,7 +309,7 @@ final class RimeIceConfigStore {
     "simplifier@emoji",
     "lua_filter@*search@radical_pinyin",
     "reverse_lookup_filter@radical_reverse_lookup",
-    "lua_filter@*snowwolf_corrector"
+    "lua_filter@*amethyst_corrector"
   ]
 
   /// 托管的 dependencies 条目
@@ -555,10 +555,10 @@ final class RimeIceConfigStore {
 
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
-    // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*snowwolf_corrector。
+    // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*amethyst_corrector。
     // 机制 B（lua_filter）是纠错的主载体，机制 A（derive）仅为其辅助；以过滤器为准最可靠，
     // 否则面板开关会与真实运行态脱钩（之前 PoC 手动硬挂载 lua_filter 时面板误显「关闭」）。
-    correctionEnabled = currentFilters.contains("lua_filter@*snowwolf_corrector")
+    correctionEnabled = currentFilters.contains("lua_filter@*amethyst_corrector")
 
     // 纠错候选注入位置：以实际部署到 ~/Library/Rime 的文件为准，保证 UI 与运行时一致。
     let rimeDir = RimeEnvironment.userDirectory
@@ -691,7 +691,7 @@ final class RimeIceConfigStore {
       return enableEmojiDict
     case "lua_filter@*search@radical_pinyin", "reverse_lookup_filter@radical_reverse_lookup":
       return enableRadical
-    case "lua_filter@*snowwolf_corrector":
+    case "lua_filter@*amethyst_corrector":
       return correctionEnabled
     default:
       guard item.hasPrefix("lua_filter@") else { return true }
@@ -722,7 +722,7 @@ final class RimeIceConfigStore {
                     current: currentList("engine/filters", fallback: template.filters),
                     managed: Self.managedFilters,
                     isEnabled: { self.isFilterEnabled($0) })
-    // 雪狼智能纠错过滤器 `lua_filter@*snowwolf_corrector` 是面板自有条目，不在出厂
+    // 紫毫纠错模型过滤器 `lua_filter@*amethyst_corrector` 是面板自有条目，不在出厂
     // rime_ice.schema.yaml 的 engine/filters 里；mergedList 只回插「current 或 template
     // 中存在」的托管项，因此它永远插不进来。这里在合并结果上显式兜底：开启纠错时确保
     // 它存在，并插入到 `uniquifier` 之前（让重排后的候选也被去重清理）；关闭时由
@@ -732,11 +732,11 @@ final class RimeIceConfigStore {
     // 该 filter 是**轻量位置重排器**：纠错候选由机制 A（speller/algebra derive）与
     // 机制 B（lua 字符串级重查询）生成（内核级，零延迟），lua 只按 correction_position.txt
     // 重排这些候选，不查任何大词典、无 GC 压力。
-    if correctionEnabled, !result.contains("lua_filter@*snowwolf_corrector") {
+    if correctionEnabled, !result.contains("lua_filter@*amethyst_corrector") {
       if let uniqIdx = result.firstIndex(of: "uniquifier") {
-        result.insert("lua_filter@*snowwolf_corrector", at: uniqIdx)
+        result.insert("lua_filter@*amethyst_corrector", at: uniqIdx)
       } else {
-        result.append("lua_filter@*snowwolf_corrector")
+        result.append("lua_filter@*amethyst_corrector")
       }
     }
     return result
@@ -754,7 +754,7 @@ final class RimeIceConfigStore {
   ///
   /// 拼音纠错走 `speller/algebra` 单向 derive，与模糊音同源机制——Rime 内核级、
   /// 拼音编译期展开、零延迟，**不查大词典、无 Lua GC 压力**（这是纠错不卡的关键）。
-  /// 纠错候选的「位置三档」由轻量 lua_filter@*snowwolf_corrector 在候选流上重排实现，
+  /// 纠错候选的「位置三档」由轻量 lua_filter@*amethyst_corrector 在候选流上重排实现，
   /// 与这里的派生解耦：derive 负责生成纠错候选，lua 只负责排序、不查词典。
   /// 仅含「错音本身也是合法拼音音节序列」的 typo；跨音节 / 非法片段由机制 B（lua）处理。
   private func mergedAlgebra() -> [String] {
@@ -917,8 +917,8 @@ final class RimeIceConfigStore {
     let rimeDir = RimeEnvironment.userDirectory
     let luaDir = rimeDir.appending(path: "lua")
     try? FileManager.default.createDirectory(at: luaDir, withIntermediateDirectories: true)
-    let src = resRoot.appending(path: "lua/snowwolf_corrector.lua")
-    let dst = luaDir.appending(path: "snowwolf_corrector.lua")
+    let src = resRoot.appending(path: "lua/amethyst_corrector.lua")
+    let dst = luaDir.appending(path: "amethyst_corrector.lua")
     if FileManager.default.fileExists(atPath: src.path) {
       try? FileManager.default.copyItem(at: src, to: dst)
     }
@@ -939,7 +939,7 @@ final class RimeIceConfigStore {
   }
 
   /// 关闭纠错时清理部署资源。**只删开关 txt 与词表，保留 lua 文件**：
-  /// `lua_filter@*snowwolf_corrector` 已被 mergedList 从 filters 摘除，编译不再引用该 lua，
+  /// `lua_filter@*amethyst_corrector` 已被 mergedList 从 filters 摘除，编译不再引用该 lua，
   /// 留着它零副作用，且避免「删 lua 瞬间若过滤器仍在」的竞态导致编译失败、候选框消失。
   private func removeCorrectionAssets() {
     let rimeDir = RimeEnvironment.userDirectory

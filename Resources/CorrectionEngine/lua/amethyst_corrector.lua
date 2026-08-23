@@ -1,5 +1,5 @@
--- 雪狼智能纠错 v3 — 运行时四类错误纠正
--- lua_filter@*snowwolf_corrector：读 env.engine.context.input 的整串拼音，
+-- 紫毫纠错模型 v3 — 运行时四类错误纠正
+-- lua_filter@*amethyst_corrector：读 env.engine.context.input 的整串拼音，
 -- 对真正打错的串注入「纠错」候选。与机制 A（speller/algebra derive）互补。
 --
 -- v2 → v3 架构变更

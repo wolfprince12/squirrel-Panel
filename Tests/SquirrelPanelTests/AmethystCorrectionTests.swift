@@ -1,8 +1,8 @@
 //
-//  SnowWolfCorrectionTests.swift
+//  AmethystCorrectionTests.swift
 //  Squirrel Panel
 //
-//  雪狼智能纠错 v2：规则表自洽 + Swift↔Lua 契约（候选位置）。
+//  紫毫纠错模型：规则表自洽 + Swift↔Lua 契约（候选位置）。
 //  纯静态检查，不实例化 RimeIceConfigStore，沙盒无 Rime 环境也能跑（不假绿）。
 //
 
@@ -10,7 +10,7 @@ import XCTest
 @testable import SquirrelPanel
 
 @MainActor
-final class SnowWolfCorrectionTests: XCTestCase {
+final class AmethystCorrectionTests: XCTestCase {
 
   // MARK: - 规则表自洽
 

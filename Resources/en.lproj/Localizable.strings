@@ -702,11 +702,11 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "behavior.when.composing" = "Composing (composing)";
 "behavior.when.always" = "Always (always)";
 "behavior.when.predict" = "Predict (predict)";
-"nav.snowWolfCorrection" = "SnowWolf Correction";
+"nav.amethystCorrection" = "Amethyst Correction Model";
 "sidebar.brand.name" = "Squirrel Panel";
 
-// MARK: - SnowWolf Correction Model
-"correction.intro" = "SnowWolf Correction analyzes your pinyin input and offers correction candidates for keyboard slips and phonetic mistakes—fully offline.";
+// MARK: - Amethyst Correction Model
+"correction.intro" = "Amethyst Correction Model analyzes your pinyin input and offers correction candidates for keyboard slips and phonetic mistakes—fully offline.";
 "correction.control.title" = "Correction";
 "correction.control.enable" = "Enable Smart Correction";
 "correction.control.enable.desc" = "When on, the candidate list shows likely corrections for the current input.";
