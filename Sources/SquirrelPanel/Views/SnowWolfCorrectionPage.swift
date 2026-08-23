@@ -82,7 +82,7 @@ struct SnowWolfCorrectionPage: View {
     }
   }
 
-  // MARK: - 2) 纠错总开关 + 强度
+  // MARK: - 2) 纠错总开关 + 候选位置
 
   @ViewBuilder
   private var controlSection: some View {

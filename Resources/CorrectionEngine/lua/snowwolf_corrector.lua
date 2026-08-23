@@ -24,7 +24,7 @@ local CORRECTION_MAP = {
 -- 纠错映射表数据文件路径（由面板 deployCorrectionAssets 复制到 ~/Library/Rime/）。
 local MAP_FILE = "/Library/Rime/correction_map.txt"
 
--- 候选注入位置：top / afterFirst / end（从 correction_position.txt 读取，默认首条之后）
+-- 候选注入位置：top（置顶）/ afterFirst（首条之后=次位，默认），从 correction_position.txt 读取
 local POSITION = "afterFirst"
 
 -- 从 correction_map.txt 加载映射（每行：错打串<TAB>词1,词2,...）。
@@ -54,7 +54,7 @@ function M.init(env)
     f:close()
     if line then
       local v = line:match("^%s*(%S+)")
-      if v == "top" or v == "afterFirst" or v == "end" then
+      if v == "top" or v == "afterFirst" then
         POSITION = v
       end
     end
@@ -109,10 +109,7 @@ function M.func(input, env)
   if POSITION == "top" then
     for i = 1, #corrections do emit(i) end
     for _, c in ipairs(upstream) do yield(c) end
-  elseif POSITION == "end" then
-    for _, c in ipairs(upstream) do yield(c) end
-    for i = 1, #corrections do emit(i) end
-  else -- afterFirst（默认）
+  else -- afterFirst（首条之后=次位，默认）
     if #upstream > 0 then yield(upstream[1]) end
     for i = 1, #corrections do emit(i) end
     for k = 2, #upstream do yield(upstream[k]) end

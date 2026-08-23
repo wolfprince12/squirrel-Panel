@@ -28,12 +28,11 @@ final class SnowWolfCorrectionTests: XCTestCase {
 
   // MARK: - Swift↔Lua 枚举契约
 
-  /// 候选位置枚举的 `name` 必须严格等于 lua 读取的 txt 值（top/afterFirst/end）。
+  /// 候选位置枚举的 `name` 必须严格等于 lua 读取的 txt 值（top/afterFirst）。
   /// 一旦对不上，Swift 写入 correction_position.txt 后 lua 读到的字符串不匹配 →
   /// 纠错候选位置静默失效（最隐蔽的回归）。
   func testCorrectionEnumNamesMatchLuaContract() {
     XCTAssertEqual(CorrectionInjectionPosition.top.name, "top")
     XCTAssertEqual(CorrectionInjectionPosition.afterFirst.name, "afterFirst")
-    XCTAssertEqual(CorrectionInjectionPosition.end.name, "end")
   }
 }

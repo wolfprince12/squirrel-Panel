@@ -86,22 +86,19 @@ struct FuzzyRule: Identifiable, Hashable {
 /// 纠错候选的注入位置（相对自然候选）。
 enum CorrectionInjectionPosition: Int, CaseIterable, Identifiable {
   case top = 0        // 始终置顶（首位）
-  case afterFirst = 1 // 第一条自然候选之后（默认）
-  case end = 9        // 末尾
+  case afterFirst = 1 // 首条之后（次位，默认）
   var id: Int { rawValue }
-  /// 稳定、非本地化的名称（预留给新引擎写入 ~/Library/Rime/correction_position.txt）。
+  /// 稳定、非本地化的名称（写入 ~/Library/Rime/correction_position.txt 供 lua 读取）。
   var name: String {
     switch self {
     case .top: return "top"
     case .afterFirst: return "afterFirst"
-    case .end: return "end"
     }
   }
   var label: String {
     switch self {
     case .top: return String(localized: "correction.position.top")
     case .afterFirst: return String(localized: "correction.position.afterFirst")
-    case .end: return String(localized: "correction.position.end")
     }
   }
 }
