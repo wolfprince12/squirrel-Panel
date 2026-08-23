@@ -1,289 +1,162 @@
 --[[
-    correction.lua — 同步拼音纠错候选注入 + 用户自学习（规则 + 查表层）
+    correction.lua — 轻量纠错候选位置重排器
 
-    职责：
-      1) 在翻译阶段读取「错音 -> 正词」词典（correction_dict.txt），若当前组词
-         拼音恰好是某条错音，则按用户设定的位置注入带「纠错」注释的候选。
-         多条候选按词频权重降序排（一对多 + 词频权重排序，Phase2）。
-      2) 用户自学习（Phase3）：当用户上屏了某条「纠错」候选时，记录
-         「输入拼音 -> 上屏词」到 correction_user.txt（权重累加）。下次同错音
-         优先出该词。纯本地、零延迟、越用越准。
+    纠错候选由 speller/algebra 的 derive 规则生成（Rime 内核级、拼音编译期展开、
+    零延迟），    本 filter **不查任何大词典、不做任何重量级计算**，只负责：
+      1) 识别 derive 派生的纠错候选（用候选 comment 携带的拼写拼音与「错音→正音」映射对比）；
+      2) 按 correction_position.txt 重排：top（置顶）/ afterFirst（首条后）/ end（末尾）；
+      3) 用户自学习记录（commit_notifier，轻量，不影响候选生成）。
 
-    注入位置（读 ~/Library/Rime/correction_position.txt）：
-      · top         置顶（首位）
-      · afterFirst 第一条自然候选之后（默认）
-      · end         末尾
+    与旧版「40 万行词典 lua 查表」的本质区别：旧版在 lua 里同步查 40 万行大表，
+    每次按键触发 LuaJIT GC 扫描 → 打字卡顿。本版纠错已交回内核 derive，lua 只剩
+    微秒级的 preedit 字符串对比，无大表、无 GC 压力。
 
-    自学习开关（读 ~/Library/Rime/correction_selflearn.txt）：
-      · on  启用（默认）；off 关闭记录（已学字典仍参与注入）。
-
-    设计要点：
-      · 纯查表 + commit 监听，不调用任何外部进程 / 模型 —— 同步、零延迟。
-      · 词典由离线生成器（tools/gen_correction_dict.py）从 rime-ice 词库
-        施加「键盘邻键错打」+「系统性音近」噪声生成（一对多，带权重）。
-      · 自学习记录走 commit_notifier，完全不碰按键流，零风险。
-      · 词典只在首次使用时惰性加载并缓存，不阻塞按键。
+    注入位置（读 ~/Library/Rime/correction_position.txt）：top / afterFirst / end。
+    强度（读 ~/Library/Rime/correction_strength.txt）：basic / standard。
 --]]
+
+local RIME_DIR = (os.getenv("HOME") or "") .. "/Library/Rime"
+local STRENGTH_PATH = RIME_DIR .. "/correction_strength.txt"
+local POSITION_PATH = RIME_DIR .. "/correction_position.txt"
+local SELFLEARN_PATH = RIME_DIR .. "/correction_selflearn.txt"
+
+-- 错音 -> 正音（与 Swift correctionRules 严格一一对应）。
+-- basic：键盘物理相邻错打（17 条）；standard：追加系统性音近（12 条）。
+local BASIC_RULES = {
+  eo = "wo",  mi = "ni",  gao = "hao", hao = "gao",
+  ra = "ta",  ta = "ra",  sa = "da",   da = "sa",
+  xi = "ci",  ci = "xi",  fa = "da",   da = "fa",
+  li = "ni",  ni = "li",  ou = "uo",   ie = "ei",
+  ei = "ie",
+}
+local STANDARD_RULES = {
+  ji = "qi",   qi = "ji",   ju = "qu",     qu = "ju",
+  wan = "wang", wang = "wan", min = "ming", ming = "min",
+  zen = "zheng", zheng = "zen", fen = "feng", feng = "fen",
+}
+
+-- 配置缓存（M.init 读一次，热路径零 I/O）
+local cfg_position = "afterFirst"
+local cfg_selflearn = true
+-- 有效规则表（按强度构建）
+local rules = {}
+
+local function read_line(path, default)
+  local f = io.open(path, "r")
+  if not f then return default end
+  local s = f:read("*l") or ""
+  f:close()
+  return s:gsub("%s+$", ""):lower()
+end
+
+-- 去掉非小写字母（空格、声调、变音符等），得到纯拼音串
+local function clean(s)
+  return (s or ""):lower():gsub("[^a-z]", "")
+end
+
+-- 从候选 comment 提取拼写拼音。rime-ice 用 `comment_format` 把拼写包成 ［wo shi］
+-- （全角括号，U+FF3B/FF3D），兼容 ASCII [ ]。spelling_hints:8 + always_show_comments:true
+-- 保证每个拼音候选的 comment 都携带其真实拼写（派生后的正音，如把 eo 敲成 wo 后显示 ［wo shi］）。
+-- 这正是官方 corrector.lua 判断纠错候选的同一信号，比 preedit 可靠（derive 候选的 preedit
+-- 语义在不同版本不一致）。
+local function spelling_of(cand)
+  local c = cand.comment or ""
+  local inner = c:match("^［(.-)］$") or c:match("^%[(.-)%]$")
+  if not inner then return "" end
+  return clean(inner)
+end
+
+-- 判断候选是否是「纠错候选」：其拼写 == 把输入串中某对错音替换成正音后的结果。
+-- 配套 speller/algebra 的 derive：敲 eo 会被内核派生为 wo，候选拼写显示 ［wo shi］，
+-- 而用户实际输入 raw="eoshi"；把 raw 中的 eo 替换为 wo 得 "woshi"，与拼写相等 → 命中纠错。
+local function is_correction(cand, raw)
+  local p = spelling_of(cand)
+  if p == "" or p == raw then return false end
+  for typo, correct in pairs(rules) do
+    if raw:find(typo, 1, true) then
+      local corrected = raw:gsub(typo, correct)
+      if corrected == p then return true end
+    end
+  end
+  return false
+end
 
 local M = {}
 
-local RIME_DIR = (os.getenv("HOME") or "") .. "/Library/Rime"
-local DICT_PATH = RIME_DIR .. "/correction_dict.txt"             -- 键盘相邻错打层（基础档、标准档共用）
-local PHONETIC_PATH = RIME_DIR .. "/correction_dict_phonetic.txt" -- 音近混淆层（仅标准档加载）
-local STRENGTH_PATH = RIME_DIR .. "/correction_strength.txt"     -- 内容：basic / standard
-local POSITION_PATH = RIME_DIR .. "/correction_position.txt"     -- 内容：top / afterFirst / end
-local SELFLEARN_PATH = RIME_DIR .. "/correction_selflearn.txt"   -- 内容：on / off
-local USER_DICT_PATH = RIME_DIR .. "/correction_user.txt"        -- 自学习字典：错音\t正词\t权重（运行时生成）
-
-local dict = nil
-local dict_loaded = false
-local user_dict = nil        -- typo -> { hanzi -> weight }
-local user_dirty = 0         -- 待落盘计数
-local last_flush = 0         -- 上次落盘时间（os.time）
-
--- 读取纠错强度：basic（仅键盘相邻）/ standard（相邻 + 音近）。默认 standard。
-local function read_strength()
-  local f = io.open(STRENGTH_PATH, "r")
-  if not f then return "standard" end
-  local s = f:read("*l"):gsub("%s+$", ""):lower()
-  f:close()
-  if s == "basic" then return "basic" end
-  return "standard"
-end
-
--- 读取注入位置：top / afterFirst / end。默认 afterFirst（首条之后）。
-local function read_position()
-  local f = io.open(POSITION_PATH, "r")
-  if not f then return "afterFirst" end
-  local s = f:read("*l"):gsub("%s+$", ""):lower()
-  f:close()
-  if s == "top" then return "top" end
-  if s == "end" then return "end" end
-  return "afterFirst"
-end
-
--- 自学习是否启用：默认 on。
-local function selflearn_enabled()
-  local f = io.open(SELFLEARN_PATH, "r")
-  if not f then return true end
-  local s = f:read("*l"):gsub("%s+$", ""):lower()
-  f:close()
-  return s ~= "off"
-end
-
--- 解析一对多词典行：错音\t词1\t权重1\t词2\t权重2... -> {hanzi=weight}
-local function parse_multi(rest)
-  local toks = {}
-  for token in rest:gmatch("[^\t]+") do
-    toks[#toks + 1] = token
-  end
-  local map = {}
-  local i = 1
-  while i + 1 <= #toks do
-    local hanzi = toks[i]
-    local w = tonumber(toks[i + 1]) or 0
-    map[hanzi] = w
-    i = i + 2
-  end
-  return map
-end
-
-local function load_one(path, into_map)
-  local f = io.open(path, "r")
-  if not f then return end
-  for line in f:lines() do
-    local tab = line:find("\t")
-    if tab then
-      local typo = line:sub(1, tab - 1)
-      local rest = line:sub(tab + 1):gsub("%s+$", "")
-      if #rest > 0 then
-        local map = parse_multi(rest)
-        if next(map) then into_map[typo] = map end
-      end
-    end
-  end
-  f:close()
-end
-
--- 加载生成词典（键盘层 + 标准档音近层），typo -> {hanzi=weight}
-local function load_dict()
-  if dict_loaded then return end
-  dict_loaded = true
-  dict = {}
-  load_one(DICT_PATH, dict)
-  if read_strength() == "standard" then
-    load_one(PHONETIC_PATH, dict)
-  end
-end
-
--- 加载用户自学习字典，typo -> {hanzi=weight}
-local function load_user_dict()
-  if user_dict then return end
-  user_dict = {}
-  load_one(USER_DICT_PATH, user_dict)
-end
-
--- 把用户字典落盘（整文件重写，规模小、可靠）
-local function flush_user_dict()
-  if user_dirty == 0 or not user_dict then return end
-  local f = io.open(USER_DICT_PATH, "w")
-  if not f then return end
-  -- 按错音排序，稳定可读
-  local typos = {}
-  for k, _ in pairs(user_dict) do typos[#typos + 1] = k end
-  table.sort(typos)
-  for _, typo in ipairs(typos) do
-    local map = user_dict[typo]
-    local parts = { typo }
-    -- 按权重降序写，保持与生成词典一致的顺序约定
-    local items = {}
-    for h, w in pairs(map) do items[#items + 1] = { h, w } end
-    table.sort(items, function(a, b) return a[2] > b[2] end)
-    for _, it in ipairs(items) do
-      parts[#parts + 1] = it[1]
-      parts[#parts + 1] = tostring(it[2])
-    end
-    f:write(table.concat(parts, "\t") .. "\n")
-  end
-  f:close()
-  user_dirty = 0
-  last_flush = os.time()
-end
-
--- 记录一条学习：输入拼音 -> 上屏词（权重 +1）
-local function learn(typo, hanzi)
-  if not user_dict then load_user_dict() end
-  local map = user_dict[typo]
-  if not map then
-    map = {}
-    user_dict[typo] = map
-  end
-  map[hanzi] = (map[hanzi] or 0) + 1
-  user_dirty = user_dirty + 1
-  local now = os.time()
-  -- 节流：累计 20 条或距上次落盘超 10 秒则落盘
-  if user_dirty >= 20 or (now - last_flush) >= 10 then
-    flush_user_dict()
-  end
-end
-
 function M.init(env)
-  load_dict()
-  load_user_dict()
-  -- 提交监听：用户上屏时判断是否采纳了某条纠错候选，是则记录。
-  local ok, conn = pcall(function()
-    return env.engine.context.commit_notifier:connect(function(ctx)
-      if not selflearn_enabled() then return end
-      local input = ctx.input or ""
-      local commit = ctx.commit_text or ""
-      if #input == 0 or #commit == 0 then return end
-      -- 仅当该输入是已知错音、且上屏词是其纠错候选之一时才学（避免记录正常输入）
-      local gen = dict and dict[input]
-      local usr = user_dict and user_dict[input]
-      local is_correction_candidate = false
-      if gen and gen[commit] then is_correction_candidate = true end
-      if usr and usr[commit] then is_correction_candidate = true end
-      if is_correction_candidate then
-        learn(input, commit)
-      end
-    end)
-  end)
-  if not ok then
-    -- 老版本 Rime 无 commit_notifier 时静默降级（仅不记录，纠错仍可用）
-    user_dict = user_dict or {}
-  end
-end
+  local strength = read_line(STRENGTH_PATH, "standard")
+  cfg_position = read_line(POSITION_PATH, "afterFirst")
+  cfg_selflearn = read_line(SELFLEARN_PATH, "on") ~= "off"
 
--- 收集某错音的「有序候选列表」，用户词优先（权重叠加后降序）
-local function candidates_for(cur)
-  local merged = {}  -- hanzi -> weight
-  if dict and dict[cur] then
-    for h, w in pairs(dict[cur]) do merged[h] = w end
+  rules = {}
+  for k, v in pairs(BASIC_RULES) do rules[k] = v end
+  if strength ~= "basic" then
+    for k, v in pairs(STANDARD_RULES) do rules[k] = v end
   end
-  if user_dict and user_dict[cur] then
-    for h, w in pairs(user_dict[cur]) do
-      -- 用户词加权到亿级：生成词典词频仅几十万量级，单次采纳即可让该词
-      -- 稳定排到最前（用户明确选择，应当优先）；多条用户词按采纳次数排序。
-      merged[h] = (merged[h] or 0) + w + 1000000000
-    end
+
+  -- 自学习：用户上屏纠错候选时记录（轻量；derive 候选上屏后 Rime 内核也会自动学习，
+  -- 这里仅做一份「错音→上屏词」的采纳日志，不参与候选生成、不影响性能）。
+  if cfg_selflearn then
+    pcall(function()
+      env.engine.context.commit_notifier:connect(function(ctx)
+        local raw = clean(ctx.input)
+        local commit = ctx.commit_text or ""
+        if raw == "" or commit == "" then return end
+        -- 仅当输入串命中某对错音时才记录（避免记录正常输入）
+        local is_typo = false
+        for typo, _ in pairs(rules) do
+          if raw:find(typo, 1, true) then is_typo = true break end
+        end
+        if not is_typo then return end
+        local f = io.open(RIME_DIR .. "/correction_user.txt", "a")
+        if f then
+          f:write(raw .. "\t" .. commit .. "\n")
+          f:close()
+        end
+      end)
+    end)
   end
-  local list = {}
-  for h, w in pairs(merged) do list[#list + 1] = { h, w } end
-  table.sort(list, function(a, b) return a[2] > b[2] end)
-  local out = {}
-  for _, it in ipairs(list) do out[#out + 1] = it[1] end
-  return out
 end
 
 function M.func(input, env)
   local ctx = env.engine.context
-  local cur = ctx.input or ""
-  local corrections = (#cur > 0 and dict) and candidates_for(cur) or nil
+  local raw = clean(ctx.input)
 
-  -- 收集本轮候选，便于按位置注入与去重判断
-  local cands = {}
+  local normal = {}
+  local correction = {}
   for cand in input:iter() do
-    cands[#cands + 1] = cand
+    if raw ~= "" and is_correction(cand, raw) then
+      correction[#correction + 1] = cand
+    else
+      normal[#normal + 1] = cand
+    end
   end
 
-  -- 原输入查不出任何自然候选时（纯错音），直接给出纠正词列表（置顶）
-  if #cands == 0 then
-    if corrections then
-      for _, text in ipairs(corrections) do
-        yield(Candidate("correction", 0, #cur, text, "纠错"))
-      end
-    end
+  -- 无纠错候选时原样透传
+  if #correction == 0 then
+    for _, c in ipairs(normal) do yield(c) end
     return
   end
 
-  -- 去重：纠正词已出现在自然候选中则不重复注入
-  local function is_dup(text)
-    for _, c in ipairs(cands) do
-      if c.text == text then return true end
-    end
-    return false
-  end
-  local remaining = {}
-  if corrections then
-    for _, text in ipairs(corrections) do
-      if not is_dup(text) then remaining[#remaining + 1] = text end
-    end
-  end
-
-  -- 无需注入时原样透传
-  if #remaining == 0 then
-    for _, cand in ipairs(cands) do yield(cand) end
-    return
-  end
-
-  local pos = read_position()
-
+  local pos = cfg_position
   if pos == "top" then
-    for _, text in ipairs(remaining) do
-      yield(Candidate("correction", 0, #cur, text, "纠错"))
-    end
-    for _, cand in ipairs(cands) do yield(cand) end
+    for _, c in ipairs(correction) do yield(c) end
+    for _, c in ipairs(normal) do yield(c) end
   elseif pos == "end" then
-    for _, cand in ipairs(cands) do yield(cand) end
-    for _, text in ipairs(remaining) do
-      yield(Candidate("correction", 0, #cur, text, "纠错"))
-    end
+    for _, c in ipairs(normal) do yield(c) end
+    for _, c in ipairs(correction) do yield(c) end
   else
-    -- afterFirst：第一条自然候选之后依次插入多条纠正候选（仍按权重降序）
-    for i, cand in ipairs(cands) do
-      yield(cand)
-      if i == 1 then
-        for _, text in ipairs(remaining) do
-          yield(Candidate("correction", 0, #cur, text, "纠错"))
-        end
-      end
+    -- afterFirst：第一条自然候选之后依次插入纠错候选
+    if #normal > 0 then
+      yield(normal[1])
+      for _, c in ipairs(correction) do yield(c) end
+      for i = 2, #normal do yield(normal[i]) end
+    else
+      for _, c in ipairs(correction) do yield(c) end
     end
   end
 end
 
-function M.fini(env)
-  -- 退出前确保未落盘的学习记录写盘
-  pcall(flush_user_dict)
-end
+function M.fini(env) end
 
 return M

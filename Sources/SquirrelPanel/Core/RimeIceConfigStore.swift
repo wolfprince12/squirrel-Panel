@@ -550,9 +550,10 @@ final class RimeIceConfigStore {
 
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
-    // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*correction。
-    let corrFilter = currentFilters.contains("lua_filter@*correction")
-    correctionEnabled = corrFilter
+    // 拼音纠错挂载态以磁盘实际为准：speller/algebra 是否含纠错 derive 规则。
+    // 纠错核心已改走 derive（lua_filter 仅做位置重排），两者同开同关；以 algebra 为准最可靠。
+    let corrRulesInAlgebra = currentAlgebra.filter { Self.correctionRuleSet.contains($0) }
+    correctionEnabled = !corrRulesInAlgebra.isEmpty
 
     // 纠错强度 / 注入位置：以实际部署到 ~/Library/Rime 的文件为准，保证 UI 与运行时一致。
     let rimeDir = RimeEnvironment.userDirectory
@@ -722,9 +723,12 @@ final class RimeIceConfigStore {
     // 拼音纠错过滤器 `lua_filter@*correction` 是面板自有条目，不在出厂
     // rime_ice.schema.yaml 的 engine/filters 里；mergedList 只回插「current 或 template
     // 中存在」的托管项，因此它永远插不进来。这里在合并结果上显式兜底：开启纠错时确保
-    // 它存在，并插入到 `uniquifier` 之前（让注入候选也被去重清理）；关闭时由
+    // 它存在，并插入到 `uniquifier` 之前（让重排后的候选也被去重清理）；关闭时由
     // isFilterEnabled 在 mergedList 的 current 循环中判定为禁用而剔除
     //（managed && !enabled → 跳过），无需在此删。
+    //
+    // 该 filter 是**轻量位置重排器**：纠错候选由 speller/algebra derive 生成（内核级），
+    // lua 只按 correction_position.txt 重排这些候选，不查任何大词典、无 GC 压力。
     if correctionEnabled, !result.contains("lua_filter@*correction") {
       if let uniqIdx = result.firstIndex(of: "uniquifier") {
         result.insert("lua_filter@*correction", at: uniqIdx)
@@ -742,15 +746,22 @@ final class RimeIceConfigStore {
                     isEnabled: { self.isDependencyEnabled($0) })
   }
 
-  /// 模糊音：把已选规则**前置**到用户现有 algebra 之前；
+  /// 模糊音 + 拼音纠错：把已选规则**前置**到用户现有 algebra 之前；
   /// 出厂常驻规则（erase / abbrev / v-u 转换 / 自动纠错）原样保留。
-  /// 拼音纠错不再走 algebra（改由 lua_processor + lua_filter 注入），
-  /// 此处仅清理历史纠错 algebra 规则，避免旧版残留。
+  ///
+  /// 拼音纠错走 `speller/algebra` 单向 derive，与模糊音同源机制——Rime 内核级、
+  /// 拼音编译期展开、零延迟，**不查大词典、无 Lua GC 压力**（这是纠错不卡的关键）。
+  /// 纠错候选的「位置三档」由轻量 lua_filter@*correction 在候选流上重排实现，
+  /// 与这里的派生解耦：derive 负责生成纠错候选，lua 只负责排序、不查词典。
   private func mergedAlgebra() -> [String] {
     let current = currentList("speller/algebra", fallback: template.algebra)
     let base = current.filter { !Self.fuzzyRuleSet.contains($0) && !Self.correctionRuleSet.contains($0) }
     let fuzzySel = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
-    return fuzzySel + base
+    // 纠错规则：仅开启时并入，按当前强度（basic 仅键盘层 / standard 含音近层）。
+    let corrSel = correctionEnabled
+      ? Self.correctionRules.filter { $0.level.rawValue <= correctionStrength.rawValue }.map(\.rule)
+      : []
+    return fuzzySel + corrSel + base
   }
 
   // MARK: - 写：界面 → 补丁
@@ -818,9 +829,10 @@ final class RimeIceConfigStore {
     let filters = mergedFilters()
     set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
 
-    // 拼音纠错（同步查表层，零延迟）：开启时挂载 lua_filter@*correction
-    // （mergedFilters 已并入）；不需要 processor —— 纯静态词典查表，不调用任何
-    // 外部进程。这里恒写 nil，确保任何旧版 AI processor 挂载被清理。
+    // 拼音纠错（derive 机制，内核级零延迟）：纠错规则由 mergedAlgebra 写入
+    // speller/algebra；lua_filter@*correction（mergedFilters 已并入）仅做候选位置重排，
+    // 不查大词典。不需要 processor —— 纯内核派生 + 轻量重排，不调用任何外部进程。
+    // 这里恒写 nil，确保任何旧版 AI processor 挂载被清理。
     set["engine/processors/@after 0"] = PatchValue?.none
 
     let dependencies = mergedDependencies()
@@ -832,8 +844,11 @@ final class RimeIceConfigStore {
     return set
   }
 
-  /// 部署纠错资源：lua 滤镜 + 错音词典，从 App 资源目录复制到 ~/Library/Rime/。
+  /// 部署纠错资源：轻量 lua 位置重排器 + 三个开关 txt，从 App 资源目录复制到 ~/Library/Rime/。
   /// 在写补丁前调用，确保 schema 编译时 lua 已就位；幂等。
+  ///
+  /// 纠错候选由 `speller/algebra` derive 生成（内核级、零延迟），lua 只负责按位置三档
+  /// 重排候选，**不查任何大词典**。这里同时清理旧版「40 万行词典 lua 查表」的历史残留。
   private func deployCorrectionAssets() {
     guard let resRoot = Bundle.main.resourceURL?
       .appendingPathComponent("CorrectionEngine") else { return }
@@ -848,18 +863,12 @@ final class RimeIceConfigStore {
       let dst = (luaDir as NSString).appendingPathComponent(name)
       try? FileManager.default.copyItem(atPath: src.path, toPath: dst)
     }
-    let dictSrc = resRoot.appendingPathComponent("correction_dict.txt")
-    if FileManager.default.fileExists(atPath: dictSrc.path) {
-      let dictDst = (rimeDir as NSString).appendingPathComponent("correction_dict.txt")
-      try? FileManager.default.copyItem(atPath: dictSrc.path, toPath: dictDst)
+    // 清理旧版 40 万行查表词典的历史残留（纠错已改走 derive，不再需要这些大文件）。
+    for name in ["correction_dict.txt", "correction_dict_phonetic.txt"] {
+      let p = (rimeDir as NSString).appendingPathComponent(name)
+      try? FileManager.default.removeItem(atPath: p)
     }
-    // 音近混淆层（标准档追加）：同样复制到 Rime 目录。
-    let phSrc = resRoot.appendingPathComponent("correction_dict_phonetic.txt")
-    if FileManager.default.fileExists(atPath: phSrc.path) {
-      let phDst = (rimeDir as NSString).appendingPathComponent("correction_dict_phonetic.txt")
-      try? FileManager.default.copyItem(atPath: phSrc.path, toPath: phDst)
-    }
-    // 写出纠错强度，供 lua 决定加载哪些词典。
+    // 写出纠错强度，供 lua 决定识别哪些纠错规则（与 algebra 的 derive 严格一致）。
     let strengthDst = (rimeDir as NSString).appendingPathComponent("correction_strength.txt")
     try? ("\(correctionStrength.name)\n" as NSString).write(
       toFile: strengthDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
