@@ -181,7 +181,7 @@ struct SchemaPage: View {
     ) { schema in
       Button("generic.cancel", role: .cancel) { pendingDelete = nil }
       Button("schema.delete.confirm.ok", role: .destructive) {
-        store.deleteSchema(schema)
+        store.trashSchema(schema)
         pendingDelete = nil
       }
     } message: { schema in

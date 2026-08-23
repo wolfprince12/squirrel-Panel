@@ -105,32 +105,33 @@ final class SettingsStore {
 
   // MARK: - 输入方案：物理删除
 
-  /// 物理删除一个输入方案（总是从磁盘移除文件，不做软删除/仅禁用）。
-  /// - 若已启用，则从 `schema_list` 一并移除，避免部署时引用已删方案；
-  /// - 删除 `~/Library/Rime` 与 Squirrel.app 包内（内置方案）对应的 `.schema.yaml`
-  ///   及配套的 `.custom.yaml`；
-  /// - 内置方案位于受 SIP 保护的 app 包内，删除多半会因权限失败，此时给出错误提示。
-  func deleteSchema(_ schema: RimeSchema) {
+  /// 把一个输入方案移到废纸篓（而非直接物理删除），给用户后悔的机会。
+  /// - 若已启用，则从 `schema_list` 一并移除，避免部署时引用已移走方案；
+  /// - 把 `~/Library/Rime` 与 Squirrel.app 包内（内置方案）对应的 `.schema.yaml`
+  ///   及配套的 `.custom.yaml` 移到废纸篓（`FileManager.trashItem`）；
+  /// - 用户可从废纸篓恢复；内置方案位于受 SIP 保护的 app 包内，移到废纸篓多半会因权限失败，此时给出错误提示。
+  func trashSchema(_ schema: RimeSchema) {
     // 1. 一并从启用列表移除（若已启用）
     enabledSchemaIDs.removeAll { $0 == schema.id }
 
-    // 2. 物理删除磁盘文件
+    // 2. 把磁盘文件移到废纸篓
     let fm = FileManager.default
     let candidates = ["\(schema.id).schema.yaml", "\(schema.id).custom.yaml"]
     // 用户方案在 userDirectory；内置方案在 sharedSupportURL。
-    // 用户若覆盖了内置方案（user 目录有同名文件），优先删 user 那份。
+    // 用户若覆盖了内置方案（user 目录有同名文件），优先移 user 那份。
     var dirs: [URL] = [RimeEnvironment.userDirectory]
     if let shared = environment.sharedSupportURL { dirs.append(shared) }
 
-    var deletedAny = false
+    var trashedAny = false
     var lastError: Error?
     for dir in dirs {
       for name in candidates {
         let url = dir.appending(path: name)
         guard fm.fileExists(atPath: url.path(percentEncoded: false)) else { continue }
         do {
-          try fm.removeItem(at: url)
-          deletedAny = true
+          var resultingURL: NSURL?
+          try fm.trashItem(at: url, resultingItemURL: &resultingURL)
+          trashedAny = true
         } catch {
           lastError = error
         }
@@ -141,7 +142,7 @@ final class SettingsStore {
     availableSchemas.removeAll { $0.id == schema.id }
 
     // 4. 反馈
-    if deletedAny {
+    if trashedAny {
       statusMessage = String(format: String(localized: "schema.deleted.ok"), schema.name)
     } else if let error = lastError {
       statusMessage = String(format: String(localized: "schema.deleted.fail"), schema.name, error.localizedDescription)
