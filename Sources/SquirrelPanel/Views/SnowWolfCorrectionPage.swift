@@ -116,6 +116,21 @@ struct SnowWolfCorrectionPage: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+
+        Divider()
+        LabeledContent("correction.count.title") {
+          Picker("", selection: $ice.correctionCandidateCount) {
+            ForEach([1, 2, 3], id: \.self) { n in
+              Text("\(n)").tag(n)
+            }
+          }
+          .pickerStyle(.segmented)
+          .frame(width: 300)
+        }
+        Text("correction.count.desc")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
       }
     }
   }

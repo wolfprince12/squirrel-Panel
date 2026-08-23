@@ -194,12 +194,17 @@ final class RimeIceConfigStore {
   var correctionEnabled: Bool = false
   /// 纠错候选注入位置：首位 / 次位。
   var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
+  /// 最多注入几条纠错候选：1 / 2 / 3（默认 1，只给最接近的）。
+  /// 由「雪狼智能纠错」页分段 Picker 驱动；开启时写 ~/Library/Rime/correction_count.txt 供 lua 读取。
+  var correctionCandidateCount: Int = 1
 
   /// 纠错候选注入位置的脏值基线。该值**不进** rime_ice.custom.yaml
   /// （只写 ~/Library/Rime/correction_position.txt 供 lua 读取），
   /// 因此 compileIcePatch() 感知不到它的变化，必须单独跟踪，否则改它时
   /// isDirty 恒为 false → 「应用并重新部署」按钮被禁用 → 配置写不进磁盘。
   private var baselineCorrectionInjectionPosition: CorrectionInjectionPosition = .afterFirst
+  /// 纠错候选数量的脏值基线：同注入位置，只落 txt 不进 custom.yaml，须单独跟踪脏值。
+  private var baselineCorrectionCandidateCount: Int = 1
 
   /// 拼音纠错规则表（单向 derive，写进 `speller/algebra`）。
   /// 仅含「错音本身也是合法拼音音节序列」的 typo；跨音节 / 非法片段交由 lua 机制 B。
@@ -561,11 +566,19 @@ final class RimeIceConfigStore {
       let v = p.trimmingCharacters(in: .whitespacesAndNewlines)
       correctionInjectionPosition = CorrectionInjectionPosition.allCases.first { $0.name == v } ?? .afterFirst
     }
+    // 纠错候选数量：同以实际部署文件为准。
+    if let c = try? String(contentsOf: rimeDir.appending(path: "correction_count.txt"), encoding: .utf8) {
+      let v = c.trimmingCharacters(in: .whitespacesAndNewlines)
+      if let n = Int(v), (1...3).contains(n) {
+        correctionCandidateCount = n
+      }
+    }
 
     baselineIce = compileIcePatch()
 
     // 纠错候选注入位置基线：与磁盘实际部署值对齐，保证改它前 UI 非脏。
     baselineCorrectionInjectionPosition = correctionInjectionPosition
+    baselineCorrectionCandidateCount = correctionCandidateCount
   }
 
   // MARK: - 读出厂模板
@@ -919,6 +932,10 @@ final class RimeIceConfigStore {
     let posDst = rimeDir.appending(path: "correction_position.txt")
     try? ("\(correctionInjectionPosition.name)\n" as NSString).write(
       toFile: posDst.path, atomically: true, encoding: String.Encoding.utf8.rawValue)
+    // 写出纠错候选数量（1~3，默认 1），供 lua 决定最多注入几条纠错候选。
+    let cntDst = rimeDir.appending(path: "correction_count.txt")
+    try? ("\(max(1, min(3, correctionCandidateCount)))\n" as NSString).write(
+      toFile: cntDst.path, atomically: true, encoding: String.Encoding.utf8.rawValue)
   }
 
   /// 关闭纠错时清理部署资源。**只删开关 txt 与词表，保留 lua 文件**：
@@ -931,6 +948,7 @@ final class RimeIceConfigStore {
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_map.txt"))
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_pinyin.txt"))
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_position.txt"))
+    try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_count.txt"))
   }
 
   /// 把本面板编译结果写盘（自带 .bak + unparsable 拒写），并更新基线。
@@ -969,6 +987,8 @@ final class RimeIceConfigStore {
     if showRawDoubleCode != baselineShowRawDoubleCode { return true }
     // 纠错候选位置只落 txt、不进 custom.yaml，必须显式纳入脏值判断。
     if correctionInjectionPosition != baselineCorrectionInjectionPosition { return true }
+    // 纠错候选数量同样只落 txt，须显式纳入脏值判断。
+    if correctionCandidateCount != baselineCorrectionCandidateCount { return true }
     guard isInstalled else { return false }
     return compileIcePatch() != baselineIce
   }
@@ -1097,6 +1117,7 @@ final class RimeIceConfigStore {
     fuzzySelection = []
     correctionEnabled = false
     correctionInjectionPosition = .afterFirst
+    correctionCandidateCount = 1
     showRawDoubleCode = false
     // 2. 兜底清掉 rime_ice.custom.yaml 里的托管键。
     //    UI 已回出厂 → compileIcePatch() 会对全部托管项写 nil，本来就不会再写回去；
