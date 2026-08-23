@@ -103,6 +103,53 @@ final class SettingsStore {
   /// 由 RimeIceConfigStore 在应用配置时改写；其余面板不碰它。
   var savedSwitchOptions: [String] = []
 
+  // MARK: - 输入方案：物理删除
+
+  /// 物理删除一个输入方案（总是从磁盘移除文件，不做软删除/仅禁用）。
+  /// - 若已启用，则从 `schema_list` 一并移除，避免部署时引用已删方案；
+  /// - 删除 `~/Library/Rime` 与 Squirrel.app 包内（内置方案）对应的 `.schema.yaml`
+  ///   及配套的 `.custom.yaml`；
+  /// - 内置方案位于受 SIP 保护的 app 包内，删除多半会因权限失败，此时给出错误提示。
+  func deleteSchema(_ schema: RimeSchema) {
+    // 1. 一并从启用列表移除（若已启用）
+    enabledSchemaIDs.removeAll { $0 == schema.id }
+
+    // 2. 物理删除磁盘文件
+    let fm = FileManager.default
+    let candidates = ["\(schema.id).schema.yaml", "\(schema.id).custom.yaml"]
+    // 用户方案在 userDirectory；内置方案在 sharedSupportURL。
+    // 用户若覆盖了内置方案（user 目录有同名文件），优先删 user 那份。
+    var dirs: [URL] = [RimeEnvironment.userDirectory]
+    if let shared = environment.sharedSupportURL { dirs.append(shared) }
+
+    var deletedAny = false
+    var lastError: Error?
+    for dir in dirs {
+      for name in candidates {
+        let url = dir.appending(path: name)
+        guard fm.fileExists(atPath: url.path(percentEncoded: false)) else { continue }
+        do {
+          try fm.removeItem(at: url)
+          deletedAny = true
+        } catch {
+          lastError = error
+        }
+      }
+    }
+
+    // 3. 从内存列表移除（即时刷新 UI）
+    availableSchemas.removeAll { $0.id == schema.id }
+
+    // 4. 反馈
+    if deletedAny {
+      statusMessage = String(format: String(localized: "schema.deleted.ok"), schema.name)
+    } else if let error = lastError {
+      statusMessage = String(format: String(localized: "schema.deleted.fail"), schema.name, error.localizedDescription)
+    } else {
+      statusMessage = String(format: String(localized: "schema.deleted.missing"), schema.name)
+    }
+  }
+
   // MARK: - 按键与行为
 
   var pageSize: Int = 5

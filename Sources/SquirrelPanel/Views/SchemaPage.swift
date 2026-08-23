@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SchemaPage: View {
   @Environment(SettingsStore.self) private var store
+  @State private var pendingDelete: RimeSchema?
 
   private var enabled: [RimeSchema] {
     store.enabledSchemaIDs.compactMap { id in
@@ -97,10 +98,21 @@ struct SchemaPage: View {
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("generic.enable") {
-                  store.enabledSchemaIDs.append(schema.id)
+                HStack(spacing: 8) {
+                  Button("generic.enable") {
+                    store.enabledSchemaIDs.append(schema.id)
+                  }
+                  .controlSize(.small)
+                  Button {
+                    pendingDelete = schema
+                  } label: {
+                    Image(systemName: "trash")
+                  }
+                  .controlSize(.small)
+                  .foregroundStyle(.red)
+                  .buttonStyle(.borderless)
+                  .help(String(localized: "schema.delete.help"))
                 }
-                .controlSize(.small)
               }
               .padding(.vertical, 2)
               Divider()
@@ -158,6 +170,22 @@ struct SchemaPage: View {
         }
       }
       .padding(20)
+    }
+    .alert(
+      String(localized: "schema.delete.confirm.title"),
+      isPresented: Binding(
+        get: { pendingDelete != nil },
+        set: { if !$0 { pendingDelete = nil } }
+      ),
+      presenting: pendingDelete
+    ) { schema in
+      Button("generic.cancel", role: .cancel) { pendingDelete = nil }
+      Button("schema.delete.confirm.ok", role: .destructive) {
+        store.deleteSchema(schema)
+        pendingDelete = nil
+      }
+    } message: { schema in
+      Text(String(format: String(localized: "schema.delete.confirm.message"), schema.name))
     }
   }
 }

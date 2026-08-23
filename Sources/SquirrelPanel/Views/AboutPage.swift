@@ -223,14 +223,14 @@ struct AboutPage: View {
       // 左：标题 + 描述
       VStack(alignment: .leading, spacing: 8) {
         HStack(spacing: 8) {
-          Text("爻知云 AI")
+          Text("爻知云")
             .font(.title3).bold()
             .foregroundStyle(.primary)
           Text("微信服务号")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        Text("关注获取 AI 创作助手、工作流技巧与项目动态。")
+        Text("关注服务号，启动赛博派古文化占卜")
           .font(.callout)
           .foregroundStyle(.secondary)
           .lineLimit(2)
@@ -342,7 +342,7 @@ struct AboutPage: View {
       store.statusMessage = String(localized: "promo.yaozhi.saveFailed")
       return
     }
-    let destination = downloads.appendingPathComponent("爻知云AI_公众号二维码.png")
+    let destination = downloads.appendingPathComponent("爻知云_公众号二维码.png")
     do {
       if FileManager.default.fileExists(atPath: destination.path) {
         try FileManager.default.removeItem(at: destination)
