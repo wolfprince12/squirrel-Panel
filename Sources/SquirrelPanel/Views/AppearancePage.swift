@@ -6,25 +6,6 @@
 import SwiftUI
 import AppKit
 
-/// 临时性能埋点：定位外观页返回时卡顿真凶。
-/// 直接把耗时写入 /tmp/perf_appearance.log（绕开沙箱 log stream 限制）。
-/// 确认真凶并修复后整段删除。
-private let perfBase = CFAbsoluteTimeGetCurrent()
-private let perfFile = "/tmp/perf_appearance.log"
-private func perfTick(_ label: String) {
-  #if DEBUG
-  let now = CFAbsoluteTimeGetCurrent()
-  let line = String(format: "[Perf] +%.3fs %@\n", now - perfBase, label)
-  if let fh = FileHandle(forWritingAtPath: perfFile) {
-    fh.seekToEndOfFile()
-    fh.write(line.data(using: .utf8)!)
-    fh.closeFile()
-  } else {
-    FileManager.default.createFile(atPath: perfFile, contents: line.data(using: .utf8))
-  }
-  #endif
-}
-
 struct AppearancePage: View {
   @Environment(SettingsStore.self) private var store
   @State private var showSchemeEditor = false
@@ -33,13 +14,6 @@ struct AppearancePage: View {
   /// SwiftUI 收不到状态变更通知、不会重绘。因此必须用 @State 持有快照，
   /// 并在弹窗关闭时重新读盘刷新，否则模块预览会停留在旧列表。
   @State private var enabledSchemes: [UserColorScheme] = UserColorSchemes.enabledSchemes()
-
-  /// 埋点：记录 body 开始求值的时刻（init 先于 body 执行）。
-  private let _perfStart = CFAbsoluteTimeGetCurrent()
-
-  init() {
-    perfTick("AppearancePage.init t0=\(_perfStart)")
-  }
 
   var body: some View {
     @Bindable var store = store
@@ -168,14 +142,8 @@ struct AppearancePage: View {
     }
     // 首次出现用 @State 初始化的缓存值立即显示；进入页面后再异步刷新一次，
     // 避免 onAppear 同步读盘阻塞首帧（返回外观页时不再卡顿）。
-    .onAppear {
-      let dt = CFAbsoluteTimeGetCurrent() - _perfStart
-      perfTick("AppearancePage.onAppear body→appear 同步耗时=\(String(format: "%.3f", dt))s")
-    }
     .task {
-      let t0 = CFAbsoluteTimeGetCurrent()
       enabledSchemes = UserColorSchemes.enabledSchemes()
-      perfTick("enabledSchemes.task 耗时=\(String(format: "%.3f", CFAbsoluteTimeGetCurrent()-t0))s")
     }
     .onChange(of: showSchemeEditor) { _, isShowing in
       // 弹窗关闭（启用/禁用/保存/编辑自定义方案后）重新读盘刷新模块展示，
@@ -217,7 +185,6 @@ struct ColorSchemeGrid: View {
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
     }
-    .onAppear { perfTick("ColorSchemeGrid.onAppear count=\(store.systemColorSchemes.count)") }
   }
 }
 
@@ -239,7 +206,6 @@ struct DeveloperSchemeGrid: View {
           .onTapGesture { store.colorSchemeID = scheme.id }
       }
     }
-    .onAppear { perfTick("DeveloperSchemeGrid.onAppear count=\(DeveloperColorSchemes.all.count)") }
   }
 }
 
