@@ -45,6 +45,54 @@ enum SquirrelBridge {
       // 进程没跑，直接调 CLI 让它自己完成一次部署
       try runCLI(["--reload"], environment: environment)
     }
+    // 防复发：本机 Squirrel 的部署只把产物落到 build/、不回填顶层，
+    // 导致顶层 .bin 被清空、中文无法输入。部署后回填 build/ 编译产物到顶层。
+    scheduleRestoreBinariesFromBuild()
+  }
+
+  // MARK: - 部署后回填（防复发）
+
+  /// 部署后把 `build/` 编译产物回填顶层 `~/Library/Rime/`。
+  /// 本机 Squirrel 的部署只把产物暂存到 `build/`、不回填顶层，
+  /// 导致顶层 `.bin` 被清空、中文无法输入。此函数等 Squirrel 编译完再拷回，杜绝复发。
+  private static func scheduleRestoreBinariesFromBuild() {
+    let start = Date()
+    let fm = FileManager.default
+    let top = RimeEnvironment.userDirectory
+    let build = top.appending(path: "build")
+    let deadline = start.addingTimeInterval(90)
+    DispatchQueue.global(qos: .utility).async {
+      while Date() < deadline {
+        let prism = build.appending(path: "rime_ice.prism.bin")
+        guard let mtime = try? fm.attributesOfItem(atPath: prism.path(percentEncoded: false))[.modificationDate] as? Date,
+              mtime > start,                          // 必须是本次部署后新编译的
+              Date().timeIntervalSince(mtime) > 1.5   // 且 mtime 已稳定（编译结束）
+        else {
+          Thread.sleep(forTimeInterval: 0.5)
+          continue
+        }
+        Self.copyBuildToTopLevel()
+        return
+      }
+      // 超时也兜底拷一次，尽量恢复输入法
+      Self.copyBuildToTopLevel()
+    }
+  }
+
+  /// 把 `build/` 下的编译产物（.bin / .yaml）复制回顶层用户目录。
+  private static func copyBuildToTopLevel() {
+    let fm = FileManager.default
+    let top = RimeEnvironment.userDirectory
+    let build = top.appending(path: "build")
+    guard let files = try? fm.contentsOfDirectory(at: build, includingPropertiesForKeys: nil) else { return }
+    for url in files {
+      guard !url.hasDirectoryPath else { continue }
+      let ext = url.pathExtension.lowercased()
+      guard ["bin", "yaml"].contains(ext) else { continue }
+      let dst = top.appending(path: url.lastPathComponent)
+      try? fm.removeItem(at: dst)
+      try? fm.copyItem(at: url, to: dst)
+    }
   }
 
   /// 异步部署：把同步且会阻塞的部署（含 Squirrel CLI `waitUntilExit`、整套方案重建）
