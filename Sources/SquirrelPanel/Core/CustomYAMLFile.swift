@@ -224,18 +224,17 @@ final class CustomYAMLFile {
 
   /// 设置某个路径的值；传 nil 表示移除。
   ///
-  /// 若用户原本用嵌套写法配置了同一项，则就地修改那个嵌套节点，
-  /// 避免同时存在扁平键与嵌套键导致 Rime 应用顺序不确定。
+  /// Rime 的 `patch` 键必须使用斜杠路径（如 `engine/filters`）。嵌套映射
+  /// `engine: { filters: ... }` 会整体覆盖 `engine`，进而清空 processors、
+  /// segmentors 与 translators，造成无法生成候选。所有由面板管理的键一律
+  /// 写成扁平路径；同时迁移并清除同路径的历史嵌套键。
   func set(_ newValue: Any?, forPath path: String) {
-    if patch[path] != nil || !nestedPathExists(path) {
-      if let newValue {
-        patch[path] = newValue
-      } else {
-        patch.removeValue(forKey: path)
-      }
-      return
+    if let newValue {
+      patch[path] = newValue
+    } else {
+      patch.removeValue(forKey: path)
     }
-    setNested(newValue, path: path)
+    removeNested(path: path)
   }
 
   private func nestedPathExists(_ path: String) -> Bool {
@@ -248,30 +247,26 @@ final class CustomYAMLFile {
     return false
   }
 
-  private func setNested(_ newValue: Any?, path: String) {
+  private func removeNested(path: String) {
     let parts = path.split(separator: "/").map(String.init)
-    for split in stride(from: parts.count - 1, through: 1, by: -1) {
-      let prefix = parts[0..<split].joined(separator: "/")
-      guard let node = patch[prefix] as? [String: Any] else { continue }
-      let rest = Array(parts[split...])
-      patch[prefix] = Self.updating(node, path: rest, value: newValue)
-      return
-    }
+    guard parts.count > 1 else { return }
+    patch = Self.removingNested(patch, path: parts)
   }
 
-  private static func updating(_ node: [String: Any], path: [String], value: Any?) -> [String: Any] {
+  private static func removingNested(_ node: [String: Any], path: [String]) -> [String: Any] {
     var node = node
     guard let head = path.first else { return node }
     if path.count == 1 {
-      if let value {
-        node[head] = value
-      } else {
-        node.removeValue(forKey: head)
-      }
+      node.removeValue(forKey: head)
       return node
     }
-    let child = (node[head] as? [String: Any]) ?? [:]
-    node[head] = updating(child, path: Array(path.dropFirst()), value: value)
+    guard let child = node[head] as? [String: Any] else { return node }
+    let updated = removingNested(child, path: Array(path.dropFirst()))
+    if updated.isEmpty {
+      node.removeValue(forKey: head)
+    } else {
+      node[head] = updated
+    }
     return node
   }
 
@@ -279,7 +274,7 @@ final class CustomYAMLFile {
   func removeManaged(keys: Set<String>) {
     for key in keys {
       patch.removeValue(forKey: key)
-      if nestedPathExists(key) { setNested(nil, path: key) }
+      removeNested(path: key)
     }
   }
 

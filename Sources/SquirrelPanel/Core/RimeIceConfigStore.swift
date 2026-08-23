@@ -827,11 +827,14 @@ final class RimeIceConfigStore {
     set["traditionalize/opencc_config"] = (opencc == template.opencc) ? PatchValue?.none : .string(opencc)
 
     // 三个列表型托管项 + 模糊音：合并结果等于出厂模板时写 nil，用户条目不丢
+    // —— 列表型托管键：经「安全护栏」写入，绝不整体覆盖清空内置列表 ——
+    // 见下方 safeListPatch：merged 为空 / 出厂模板不可信（base 解析失败）时一律回落，
+    // 绝不写出 `key: []` 这类清空式补丁（那会废掉输入法）。
     let translators = mergedTranslators()
-    set["engine/translators"] = (translators == template.translators) ? PatchValue?.none : .stringList(translators)
+    set["engine/translators"] = Self.safeListPatch(merged: translators, template: template.translators)
 
     let filters = mergedFilters()
-    set["engine/filters"] = (filters == template.filters) ? PatchValue?.none : .stringList(filters)
+    set["engine/filters"] = Self.safeListPatch(merged: filters, template: template.filters)
 
     // 拼音纠错（derive 机制，内核级零延迟）：纠错规则由 mergedAlgebra 写入
     // speller/algebra；lua_filter@*correction（mergedFilters 已并入）仅做候选位置重排，
@@ -844,12 +847,38 @@ final class RimeIceConfigStore {
     // 因此刻意不碰 engine/processors，让它回退到 Rime 内置默认。
 
     let dependencies = mergedDependencies()
-    set["schema/dependencies"] = (dependencies == template.dependencies) ? PatchValue?.none : .stringList(dependencies)
+    set["schema/dependencies"] = Self.safeListPatch(merged: dependencies, template: template.dependencies)
 
+    // speller/algebra 是最致命的键：一旦整体覆盖写成残缺列表（仅面板自有规则），
+    // 官方 47+ 条拼写规则全部丢失 → 拼音拼不出词、中文输入崩溃。因此标记 critical，
+    // 出厂模板不可信（base schema 解析失败、template 变空）时宁可功能不生效也绝不写。
     let algebra = mergedAlgebra()
-    set["speller/algebra"] = (algebra == template.algebra) ? PatchValue?.none : .stringList(algebra)
+    set["speller/algebra"] = Self.safeListPatch(merged: algebra, template: template.algebra, critical: true)
 
     return set
+  }
+
+  /// 列表型键的安全写入护栏（根治「面板部署清空输入法」）。
+  ///
+  /// 面板对 `engine/translators` / `engine/filters` / `schema/dependencies` /
+  /// `speller/algebra` 四类列表采用「整体覆盖」式补丁。若直接写 `key: []` 或仅含
+  /// 面板自有条目的残缺列表，会清空 Rime 内置/出厂列表，导致候选框消失、中文报废。
+  /// 本护栏从三个维度兜底：
+  ///   1. `merged` 为空 → 写 nil（绝不 `: []` 清空）；
+  ///   2. `critical` 键且出厂模板 `template` 为空（base schema 解析失败，不可信）→ 写 nil，
+  ///      此时 merged 只是面板自有条目，整体覆盖会丢掉 base 里我们不知道的官方规则，
+  ///      宁可功能不生效也绝不破坏输入法；
+  ///   3. `merged` 与 `template` 一致 → 写 nil（与出厂相同不落盘，避免快照压制上游）；
+  ///   4. 否则写完整 `merged`（= 实际安装全部官方规则 + 面板增量）。
+  private static func safeListPatch(merged: [String], template: [String], critical: Bool = false) -> PatchValue? {
+    // ① 空结果：写出 : [] 等于清空整个列表，直接废掉输入法，严禁。
+    if merged.isEmpty { return PatchValue?.none }
+    // ② critical 键 + 出厂模板不可信：任何整体覆盖都可能丢失官方未知规则，保守回落出厂。
+    if critical && template.isEmpty { return PatchValue?.none }
+    // ③ 与出厂一致：不落盘（保持补丁精简，且避免快照压制上游日后调整）。
+    if merged == template { return PatchValue?.none }
+    // ④ 仅当确有差异时，写回「完整 merged」——它包含实际安装的全部官方规则 + 面板增量。
+    return .stringList(merged)
   }
 
   /// 部署纠错资源：轻量 lua 位置重排器 + 三个开关 txt，从 App 资源目录复制到 ~/Library/Rime/。

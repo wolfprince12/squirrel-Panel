@@ -24,9 +24,13 @@ icons:
 debug:
 	$(SWIFT_BUILD)
 
-release:
+release: check-lua
 	$(SWIFT_BUILD) -c release
 	@$(MAKE) bundle BIN=.build/release/$(EXEC)
+
+## 交付前 Lua 5.1 语法校验（鼠须管基于 LuaJIT，5.2+ 语法会导致中文报废）
+check-lua:
+	@bash tools/check_lua_syntax.sh
 
 ## Intel + Apple Silicon 通用二进制（发版用）
 universal:

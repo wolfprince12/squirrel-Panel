@@ -79,7 +79,11 @@ enum SquirrelBridge {
     }
   }
 
-  /// 把 `build/` 下的编译产物（.bin / .yaml）复制回顶层用户目录。
+  /// 只把 `build/` 下的二进制编译产物复制回顶层用户目录。
+  ///
+  /// `.yaml` 是部署过程生成的展开配置，不是源配置；若把它回填到顶层，会覆盖
+  /// `*.schema.yaml`、`default.yaml` 与 `squirrel.yaml` 的源文件，下一次部署时便会
+  /// 丢失输入引擎的 processors / segmentors / translators，导致无法产生候选。
   private static func copyBuildToTopLevel() {
     let fm = FileManager.default
     let top = RimeEnvironment.userDirectory
@@ -87,8 +91,7 @@ enum SquirrelBridge {
     guard let files = try? fm.contentsOfDirectory(at: build, includingPropertiesForKeys: nil) else { return }
     for url in files {
       guard !url.hasDirectoryPath else { continue }
-      let ext = url.pathExtension.lowercased()
-      guard ["bin", "yaml"].contains(ext) else { continue }
+      guard url.pathExtension.lowercased() == "bin" else { continue }
       let dst = top.appending(path: url.lastPathComponent)
       try? fm.removeItem(at: dst)
       try? fm.copyItem(at: url, to: dst)
