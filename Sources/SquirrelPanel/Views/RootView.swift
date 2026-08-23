@@ -7,8 +7,10 @@ import SwiftUI
 import AppKit
 
 enum PanelSection: String, CaseIterable, Identifiable {
-  // 紫毫纠错模型置顶（核心入口）
-  case amethyst, appearance, schemas, riceIce, dictionary, behavior, backupSync, appOptions, maintenance, about
+  // 顺序：外观 → 输入方案 → 雾凇拼音 → 词库 → 紫毫纠错模型 → 按键与行为 → ……
+  // 紫毫纠错模型置于「词库」与「按键与行为」之间（用户 2026-08-23 调整）。
+  // 默认选中仍保持 .amethyst（@State 默认值覆盖 allCases 首位），启动即见纠错页。
+  case appearance, schemas, riceIce, dictionary, amethyst, behavior, backupSync, appOptions, maintenance, about
 
   var id: String { rawValue }
 

@@ -706,6 +706,7 @@ behavior.sendAction.inline_ascii = "临时英文";
 "sidebar.brand.name" = "鼠须管控制面板";
 
 // MARK: - 紫毫纠错模型
+"correction.intro.title" = "功能简介与使用逻辑";
 "correction.intro" = "紫毫纠错模型会分析你的拼音输入，对键盘误触和音近错误给出「纠错」候选，完全离线、零联网。";
 "correction.control.title" = "纠错控制";
 "correction.control.enable" = "启用智能纠错";

@@ -706,6 +706,7 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "sidebar.brand.name" = "Squirrel Panel";
 
 // MARK: - Amethyst Correction Model
+"correction.intro.title" = "Overview & How It Works";
 "correction.intro" = "Amethyst Correction Model analyzes your pinyin input and offers correction candidates for keyboard slips and phonetic mistakes—fully offline.";
 "correction.control.title" = "Correction";
 "correction.control.enable" = "Enable Smart Correction";

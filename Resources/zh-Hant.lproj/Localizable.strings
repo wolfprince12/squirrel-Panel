@@ -706,6 +706,7 @@ behavior.sendAction.inline_ascii = "臨時英文";
 "sidebar.brand.name" = "鼠須管控制面板";
 
 // MARK: - 紫毫糾錯模型
+"correction.intro.title" = "功能簡介與使用邏輯";
 "correction.intro" = "紫毫糾錯模型會分析你的拼音輸入，對鍵盤誤觸和音近錯誤給出「糾錯」候選，完全離線、零連網。";
 "correction.control.title" = "糾錯控制";
 "correction.control.enable" = "啟用智能糾錯";

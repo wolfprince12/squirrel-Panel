@@ -11,44 +11,13 @@
 //  纠错词表由离线生成器 tools/gen_correction_dict.py 从 rime-ice 词库全量产出：
 //    对任意常见词的「相邻键 1 次错打」做精确查表，覆盖键盘邻键误触（如 w→e：woshi→eoshi）。
 //
-//  进阶能力（规划中）：语法模型语境排序（类似万象，重排多条候选）、用户自学习。
-//
-//  面板结构：
-//    1) 功能简介
-//    2) 纠错总开关 + 候选位置
-//    3) 纠错原理
-//    4) 进阶能力路线图（规划中）
+//  面板结构（2026-08-23 调整为上下两段）：
+//    上：功能简介 + 使用逻辑 + 示例截图
+//    下：纠错控制模块（总开关 + 候选位置 + 候选数量）
 //
 
 import SwiftUI
 import AppKit
-
-// MARK: - 通用依赖卡片（标题 + 描述 + 状态徽标 + 底部内容）
-
-/// 与 PackageCard 保持一致的通用信息卡片：标题、描述、右上角状态、底部内容。
-private struct DependencyCard<Status: View, Bottom: View>: View {
-  let title: LocalizedStringKey
-  let description: LocalizedStringKey
-  @ViewBuilder let status: Status
-  @ViewBuilder let bottom: Bottom
-
-  var body: some View {
-    SettingsGroup("") {
-      VStack(alignment: .leading, spacing: 10) {
-        HStack(alignment: .firstTextBaseline) {
-          Text(title).font(.headline)
-          Spacer()
-          status
-        }
-        Text(description)
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-        bottom
-      }
-    }
-  }
-}
 
 // MARK: - 主页面
 
@@ -63,26 +32,39 @@ struct AmethystCorrectionPage: View {
       VStack(alignment: .leading, spacing: 18) {
         introSection
         controlSection
-        principleSection
-        roadmapSection
       }
       .padding(20)
     }
     // 不再设置 .navigationTitle：避免 macOS 窗口标题栏随选中项动态变化（与"鼠须管控制面板"顶栏冲突）。
   }
 
-  // MARK: - 1) 功能简介
+  // MARK: - 上段：功能简介 + 使用逻辑 + 示例截图
 
   private var introSection: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text("correction.intro")
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+    SettingsGroup("correction.intro.title") {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("correction.intro")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        if let url = Bundle.main.url(forResource: "AmethystCorrectionDemo", withExtension: "png"),
+           let nsImage = NSImage(contentsOf: url) {
+          Image(nsImage: nsImage)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+              RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 0.5)
+            )
+        }
+      }
     }
   }
 
-  // MARK: - 2) 纠错总开关 + 候选位置
+  // MARK: - 下段：纠错总开关 + 候选位置 + 候选数量
 
   @ViewBuilder
   private var controlSection: some View {
@@ -133,65 +115,5 @@ struct AmethystCorrectionPage: View {
           .fixedSize(horizontal: false, vertical: true)
       }
     }
-  }
-
-  // MARK: - 3) 纠错原理
-
-  private var principleSection: some View {
-    DependencyCard(
-      title: "correction.principle.title",
-      description: "correction.principle.desc"
-    ) {
-      EmptyView()
-    } bottom: {
-      EmptyView()
-    }
-  }
-
-  // MARK: - 4) 进阶能力路线图（规划中）
-
-  @ViewBuilder
-  private var roadmapSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("correction.roadmap.title").font(.headline)
-      }
-
-      DependencyCard(
-        title: "correction.grammar.title",
-        description: "correction.grammar.desc"
-      ) {
-        Text("correction.supported")
-          .font(.caption2)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 3)
-          .background(Color.green.opacity(0.18))
-          .foregroundStyle(.green)
-          .clipShape(Capsule())
-      } bottom: {
-        EmptyView()
-      }
-
-      // 自主学习尚未实现（面板开关已移除）：此处只作路线图展示，
-      // 徽章必须是「即将上线」，不可标「已支持」——否则等于虚假宣传。
-      DependencyCard(
-        title: "correction.selflearn.title",
-        description: "correction.selflearn.desc"
-      ) {
-        comingSoonBadge
-      } bottom: {
-        EmptyView()
-      }
-    }
-  }
-
-  private var comingSoonBadge: some View {
-    Text("correction.comingSoon")
-      .font(.caption2)
-      .padding(.horizontal, 8)
-      .padding(.vertical, 3)
-      .background(Color.secondary.opacity(0.15))
-      .foregroundStyle(.secondary)
-      .clipShape(Capsule())
   }
 }
