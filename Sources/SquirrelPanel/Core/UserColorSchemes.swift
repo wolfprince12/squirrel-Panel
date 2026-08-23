@@ -51,6 +51,12 @@ private struct RegistryFile: Codable {
 
 enum UserColorSchemes {
 
+  // MARK: - 内存缓存
+
+  /// 注册表内存缓存：避免外观面板每次打开都同步读盘 user_color_schemes.json。
+  /// 所有写盘路径都经 `persist(_:)`，写完立即刷新缓存；读路径优先走缓存。
+  private static var registryCache: RegistryFile?
+
   // MARK: - 读取
 
   static var all: [UserColorScheme] { load() }
@@ -86,9 +92,14 @@ enum UserColorSchemes {
   }
 
   private static func loadRegistry() -> RegistryFile? {
+    if let cached = registryCache { return cached }
     guard let url = registryURL(),
           let data = try? Data(contentsOf: url),
-          let reg = try? JSONDecoder().decode(RegistryFile.self, from: data) else { return nil }
+          let reg = try? JSONDecoder().decode(RegistryFile.self, from: data) else {
+      registryCache = nil
+      return nil
+    }
+    registryCache = reg
     return reg
   }
 
@@ -123,6 +134,8 @@ enum UserColorSchemes {
   }
 
   private static func persist(_ reg: RegistryFile) {
+    // 写完立即刷新内存缓存，保证后续读取不再回源磁盘
+    registryCache = reg
     guard let url = registryURL(), let data = try? JSONEncoder().encode(reg) else { return }
     try? data.write(to: url, options: .atomic)
   }

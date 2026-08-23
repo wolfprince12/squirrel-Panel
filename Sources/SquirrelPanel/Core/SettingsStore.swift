@@ -140,6 +140,8 @@ final class SettingsStore {
   var statusMessage = ""
   var lastError: String?
   var isApplying = false
+  /// 配色目录 / 方案目录后台扫描中（启动与 reload 时短暂为 true，视图可据此显示占位）
+  var isLoadingCatalogs = false
 
   var isDirty: Bool {
     compileSquirrelPatch() != baselineSquirrel
@@ -174,14 +176,29 @@ final class SettingsStore {
     environment = RimeEnvironment.detect()
     squirrelPatch.load()
     defaultPatch.load()
+    // 配色目录（单文件解析，成本低）保持主线程同步，外观页网格可即时渲染
     colorSchemes = ColorSchemeCatalog.load(environment: environment, userPatch: squirrelPatch)
-    availableSchemas = SchemaCatalog.scan(environment: environment)
     readIntoUI()
     baselineSquirrel = compileSquirrelPatch()
     baselineDefault = compileDefaultPatch()
     statusMessage = environment.isInstalled ? "status.loaded" : "status.notInstalled"
     // 雾凇面板跟着一起重载，保证两边状态一致（应用、还原、重置后都会走到这里）
     rimeIce?.reload()
+
+    // 重活（枚举 + 解析全部 *.schema.yaml）挪到后台线程，
+    // 消除启动 / 重载时主线程同步 I/O 造成的「卡一下」。
+    // 此前这一行在主线程同步跑，正是输入方案面板切换黏手的根因之一。
+    // 方案列表稍后回填，视图会响应式刷新；不新增任何占位 UI（遵守 UI 已定稿铁律）。
+    isLoadingCatalogs = true
+    let env = environment
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let schemas = SchemaCatalog.scan(environment: env)
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.availableSchemas = schemas
+        self.isLoadingCatalogs = false
+      }
+    }
   }
 
   // MARK: - 读：补丁 → 界面
