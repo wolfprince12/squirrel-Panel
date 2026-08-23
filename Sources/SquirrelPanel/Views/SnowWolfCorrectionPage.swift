@@ -116,16 +116,6 @@ struct SnowWolfCorrectionPage: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
-
-        Divider()
-        Toggle(isOn: $ice.correctionSelfLearning) {
-          Text("correction.selflearn.enable")
-        }
-        .toggleStyle(.switch)
-        Text("correction.selflearn.enable.desc")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
       }
     }
   }
@@ -167,17 +157,13 @@ struct SnowWolfCorrectionPage: View {
         EmptyView()
       }
 
+      // 自主学习尚未实现（面板开关已移除）：此处只作路线图展示，
+      // 徽章必须是「即将上线」，不可标「已支持」——否则等于虚假宣传。
       DependencyCard(
         title: "correction.selflearn.title",
         description: "correction.selflearn.desc"
       ) {
-        Text("correction.supported")
-          .font(.caption2)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 3)
-          .background(Color.green.opacity(0.18))
-          .foregroundStyle(.green)
-          .clipShape(Capsule())
+        comingSoonBadge
       } bottom: {
         EmptyView()
       }

@@ -721,7 +721,5 @@ behavior.sendAction.inline_ascii = "临时英文";
 "correction.grammar.desc" = "多条纠错候选按词频权重智能排序，越常用的正词越靠前。";
 "correction.selflearn.title" = "自主学习";
 "correction.selflearn.desc" = "你采纳的纠错候选会被记录，下次同错音优先出该词，越用越准。";
-"correction.selflearn.enable" = "启用自主学习";
-"correction.selflearn.enable.desc" = "关闭后不再记录新行为，已学词仍生效。";
 "correction.comingSoon" = "即将上线";
 "correction.supported" = "已支持";

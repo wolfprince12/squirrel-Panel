@@ -192,10 +192,8 @@ final class RimeIceConfigStore {
   /// 是否启用拼音实时纠错（按错键自动纠正）。
   /// 由「雪狼智能纠错」页总开关驱动；开启时挂上 algebra derive 规则 + lua_filter@*snowwolf_corrector。
   var correctionEnabled: Bool = false
-  /// 纠错候选注入位置：首位 / 首条之后 / 末尾。
+  /// 纠错候选注入位置：首位 / 次位。
   var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
-  /// 是否启用用户自学习（Phase3 可行性研究项，UI 占位，暂不实现）。
-  var correctionSelfLearning: Bool = true
 
   /// 纠错候选注入位置的脏值基线。该值**不进** rime_ice.custom.yaml
   /// （只写 ~/Library/Rime/correction_position.txt 供 lua 读取），
@@ -898,7 +896,7 @@ final class RimeIceConfigStore {
     settings.savedSwitchOptions = others + remember
   }
 
-  /// 部署纠错资源：轻量 lua 纠错器 + 通用纠错词表(correction_map.txt) + 候选位置 txt，
+  /// 部署纠错资源：轻量 lua 纠错器 + 通用正向纠错词表(correction_pinyin.txt) + 候选位置 txt，
   /// 从 App 资源目录复制到 ~/Library/Rime/。在写补丁前调用，确保 schema 编译时 lua 已就位；幂等。
   private func deployCorrectionAssets() {
     guard let resRoot = Bundle.main.resourceURL?
@@ -911,9 +909,9 @@ final class RimeIceConfigStore {
     if FileManager.default.fileExists(atPath: src.path) {
       try? FileManager.default.copyItem(at: src, to: dst)
     }
-    // 写出通用纠错词表（相邻键错打映射），供 lua 精确查表注入纠错候选。
-    let mapSrc = resRoot.appending(path: "data/correction_map.txt")
-    let mapDst = rimeDir.appending(path: "correction_map.txt")
+    // 写出通用正向纠错词表（正确拼音串 → 词），供 lua 运行时枚举错打变体后查表注入纠错候选。
+    let mapSrc = resRoot.appending(path: "data/correction_pinyin.txt")
+    let mapDst = rimeDir.appending(path: "correction_pinyin.txt")
     if FileManager.default.fileExists(atPath: mapSrc.path) {
       try? FileManager.default.copyItem(at: mapSrc, to: mapDst)
     }
@@ -928,9 +926,10 @@ final class RimeIceConfigStore {
   /// 留着它零副作用，且避免「删 lua 瞬间若过滤器仍在」的竞态导致编译失败、候选框消失。
   private func removeCorrectionAssets() {
     let rimeDir = RimeEnvironment.userDirectory
-    // 旧版本遗留的 strength 文件一并清理（本版已无强度分级）。
+    // 旧版本遗留的 strength 文件与 v2 反向表(correction_map.txt)一并清理（本版已无强度分级、改用正向表）。
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_strength.txt"))
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_map.txt"))
+    try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_pinyin.txt"))
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_position.txt"))
   }
 
@@ -1098,7 +1097,6 @@ final class RimeIceConfigStore {
     fuzzySelection = []
     correctionEnabled = false
     correctionInjectionPosition = .afterFirst
-    correctionSelfLearning = true
     showRawDoubleCode = false
     // 2. 兜底清掉 rime_ice.custom.yaml 里的托管键。
     //    UI 已回出厂 → compileIcePatch() 会对全部托管项写 nil，本来就不会再写回去；

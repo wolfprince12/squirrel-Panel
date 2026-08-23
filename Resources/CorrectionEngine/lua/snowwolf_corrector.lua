@@ -1,71 +1,193 @@
--- 雪狼智能纠错 v2 — 机制 B（键位错打型纠错）· 通用化稳定版
--- lua_filter@*snowwolf_corrector：读取 env.engine.context.input 的整串拼音，
--- 对「跨音节 / 含非法音节片段」的键位错打（如 eoshi -> 我是）注入纠错候选。
--- 与机制 A（speller/algebra derive）互补：A 处理「错成合法音节」的 typo（内核级零延迟），
--- B 处理 derive 永远不触发的跨音节错打。
+-- 雪狼智能纠错 v3 — 运行时四类错误纠正
+-- lua_filter@*snowwolf_corrector：读 env.engine.context.input 的整串拼音，
+-- 对真正打错的串注入「纠错」候选。与机制 A（speller/algebra derive）互补。
 --
--- 通用化（计划 #1）：纠错词表由离线生成器 tools/gen_correction_dict.py 从 rime-ice 词库
--- 全量产出「相邻键 1 次替换」映射（correction_map.txt），本脚本在 init 阶段一次性加载，
--- 运行时仅做 O(1) 精确查表 —— 任意单键邻位错打都能被纠正，零运行时翻译、零延迟。
+-- v2 → v3 架构变更
+-- ----------------
+-- v2：离线预生成「所有错打串 → 词」的反向表（39 万条 / 6.9MB），运行时精确查表。
+--     只覆盖「相邻键替换」一类错误；要加漏字/多字/换位/四字词，表会膨胀到 50MB+。
+-- v3：只加载 **正向** 表（正确拼音串 → 词，4 万条 / 1MB），把错误类型的枚举挪到运行时。
+--     命中一个「非法且非中间态」的输入时，才枚举它的编辑距离 1 变体去查正向表：
+--       · 换位  wsohi -> woshi   （打字快，相邻两键顺序颠倒）
+--       · 多字  wooshi -> woshi  （手指弹跳，多打一个）
+--       · 替换  eoshi  -> woshi  （打偏，相邻键优先、任意键兜底）
+--       · 漏字  wshi   -> woshi  （漏一个键）
 --
--- 仅用 Lua 5.1 语法（鼠须管基于 LuaJIT，禁用 5.2+ 特性）：
---   拼音为纯 ASCII，长度一律用 #s 取字节数，绝不碰 utf8 模块（5.3 才有）。
---   所有对内核 translator 的探测均用 pcall 包裹，任一环节不可用即静默降级，
---   绝不抛错拖垮候选框。
+-- 何时才启动枚举（性能与噪声的关键）
+-- ----------------------------------
+--   1) 输入在正向表里     -> 是常见词的正确拼音，正常输入，透传
+--   2) 输入是某个键的前缀 -> 用户还在打（如打 woshi 途中的 wos / wosh），透传
+--   3) 以上都不是         -> 真打错了，才枚举
+-- 因此正常打字的每一次按键都零额外开销；只有真打错的那一下才做约 300~450 次
+-- 哈希查表（LuaJIT 下微秒级，且此时用户本就在停顿）。
+--
+-- 仅用 Lua 5.1 语法（鼠须管基于 LuaJIT，禁用 5.2+ 特性）
+-- -----------------------------------------------------
+--   拼音为纯 ASCII，长度一律 #s 取字节数，绝不碰 utf8 模块（5.3 才有）；
+--   不用 goto / 整数除法 // / 数字下划线 / load（5.1 是 loadstring）；
+--   文件与枚举全程 pcall 包裹，任一环节失败即静默降级，绝不拖垮候选框。
 
 local M = {}
 
--- 兜底映射：即使 correction_map.txt 缺失/加载失败，核心样例仍可用。
--- 值为逗号拼接的候选词串（与文件格式一致），func 中按需切分。
-local CORRECTION_MAP = {
-  eoshi = "我是,握手",
-}
+-- 数据文件（由面板 deployCorrectionAssets 复制到 ~/Library/Rime/）
+local DICT_FILE = "/Library/Rime/correction_pinyin.txt"
+local POS_FILE = "/Library/Rime/correction_position.txt"
 
--- 纠错映射表数据文件路径（由面板 deployCorrectionAssets 复制到 ~/Library/Rime/）。
-local MAP_FILE = "/Library/Rime/correction_map.txt"
+-- 正向表：pinyin -> { w = 最高词频, s = "词1,词2,..." }
+local DICT = {}
+-- 前缀集合：正向表所有键的所有真前缀 -> true（识别输入中间态，启动时构建，不落盘）
+local PREFIX = {}
+local LOADED = false
 
--- 候选注入位置：top（置顶）/ afterFirst（首条之后=次位，默认），从 correction_position.txt 读取
+-- 候选注入位置：top（首位）/ afterFirst（次位，默认）
 local POSITION = "afterFirst"
 
--- 从 correction_map.txt 加载映射（每行：错打串<TAB>词1,词2,...）。
--- 纯 5.1 字符串处理：整文件读入后用 gmatch 逐行切分，零依赖、零风险。
-local function loadCorrectionMap()
+local MIN_LEN = 4    -- 输入长度门槛：太短信息量不足，误纠风险高
+local MAX_LEN = 16   -- 过长不枚举（性能保护，四字词约 12~16 字母）
+local MAX_OUT = 3    -- 最多注入几条纠错候选
+
+local LETTERS = "abcdefghijklmnopqrstuvwxyz"
+
+-- 单音节集合：用于抑制「单字纠错」噪声。
+-- 4+ 字母的错打几乎总是多音节词（如 woshi），把整串删/插一个字母得到的单音节
+-- （如 wshi 删 w → shi）是编辑距离枚举的假阳性，且单音节词频（是/我/的…）高出
+-- 多音节几个数量级，纯系数调参无法压制。故直接跳过单音节候选。
+local SYL = {}
+do
+  local s = "a ai an ang ao ba bai ban bang bao bei ben beng bi bian biao bie bin bing bo bu cha chai chan chang chao che chen cheng chi chong chou chu chuan chuang chui chun chuo ci cong cou cu cuan cui cun cuo da dai dan dang dao de deng di dian diao die ding diu dong dou du duan dui dun duo e ei en eng er fa fan fang fei fen feng fo fou fu ga gai gan gang gao ge gei gen geng gong gou gu gua guai guan guang gui gun guo ha hai han hang hao he hei hen heng hong hou hu hua huai huan huang hui hun huo ji jia jian jiang jiao jie jin jing jiong jiu ju juan jue jun ka kai kan kang kao ke ken keng kong kou ku kua kuai kuan kuang kui kun kuo la lai lan lang lao le lei leng li lia lian liang liao lie lin ling liu long lou lu luan lue lun luo lv ma mai man mang mao me mei men meng mi mian miao mie min ming miu mo mou mu na nai nan nang nao ne nei nen neng ni nian niang niao nie nin ning niu nong nou nu nuan nue nuo nv o ou pa pai pan pang pao pei pen peng pi pian piao pie pin ping po pou pu qi qia qian qiang qiao qie qin qing qiong qiu qu quan que qun r ran rang rao re ren reng ri rong rou ru ruan rui run ruo sa sai san sang sao se sen seng sha shai shan shang shao she shen sheng shi shou shu shua shuai shuan shuang shui shun shuo si song sou su suan sui sun suo ta tai tan tang tao te teng ti tian tiao tie ting tong tou tu tuan tui tun tuo wa wai wan wang wei wen weng wo wu xi xia xian xiang xiao xie xin xing xiong xiu xu xuan xue xun ya yan yang yao ye yi yin ying yong you yu yuan yue yun za zai zan zang zao ze zei zen zeng zha zhai zhan zhang zhao zhe zhen zheng zhi zhong zhou zhu zhua zhuai zhuan zhuang zhui zhun zhuo zi zong zou zu zuan zui zun zuo"
+  for w in s:gmatch("%S+") do SYL[w] = true end
+end
+
+-- QWERTY 8 邻域：相邻键错打远比隔键错打常见，故给更高权重系数。
+local NEIGHBORS = {
+  q = "was",      w = "qeasd",    e = "wrsdf",    r = "etdfg",
+  t = "ryfgh",    y = "tughj",    u = "yihjk",    i = "uojkl",
+  o = "ipkl",     p = "ol",
+  a = "qwszx",    s = "qweadzxc", d = "wersfxcv", f = "ertdgcvb",
+  g = "rtyfhvbn", h = "tyugjbnm", j = "yuihknm",  k = "uiojlm",
+  l = "iopk",
+  z = "asx",      x = "asdzc",    c = "sdfxv",    v = "dfgcb",
+  b = "fghvn",    n = "ghjbm",    m = "hjkn",
+}
+
+-- 各错误类型的可信度系数（乘到词频上参与排序）。
+local CO_SWAP = 1.0    -- 换位
+local CO_NEAR = 1.0    -- 相邻键替换（仅相邻键，v3 已弃用任意键替换）
+local CO_DEL = 0.9     -- 多字（删掉一个）
+local CO_INS = 0.85    -- 漏字（插入一个）
+
+-- 兜底：正向表加载失败时，仍保证核心样例可用。
+local FALLBACK = {
+  eoshi = "我是",
+}
+
+-- 加载正向表（每行：拼音串<TAB>权重<TAB>词1,词2,...），同时构建前缀集合。
+local function loadDict()
   local home = os.getenv("HOME") or ""
-  local f = io.open(home .. MAP_FILE, "r")
+  local f = io.open(home .. DICT_FILE, "r")
   if not f then return end
   local data = f:read("*a")
   f:close()
   if not data or #data == 0 then return end
-  -- 末尾补换行，确保最后一行也能被捕获；gmatch 对空匹配会自动前进，不会死循环。
+  local cnt = 0
+  -- 末尾补换行确保最后一行被捕获；gmatch 对空匹配会自动前进，不会死循环。
   for line in (data .. "\n"):gmatch("([^\n]*)\n") do
-    local typo, rest = line:match("^(%S+)\t(.*)$")
-    if typo and rest and #rest > 0 then
-      CORRECTION_MAP[typo] = rest
+    local py, w, words = line:match("^(%S+)\t(%d+)\t(.+)$")
+    if py and w and words then
+      DICT[py] = { w = tonumber(w) or 0, s = words }
+      cnt = cnt + 1
+      for i = 1, #py - 1 do
+        PREFIX[py:sub(1, i)] = true
+      end
     end
+  end
+  if cnt > 0 then LOADED = true end
+end
+
+local function loadPosition()
+  local home = os.getenv("HOME") or ""
+  local f = io.open(home .. POS_FILE, "r")
+  if not f then return end
+  local line = f:read("*l")
+  f:close()
+  if not line then return end
+  local v = line:match("^%s*(%S+)")
+  if v == "top" or v == "afterFirst" then
+    POSITION = v
   end
 end
 
 function M.init(env)
-  -- 读取位置配置（文件不存在则用默认 afterFirst）
-  local home = os.getenv("HOME") or ""
-  local f = io.open(home .. "/Library/Rime/correction_position.txt", "r")
-  if f then
-    local line = f:read("*l")
-    f:close()
-    if line then
-      local v = line:match("^%s*(%S+)")
-      if v == "top" or v == "afterFirst" then
-        POSITION = v
+  pcall(loadPosition)
+  pcall(loadDict)
+end
+
+-- 枚举 code 的编辑距离 1 变体，返回命中正向表的结果（按可信度降序）。
+local function collect(code)
+  local n = #code
+  local best = {}   -- pinyin -> score
+
+  local function try(v, coef)
+    if v == code then return end
+    if SYL[v] then return end   -- 抑制单音节假阳性（是/我/的…）
+    local e = DICT[v]
+    if e then
+      local s = e.w * coef
+      if not best[v] or best[v] < s then
+        best[v] = s
       end
     end
   end
-  -- 加载通用纠错词表（错打串 -> 候选词串）。失败静默降级，不影响中文输入。
-  pcall(loadCorrectionMap)
+
+  -- 1) 换位：相邻两字母顺序颠倒（wsohi -> woshi）
+  for i = 1, n - 1 do
+    try(code:sub(1, i - 1) .. code:sub(i + 1, i + 1)
+        .. code:sub(i, i) .. code:sub(i + 2), CO_SWAP)
+  end
+
+  -- 2) 多字：删掉一个字母（wooshi -> woshi）
+  for i = 1, n do
+    try(code:sub(1, i - 1) .. code:sub(i + 1), CO_DEL)
+  end
+
+  -- 3) 替换：仅相邻键（eoshi -> woshi）。v3 弃用任意键替换（远键误纠率过高，
+  --    且单音节抑制已无法覆盖其产生的 模式/漠视 类高频假阳性）。
+  for i = 1, n do
+    local ch = code:sub(i, i)
+    local pre = code:sub(1, i - 1)
+    local suf = code:sub(i + 1)
+    local nb = NEIGHBORS[ch]
+    if nb then
+      for k = 1, #nb do
+        local c = nb:sub(k, k)
+        try(pre .. c .. suf, CO_NEAR)
+      end
+    end
+  end
+
+  -- 4) 漏字：插入一个字母（wshi -> woshi）
+  for i = 0, n do
+    local pre = code:sub(1, i)
+    local suf = code:sub(i + 1)
+    for k = 1, 26 do
+      try(pre .. LETTERS:sub(k, k) .. suf, CO_INS)
+    end
+  end
+
+  local arr = {}
+  for v, s in pairs(best) do
+    table.insert(arr, { v = v, s = s })
+  end
+  table.sort(arr, function(a, b)
+    if a.s == b.s then return a.v < b.v end
+    return a.s > b.s
+  end)
+  return arr
 end
 
 function M.func(input, env)
   local ctx = env.engine.context
-  local code = ctx.input
+  local code = ctx.input or ""
 
   -- 收集上游候选（先全部取出，便于按位置插入纠错候选）
   local upstream = {}
@@ -73,21 +195,42 @@ function M.func(input, env)
     table.insert(upstream, cand)
   end
 
-  -- 纠错候选（去重）
   local corrections = {}
   local seen = {}
   local function add(text)
-    if text and text ~= "" and not seen[text] then
+    if text and text ~= "" and not seen[text] and #corrections < MAX_OUT then
       seen[text] = true
       table.insert(corrections, text)
     end
   end
 
-  -- 映射表纠错（可靠路径）：精确查表，O(1)
-  local mapped = CORRECTION_MAP[code]
-  if mapped then
-    for w in mapped:gmatch("([^,]+)") do
-      add(w)
+  local n = #code
+  -- 只处理纯小写字母串（带分隔符 ' / 数字 / 大写的一律不碰）
+  if code:match("^[a-z]+$") and n >= MIN_LEN and n <= MAX_LEN then
+    if LOADED then
+      -- 门槛：既不是正确拼音（DICT），也不是输入中间态（PREFIX），才判定为真打错。
+      if not DICT[code] and not PREFIX[code] then
+        local ok, arr = pcall(collect, code)
+        if ok and arr then
+          for i = 1, #arr do
+            if #corrections >= MAX_OUT then break end
+            local e = DICT[arr[i].v]
+            if e then
+              for w in e.s:gmatch("([^,]+)") do
+                add(w)
+              end
+            end
+          end
+        end
+      end
+    else
+      -- 正向表不可用时的兜底路径
+      local fb = FALLBACK[code]
+      if fb then
+        for w in fb:gmatch("([^,]+)") do
+          add(w)
+        end
+      end
     end
   end
 
@@ -109,7 +252,7 @@ function M.func(input, env)
   if POSITION == "top" then
     for i = 1, #corrections do emit(i) end
     for _, c in ipairs(upstream) do yield(c) end
-  else -- afterFirst（首条之后=次位，默认）
+  else -- afterFirst（次位，默认）
     if #upstream > 0 then yield(upstream[1]) end
     for i = 1, #corrections do emit(i) end
     for k = 2, #upstream do yield(upstream[k]) end

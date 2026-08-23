@@ -721,7 +721,5 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 "correction.grammar.desc" = "Multiple correction candidates are ranked by word-frequency weight — the more common fix appears first.";
 "correction.selflearn.title" = "Self-Learning";
 "correction.selflearn.desc" = "Adopted correction candidates are remembered, so the same typo surfaces your choice first — gets smarter over time.";
-"correction.selflearn.enable" = "Enable self-learning";
-"correction.selflearn.enable.desc" = "When off, no new behavior is recorded, but learned words still apply.";
 "correction.comingSoon" = "Coming Soon";
 "correction.supported" = "Supported";
