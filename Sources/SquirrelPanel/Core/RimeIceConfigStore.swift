@@ -88,7 +88,7 @@ enum CorrectionStrength: Int, CaseIterable, Identifiable {
   case basic = 1      // 仅键盘物理相邻错打
   case standard = 2   // 相邻错打 + 系统性音近纠错
   var id: Int { rawValue }
-  /// 稳定、非本地化的名称，写入 ~/Library/Rime/correction_strength.txt 供 lua 读取。
+  /// 稳定、非本地化的名称（预留给新引擎写入 ~/Library/Rime/correction_strength.txt）。
   var name: String {
     switch self {
     case .basic: return "basic"
@@ -109,7 +109,7 @@ enum CorrectionInjectionPosition: Int, CaseIterable, Identifiable {
   case afterFirst = 1 // 第一条自然候选之后（默认）
   case end = 9        // 末尾
   var id: Int { rawValue }
-  /// 稳定、非本地化的名称，写入 ~/Library/Rime/correction_position.txt 供 lua 读取。
+  /// 稳定、非本地化的名称（预留给新引擎写入 ~/Library/Rime/correction_position.txt）。
   var name: String {
     switch self {
     case .top: return "top"
@@ -124,14 +124,6 @@ enum CorrectionInjectionPosition: Int, CaseIterable, Identifiable {
     case .end: return String(localized: "correction.position.end")
     }
   }
-}
-
-/// 一条拼音纠错规则：单向「错误音节 → 正确音节」派生，不污染正确输入。
-struct CorrectionRule: Identifiable, Hashable {
-  var id: String { rule }
-  let rule: String
-  let label: String
-  let level: CorrectionStrength
 }
 
 @MainActor
@@ -208,28 +200,16 @@ final class RimeIceConfigStore {
   /// 已选中的模糊音规则（值为 `speller/algebra` 中的规则原文）
   var fuzzySelection: Set<String> = []
 
-  // MARK: - UI 状态：拼音纠错（原 AI 联想层重构）
+  // MARK: - UI 状态：拼音纠错（占位接口，引擎待重做）
 
-  /// 是否启用拼音实时纠错（按错键自动纠正）。由「AI 增强」页总开关驱动。
+  /// 是否启用拼音实时纠错（按错键自动纠正）。占位属性：新引擎接入前不起作用。
   var correctionEnabled: Bool = false
-
-  /// 纠错强度：基础（仅键盘相邻错打）/ 标准（相邻错打 + 系统性音近）。
+  /// 纠错强度：基础 / 标准（占位）。
   var correctionStrength: CorrectionStrength = .standard
-
-  /// 纠错候选注入位置：首位 / 首条之后 / 末尾。
+  /// 纠错候选注入位置：首位 / 首条之后 / 末尾（占位）。
   var correctionInjectionPosition: CorrectionInjectionPosition = .afterFirst
-
-  /// 纠错强度 / 位置的脏值基线。这两个值**不进** rime_ice.custom.yaml
-  /// （只写 ~/Library/Rime/correction_{strength,position}.txt 供 lua 读取），
-  /// 因此 compileIcePatch() 感知不到它们的变化，必须单独跟踪，否则改它们时
-  /// isDirty 恒为 false → 「应用并重新部署」按钮被禁用 → 配置写不进磁盘。
-  private var baselineCorrectionStrength: CorrectionStrength = .standard
-  private var baselineCorrectionInjectionPosition: CorrectionInjectionPosition = .afterFirst
-
-  /// 是否启用用户自学习（Phase3）：用户采纳纠错候选时记录「错音→正词」，
-  /// 越用越准。只落 ~/Library/Rime/correction_selflearn.txt，同样需单独跟踪基线。
+  /// 是否启用用户自学习（占位）。
   var correctionSelfLearning: Bool = true
-  private var baselineCorrectionSelfLearning: Bool = true
 
   // MARK: - 双拼方案自己的补丁文件（非 default / 非 rime_ice）
 
@@ -269,8 +249,7 @@ final class RimeIceConfigStore {
     "lua_filter@*reduce_english_filter",
     "simplifier@emoji",
     "lua_filter@*search@radical_pinyin",
-    "reverse_lookup_filter@radical_reverse_lookup",
-    "lua_filter@*correction"
+    "reverse_lookup_filter@radical_reverse_lookup"
   ]
 
   /// 托管的 dependencies 条目
@@ -347,44 +326,6 @@ final class RimeIceConfigStore {
 
   /// 模糊音规则原文集合，用于从用户现有 algebra 中识别并剥离
   static let fuzzyRuleSet: Set<String> = Set(fuzzyRules.map(\.rule))
-
-  /// 拼音纠错规则表（单向 derive，写进 `speller/algebra`）
-  static let correctionRules: [CorrectionRule] = [
-    // MARK: 键盘物理相邻错打（基础）
-    CorrectionRule(rule: "derive/^eo$/wo/", label: "eo → wo（我/窝）", level: .basic),
-    CorrectionRule(rule: "derive/^mi$/ni/", label: "mi → ni（你）", level: .basic),
-    CorrectionRule(rule: "derive/^gao$/hao/", label: "gao → hao（好）", level: .basic),
-    CorrectionRule(rule: "derive/^hao$/gao/", label: "hao → gao（搞）", level: .basic),
-    CorrectionRule(rule: "derive/^ra$/ta/", label: "ra → ta（他）", level: .basic),
-    CorrectionRule(rule: "derive/^ta$/ra/", label: "ta → ra（然）", level: .basic),
-    CorrectionRule(rule: "derive/^sa$/da/", label: "sa → da（大）", level: .basic),
-    CorrectionRule(rule: "derive/^da$/sa/", label: "da → sa（撒）", level: .basic),
-    CorrectionRule(rule: "derive/^xi$/ci/", label: "xi → ci（词）", level: .basic),
-    CorrectionRule(rule: "derive/^ci$/xi/", label: "ci → xi（西）", level: .basic),
-    CorrectionRule(rule: "derive/^fa$/da/", label: "fa → da（打）", level: .basic),
-    CorrectionRule(rule: "derive/^da$/fa/", label: "da → fa（发）", level: .basic),
-    CorrectionRule(rule: "derive/^li$/ni/", label: "li → ni（尼）", level: .basic),
-    CorrectionRule(rule: "derive/^ni$/li/", label: "ni → li（里）", level: .basic),
-    CorrectionRule(rule: "derive/^ou$/uo/", label: "ou → uo（我）", level: .basic),
-    CorrectionRule(rule: "derive/^ie$/ei/", label: "ie → ei（被）", level: .basic),
-    CorrectionRule(rule: "derive/^ei$/ie/", label: "ei → ie（也）", level: .basic),
-    // MARK: 系统性音近纠错（标准，规则文本与模糊音不撞）
-    CorrectionRule(rule: "derive/^ji$/qi/", label: "ji → qi（七）", level: .standard),
-    CorrectionRule(rule: "derive/^qi$/ji/", label: "qi → ji（机）", level: .standard),
-    CorrectionRule(rule: "derive/^ju$/qu/", label: "ju → qu（去）", level: .standard),
-    CorrectionRule(rule: "derive/^qu$/ju/", label: "qu → ju（居）", level: .standard),
-    CorrectionRule(rule: "derive/^wan$/wang/", label: "wan → wang（王）", level: .standard),
-    CorrectionRule(rule: "derive/^wang$/wan/", label: "wang → wan（完）", level: .standard),
-    CorrectionRule(rule: "derive/^min$/ming/", label: "min → ming（明）", level: .standard),
-    CorrectionRule(rule: "derive/^ming$/min/", label: "ming → min（民）", level: .standard),
-    CorrectionRule(rule: "derive/^zen$/zheng/", label: "zen → zheng（正）", level: .standard),
-    CorrectionRule(rule: "derive/^zheng$/zen/", label: "zheng → zen（怎）", level: .standard),
-    CorrectionRule(rule: "derive/^fen$/feng/", label: "fen → feng（风）", level: .standard),
-    CorrectionRule(rule: "derive/^feng$/fen/", label: "feng → fen（分）", level: .standard),
-  ]
-
-  /// 纠错规则原文集合，用于从 algebra 中识别并剥离（独立于模糊音规则集）
-  static let correctionRuleSet: Set<String> = Set(correctionRules.map(\.rule))
 
   /// 拼音类方案（全拼 rime_ice + 各家双拼）
   static func isPinyinFamily(_ id: String) -> Bool {
@@ -554,33 +495,7 @@ final class RimeIceConfigStore {
 
     fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
 
-    // 拼音纠错挂载态以磁盘实际为准：speller/algebra 是否含纠错 derive 规则。
-    // 纠错核心已改走 derive（lua_filter 仅做位置重排），两者同开同关；以 algebra 为准最可靠。
-    let corrRulesInAlgebra = currentAlgebra.filter { Self.correctionRuleSet.contains($0) }
-    correctionEnabled = !corrRulesInAlgebra.isEmpty
-
-    // 纠错强度 / 注入位置：以实际部署到 ~/Library/Rime 的文件为准，保证 UI 与运行时一致。
-    let rimeDir = RimeEnvironment.userDirectory
-    if let s = try? String(contentsOf: rimeDir.appendingPathComponent("correction_strength.txt"), encoding: .utf8) {
-      let v = s.trimmingCharacters(in: .whitespacesAndNewlines)
-      correctionStrength = (v == "basic") ? .basic : .standard
-    }
-    if let p = try? String(contentsOf: rimeDir.appendingPathComponent("correction_position.txt"), encoding: .utf8) {
-      let v = p.trimmingCharacters(in: .whitespacesAndNewlines)
-      correctionInjectionPosition = CorrectionInjectionPosition.allCases.first { $0.name == v } ?? .afterFirst
-    }
-
     baselineIce = compileIcePatch()
-
-    // 纠错强度 / 位置基线：与磁盘实际部署值对齐，保证改它们前 UI 非脏。
-    baselineCorrectionStrength = correctionStrength
-    baselineCorrectionInjectionPosition = correctionInjectionPosition
-
-    // 自学习开关基线：读 correction_selflearn.txt（缺省 on）。
-    if let sl = try? String(contentsOf: rimeDir.appendingPathComponent("correction_selflearn.txt"), encoding: .utf8) {
-      correctionSelfLearning = sl.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "off"
-    }
-    baselineCorrectionSelfLearning = correctionSelfLearning
   }
 
   // MARK: - 读出厂模板
@@ -693,8 +608,6 @@ final class RimeIceConfigStore {
       return enableEmojiDict
     case "lua_filter@*search@radical_pinyin", "reverse_lookup_filter@radical_reverse_lookup":
       return enableRadical
-    case "lua_filter@*correction":
-      return correctionEnabled
     default:
       guard item.hasPrefix("lua_filter@") else { return true }
       let key = String(item.dropFirst("lua_filter@".count))
@@ -720,26 +633,10 @@ final class RimeIceConfigStore {
   }
 
   private func mergedFilters() -> [String] {
-    var result = Self.mergedList(template: template.filters,
+    let result = Self.mergedList(template: template.filters,
                     current: currentList("engine/filters", fallback: template.filters),
                     managed: Self.managedFilters,
                     isEnabled: { self.isFilterEnabled($0) })
-    // 拼音纠错过滤器 `lua_filter@*correction` 是面板自有条目，不在出厂
-    // rime_ice.schema.yaml 的 engine/filters 里；mergedList 只回插「current 或 template
-    // 中存在」的托管项，因此它永远插不进来。这里在合并结果上显式兜底：开启纠错时确保
-    // 它存在，并插入到 `uniquifier` 之前（让重排后的候选也被去重清理）；关闭时由
-    // isFilterEnabled 在 mergedList 的 current 循环中判定为禁用而剔除
-    //（managed && !enabled → 跳过），无需在此删。
-    //
-    // 该 filter 是**轻量位置重排器**：纠错候选由 speller/algebra derive 生成（内核级），
-    // lua 只按 correction_position.txt 重排这些候选，不查任何大词典、无 GC 压力。
-    if correctionEnabled, !result.contains("lua_filter@*correction") {
-      if let uniqIdx = result.firstIndex(of: "uniquifier") {
-        result.insert("lua_filter@*correction", at: uniqIdx)
-      } else {
-        result.append("lua_filter@*correction")
-      }
-    }
     return result
   }
 
@@ -750,22 +647,13 @@ final class RimeIceConfigStore {
                     isEnabled: { self.isDependencyEnabled($0) })
   }
 
-  /// 模糊音 + 拼音纠错：把已选规则**前置**到用户现有 algebra 之前；
+  /// 模糊音：把已选规则**前置**到用户现有 algebra 之前；
   /// 出厂常驻规则（erase / abbrev / v-u 转换 / 自动纠错）原样保留。
-  ///
-  /// 拼音纠错走 `speller/algebra` 单向 derive，与模糊音同源机制——Rime 内核级、
-  /// 拼音编译期展开、零延迟，**不查大词典、无 Lua GC 压力**（这是纠错不卡的关键）。
-  /// 纠错候选的「位置三档」由轻量 lua_filter@*correction 在候选流上重排实现，
-  /// 与这里的派生解耦：derive 负责生成纠错候选，lua 只负责排序、不查词典。
   private func mergedAlgebra() -> [String] {
     let current = currentList("speller/algebra", fallback: template.algebra)
-    let base = current.filter { !Self.fuzzyRuleSet.contains($0) && !Self.correctionRuleSet.contains($0) }
+    let base = current.filter { !Self.fuzzyRuleSet.contains($0) }
     let fuzzySel = Self.fuzzyRules.map(\.rule).filter { fuzzySelection.contains($0) }
-    // 纠错规则：仅开启时并入，按当前强度（basic 仅键盘层 / standard 含音近层）。
-    let corrSel = correctionEnabled
-      ? Self.correctionRules.filter { $0.level.rawValue <= correctionStrength.rawValue }.map(\.rule)
-      : []
-    return fuzzySel + corrSel + base
+    return fuzzySel + base
   }
 
   // MARK: - 写：界面 → 补丁
@@ -836,10 +724,6 @@ final class RimeIceConfigStore {
     let filters = mergedFilters()
     set["engine/filters"] = Self.safeListPatch(merged: filters, template: template.filters)
 
-    // 拼音纠错（derive 机制，内核级零延迟）：纠错规则由 mergedAlgebra 写入
-    // speller/algebra；lua_filter@*correction（mergedFilters 已并入）仅做候选位置重排，
-    // 不查大词典。不需要 processor —— 纯内核派生 + 轻量重排，不调用任何外部进程。
-    //
     // ⚠️ 严禁在此写入 engine/processors（含写 nil / @after 0 = none）。Rime 的
     // engine/processors 由内置默认提供；一旦补丁里出现 engine/processors: {}（哪怕是
     // 清 key 产生的空映射），合并时会把内置默认处理器整体清空，导致按键完全不被处理、
@@ -850,10 +734,24 @@ final class RimeIceConfigStore {
     set["schema/dependencies"] = Self.safeListPatch(merged: dependencies, template: template.dependencies)
 
     // speller/algebra 是最致命的键：一旦整体覆盖写成残缺列表（仅面板自有规则），
-    // 官方 47+ 条拼写规则全部丢失 → 拼音拼不出词、中文输入崩溃。因此标记 critical，
-    // 出厂模板不可信（base schema 解析失败、template 变空）时宁可功能不生效也绝不写。
+    // 官方 47+ 条拼写规则全部丢失 → 拼音拼不出词、中文输入崩溃。
+    //
+    // ⚠️ 落盘判据必须用「当前磁盘实际」(current) 而非「出厂模板」(template)：
+    // 拼音纠错 derive 规则是面板**非出厂**的增量——关闭纠错时 merged 退回工厂列表，
+    // 若与 template 比较会判成「相等」而跳过写入，导致旧 derive 规则残留在 yaml 里、
+    // 开关关不掉、UI 状态与磁盘脱钩。改为与 current 比较：有差异才整体写回（合并结果
+    // 始终含真实工厂规则 + 面板增量，绝非残缺列表），无差异才回落，绝不写 : []。
+    // 出厂模板不可信（base 解析失败、template 变空）时，merged 仍由 current 派生、
+    // 必含真实工厂规则，整体写回安全；仅当 merged 本身为空才回落（避免清空输入法）。
+    let currentAlgebra = currentList("speller/algebra", fallback: template.algebra)
     let algebra = mergedAlgebra()
-    set["speller/algebra"] = Self.safeListPatch(merged: algebra, template: template.algebra, critical: true)
+    if algebra == currentAlgebra {
+      set["speller/algebra"] = PatchValue?.none
+    } else if algebra.isEmpty {
+      set["speller/algebra"] = PatchValue?.none
+    } else {
+      set["speller/algebra"] = .stringList(algebra)
+    }
 
     return set
   }
@@ -881,44 +779,6 @@ final class RimeIceConfigStore {
     return .stringList(merged)
   }
 
-  /// 部署纠错资源：轻量 lua 位置重排器 + 三个开关 txt，从 App 资源目录复制到 ~/Library/Rime/。
-  /// 在写补丁前调用，确保 schema 编译时 lua 已就位；幂等。
-  ///
-  /// 纠错候选由 `speller/algebra` derive 生成（内核级、零延迟），lua 只负责按位置三档
-  /// 重排候选，**不查任何大词典**。这里同时清理旧版「40 万行词典 lua 查表」的历史残留。
-  private func deployCorrectionAssets() {
-    guard let resRoot = Bundle.main.resourceURL?
-      .appendingPathComponent("CorrectionEngine") else { return }
-    let luaDir = (NSHomeDirectory() as NSString)
-      .appendingPathComponent("Library/Rime/lua")
-    let rimeDir = (NSHomeDirectory() as NSString)
-      .appendingPathComponent("Library/Rime")
-    try? FileManager.default.createDirectory(atPath: luaDir, withIntermediateDirectories: true)
-    for name in ["correction.lua"] {
-      let src = resRoot.appendingPathComponent("lua/\(name)")
-      guard FileManager.default.fileExists(atPath: src.path) else { continue }
-      let dst = (luaDir as NSString).appendingPathComponent(name)
-      try? FileManager.default.copyItem(atPath: src.path, toPath: dst)
-    }
-    // 清理旧版 40 万行查表词典的历史残留（纠错已改走 derive，不再需要这些大文件）。
-    for name in ["correction_dict.txt", "correction_dict_phonetic.txt"] {
-      let p = (rimeDir as NSString).appendingPathComponent(name)
-      try? FileManager.default.removeItem(atPath: p)
-    }
-    // 写出纠错强度，供 lua 决定识别哪些纠错规则（与 algebra 的 derive 严格一致）。
-    let strengthDst = (rimeDir as NSString).appendingPathComponent("correction_strength.txt")
-    try? ("\(correctionStrength.name)\n" as NSString).write(
-      toFile: strengthDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
-    // 写出纠错候选注入位置，供 lua 决定把「纠错」候选插到第几位。
-    let posDst = (rimeDir as NSString).appendingPathComponent("correction_position.txt")
-    try? ("\(correctionInjectionPosition.name)\n" as NSString).write(
-      toFile: posDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
-    // 写出自学习开关，供 lua 决定是否记录用户采纳行为。
-    let slDst = (rimeDir as NSString).appendingPathComponent("correction_selflearn.txt")
-    try? ("\(correctionSelfLearning ? "on" : "off")\n" as NSString).write(
-      toFile: slDst, atomically: true, encoding: String.Encoding.utf8.rawValue)
-  }
-
   /// 由 SettingsStore.apply() 在统一落盘前调用：把「记忆」开关名同步进 save_options。
   ///
   /// `switcher/save_options` 是**全局**名单，五笔、仓颉等其他方案的开关也在里面。
@@ -937,7 +797,6 @@ final class RimeIceConfigStore {
     if phrases.isDirty { try phrases.save() }
     try writeDoublePinyinPatch()
     guard isInstalled, icePatch.isWritable else { return }
-    if correctionEnabled { deployCorrectionAssets() }
     let set = compileIcePatch()
     // 干净安装 + 全部托管项都回落出厂 = 一个键都不用写。此时凭空创建一份只有注释头、
     // 没有任何 patch 段的 rime_ice.custom.yaml 纯属垃圾文件：用户从没打开过雾凇面板，
@@ -955,22 +814,12 @@ final class RimeIceConfigStore {
     for (key, value) in set { icePatch.set(value?.yamlObject, forPath: key) }
     try icePatch.save()
     baselineIce = set
-    // 纠错强度 / 位置随本次 apply 一并落盘（deployCorrectionAssets 已写 txt），
-    // 此处同步基线，避免 apply 后 isDirty 仍残留 true、按钮持续点亮。
-    baselineCorrectionStrength = correctionStrength
-    baselineCorrectionInjectionPosition = correctionInjectionPosition
-    baselineCorrectionSelfLearning = correctionSelfLearning
   }
 
   /// 雾凇面板自身的脏值判断（覆盖 B/C/D/E 全部状态）
   var isDirty: Bool {
     if phrases.isDirty { return true }
     if showRawDoubleCode != baselineShowRawDoubleCode { return true }
-    // 纠错强度 / 位置只落 txt、不进 custom.yaml，必须显式纳入脏值判断。
-    if correctionStrength != baselineCorrectionStrength { return true }
-    if correctionInjectionPosition != baselineCorrectionInjectionPosition { return true }
-    // 自学习开关同样只落 txt。
-    if correctionSelfLearning != baselineCorrectionSelfLearning { return true }
     guard isInstalled else { return false }
     return compileIcePatch() != baselineIce
   }
@@ -1107,10 +956,6 @@ final class RimeIceConfigStore {
     // engine/processors 由内置默认提供，补丁里写 engine/processors: {}（哪怕是清 key
     // 产生的空映射）会清空内置默认处理器，导致候选框消失、中文报废。AI 处理器已物理
     // 删除，此处无需清理；保留内置默认即可。
-    correctionEnabled = false
-    correctionStrength = .standard
-    correctionInjectionPosition = .afterFirst
-    correctionSelfLearning = true
     // 3. save_options 回落出厂
     settings.savedSwitchOptions = factorySaveOptions()
     // 4. 注意：此处**不**调 settings.apply()。

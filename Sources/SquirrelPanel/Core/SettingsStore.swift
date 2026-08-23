@@ -712,6 +712,11 @@ final class SettingsStore {
             // 完整重读 squirrel.yaml（含配色方案）并应用到 UI 面板。
             // 不需要 restart()——在通知被处理前杀掉 Squirrel 反而会导致配置不生效。
             self.statusMessage = "status.deployed"
+            // 关键：部署成功后必须 reload() 重新从磁盘读回真实状态并同步基线。
+            // 否则 baselineIce 仍停留在部署前的旧值，
+            // compileIcePatch() != baselineIce → isDirty 永远 true → footer 的
+            // "有未应用的更改"橙色提示与按钮可点状态永远不消失，用户感觉"点了没生效"。
+            self.reload()
           } catch let e as PanelError {
             // 防事故：部署前发现方案源文件缺失，SquirrelBridge.deploy 已中止部署。
             // 配置已写入磁盘，仅暂停重建方案，避免把输入法打挂。

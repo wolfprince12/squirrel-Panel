@@ -272,4 +272,7 @@ final class RimeIceRegressionTests: XCTestCase {
     // 未保存词条仍在编辑器
     XCTAssertTrue(store.phrases.isDirty, "保存失败后未保存词条应原样保留在编辑器")
   }
+
+  // MARK: - ⑧ 雪狼智能纠错（占位：引擎待重做，相关测试已移至归档）
+
 }
