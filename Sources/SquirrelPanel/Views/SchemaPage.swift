@@ -103,15 +103,19 @@ struct SchemaPage: View {
                     store.enabledSchemaIDs.append(schema.id)
                   }
                   .controlSize(.small)
-                  Button {
-                    pendingDelete = schema
-                  } label: {
-                    Image(systemName: "trash")
+                  // 仅对「用户安装的方案」显示删除按钮：内置方案位于受 SIP 保护的
+                  // Squirrel.app 包内，删除会触发完全磁盘访问权限弹窗且多半失败，故不提供。
+                  if schema.isUserProvided {
+                    Button {
+                      pendingDelete = schema
+                    } label: {
+                      Image(systemName: "trash")
+                    }
+                    .controlSize(.small)
+                    .foregroundStyle(.red)
+                    .buttonStyle(.borderless)
+                    .help(String(localized: "schema.delete.help"))
                   }
-                  .controlSize(.small)
-                  .foregroundStyle(.red)
-                  .buttonStyle(.borderless)
-                  .help(String(localized: "schema.delete.help"))
                 }
               }
               .padding(.vertical, 2)
