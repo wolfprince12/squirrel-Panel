@@ -305,6 +305,7 @@
 "appearance.behavior.mutualExclusive" = "横排时高亮互斥";
 "appearance.scheme.author" = "作者：%@";
 "appearance.font.system" = "跟随系统";
+"appearance.font.search" = "搜索";
 "schema.available.allEnabled" = "本机所有方案都已启用。";
 "schema.available.rescan" = "重新扫描";
 "schema.switch.title" = "方案切换";

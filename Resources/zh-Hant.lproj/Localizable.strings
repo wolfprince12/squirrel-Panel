@@ -333,6 +333,7 @@
 "appearance.behavior.mutualExclusive" = "橫排時高亮互斥";
 "appearance.scheme.author" = "作者：%@";
 "appearance.font.system" = "跟隨系統";
+"appearance.font.search" = "搜尋";
 "schema.available.allEnabled" = "本機所有方案都已啟用。";
 "schema.available.rescan" = "重新掃描";
 "schema.switch.title" = "方案切換";

@@ -442,7 +442,7 @@ private struct FontPickerPopover: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      TextField(String(localized: "appearance.font.search"), text: $query)
+      TextField("appearance.font.search", text: $query)
         .textFieldStyle(.roundedBorder)
       Divider()
       // 系统默认项

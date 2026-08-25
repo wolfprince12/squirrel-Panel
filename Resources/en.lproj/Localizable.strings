@@ -305,6 +305,7 @@
 "appearance.behavior.mutualExclusive" = "Mutually exclusive highlight in horizontal layout";
 "appearance.scheme.author" = "Author: %@";
 "appearance.font.system" = "Follow System";
+"appearance.font.search" = "Search";
 "schema.available.allEnabled" = "All schemas on this device are already enabled";
 "schema.available.rescan" = "Rescan";
 "schema.switch.title" = "Schema Switching";
