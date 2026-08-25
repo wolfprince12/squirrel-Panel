@@ -31,6 +31,8 @@ local M = {}
 
 -- 数据文件（由面板 deployCorrectionAssets 复制到 ~/Library/Rime/）
 local DICT_FILE = "/Library/Rime/correction_pinyin.txt"
+-- 用户导入的自定义词典（如繁体中文），优先级高于出厂正向表。
+local USER_DICT_FILE = "/Library/Rime/correction_pinyin_user.txt"
 local POS_FILE = "/Library/Rime/correction_position.txt"
 
 -- 正向表：pinyin -> { w = 最高词频, s = "词1,词2,..." }
@@ -85,9 +87,13 @@ local FALLBACK = {
 }
 
 -- 加载正向表（每行：拼音串<TAB>权重<TAB>词1,词2,...），同时构建前缀集合。
+-- 优先读取用户导入文件（correction_pinyin_user.txt），否则回退出厂正向表（correction_pinyin.txt）。
 local function loadDict()
   local home = os.getenv("HOME") or ""
-  local f = io.open(home .. DICT_FILE, "r")
+  local f = io.open(home .. USER_DICT_FILE, "r")
+  if not f then
+    f = io.open(home .. DICT_FILE, "r")  -- 回退出厂正向表
+  end
   if not f then return end
   local data = f:read("*a")
   f:close()

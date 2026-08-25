@@ -18,6 +18,7 @@
 
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - 主页面
 
@@ -25,6 +26,9 @@ struct AmethystCorrectionPage: View {
   @Environment(SettingsStore.self) private var store
   @Environment(UpdateCenter.self) private var updateCenter
   @Environment(RimeIceConfigStore.self) private var ice
+
+  @State private var dictStatus: String?
+  @State private var dictStatusIsError = false
 
   var body: some View {
     @Bindable var ice = ice
@@ -116,7 +120,79 @@ struct AmethystCorrectionPage: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+          Text("correction.dict.title")
+            .font(.subheadline)
+            .fontWeight(.medium)
+          Text("correction.dict.desc")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          HStack(spacing: 12) {
+            Button("correction.dict.export") { exportDict() }
+            Button("correction.dict.import") { importDict() }
+            Button("correction.dict.restore") { restoreDict() }
+          }
+          if let msg = dictStatus {
+            Text(msg)
+              .font(.caption)
+              .foregroundStyle(dictStatusIsError ? .red : .secondary)
+          }
+        }
       }
+    }
+  }
+
+  // MARK: - 纠错词典导出 / 导入 / 恢复出厂
+
+  private func exportDict() {
+    guard let data = ice.exportCorrectionDict() else {
+      dictStatus = String(localized: "correction.dict.export.failed")
+      dictStatusIsError = true
+      return
+    }
+    let save = NSSavePanel()
+    save.allowedContentTypes = [.plainText]
+    save.nameFieldStringValue = "correction_pinyin.txt"
+    save.canCreateDirectories = true
+    guard save.runModal() == .OK, let url = save.url else { return }
+    do {
+      try data.write(to: url)
+      dictStatus = String(localized: "correction.dict.export.done")
+      dictStatusIsError = false
+    } catch {
+      dictStatus = String(localized: "correction.dict.export.failed")
+      dictStatusIsError = true
+    }
+  }
+
+  private func importDict() {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.plainText, .yaml]
+    panel.allowsMultipleSelection = false
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    guard panel.runModal() == .OK, let url = panel.url else { return }
+    do {
+      try ice.importCorrectionDict(from: url)
+      dictStatus = String(localized: "correction.dict.import.done")
+      dictStatusIsError = false
+    } catch {
+      dictStatus = String(localized: "correction.dict.import.failed")
+      dictStatusIsError = true
+    }
+  }
+
+  private func restoreDict() {
+    do {
+      try ice.restoreFactoryCorrectionDict()
+      dictStatus = String(localized: "correction.dict.restore.done")
+      dictStatusIsError = false
+    } catch {
+      dictStatus = String(localized: "correction.dict.restore.failed")
+      dictStatusIsError = true
     }
   }
 }

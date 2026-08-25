@@ -951,6 +951,61 @@ final class RimeIceConfigStore {
     try? FileManager.default.removeItem(at: rimeDir.appending(path: "correction_count.txt"))
   }
 
+  // MARK: - 纠错词典导出 / 导入 / 恢复出厂（紫毫纠错模型 · 用户可编辑词典）
+
+  /// 当前生效的纠错正向表文件 URL，优先级与 lua 一致：
+  /// 用户导入文件（correction_pinyin_user.txt）> Rime 目录出厂表（correction_pinyin.txt）> App 资源出厂表。
+  var activeCorrectionDictURL: URL? {
+    let rimeDir = RimeEnvironment.userDirectory
+    let userFile = rimeDir.appending(path: "correction_pinyin_user.txt")
+    if FileManager.default.fileExists(atPath: userFile.path(percentEncoded: false)) {
+      return userFile
+    }
+    let rimeFactory = rimeDir.appending(path: "correction_pinyin.txt")
+    if FileManager.default.fileExists(atPath: rimeFactory.path(percentEncoded: false)) {
+      return rimeFactory
+    }
+    return Bundle.main.resourceURL?
+      .appending(path: "CorrectionEngine")
+      .appending(path: "data/correction_pinyin.txt")
+  }
+
+  /// 导出当前生效的纠错词典为文本数据，供用户编辑（如转繁体中文）后再导入。
+  func exportCorrectionDict() -> Data? {
+    guard let url = activeCorrectionDictURL,
+          let data = try? Data(contentsOf: url) else { return nil }
+    return data
+  }
+
+  /// 导入用户编辑后的纠错词典：校验至少一行满足 `拼音<TAB>权重<TAB>词` 后，
+  /// 写入独立用户文件（correction_pinyin_user.txt，落 Rime 目录），再重新部署让 lua 重新加载。
+  /// 用户文件独立于出厂表，apply / 重新部署永不覆盖，符合「用户数据落 Rime 目录」铁律。
+  func importCorrectionDict(from url: URL) throws {
+    let text = try String(contentsOf: url, encoding: .utf8)
+    let hasValidLine = text.split(separator: "\n").contains { line in
+      line.range(of: #"^\S+\t\d+\t.+$"#, options: .regularExpression) != nil
+    }
+    guard hasValidLine else {
+      throw NSError(domain: "SquirrelPanel.Correction", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "correction.dict.import.failed"])
+    }
+    let dst = RimeEnvironment.userDirectory
+      .appending(path: "correction_pinyin_user.txt")
+    try text.write(to: dst, atomically: true, encoding: .utf8)
+    // 确保 lua 与出厂表已就位，并触发重新部署让 lua 重新加载用户词典。
+    deployCorrectionAssets()
+    try SquirrelBridge.deploy(environment: settings.environment)
+  }
+
+  /// 恢复出厂纠错词典：删除用户导入文件，重新部署回退到简体出厂正向表。
+  func restoreFactoryCorrectionDict() throws {
+    let userFile = RimeEnvironment.userDirectory
+      .appending(path: "correction_pinyin_user.txt")
+    try? FileManager.default.removeItem(at: userFile)
+    deployCorrectionAssets()
+    try SquirrelBridge.deploy(environment: settings.environment)
+  }
+
   /// 把本面板编译结果写盘（自带 .bak + unparsable 拒写），并更新基线。
   /// 同时负责自定义短语与双拼方案补丁——它们都不属于 default.custom.yaml，可安全独立写入。
   func writePatch() throws {

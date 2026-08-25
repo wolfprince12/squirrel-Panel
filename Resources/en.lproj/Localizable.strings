@@ -718,7 +718,7 @@ behavior.sendAction.inline_ascii = "Inline ASCII";
 
 Its underlying mechanism is essentially the same as the correction systems shipped by major commercial vendors: it detects adjacent-key mistypes and phonetic confusions, re-queries the dictionary for the corrected pinyin, and injects a \"correction\" candidate—the same approach used by Baidu, Sogou, and similar mainstream input methods. The whole process is fully synchronous, zero-latency, and fully offline; tap to commit, and it takes effect the moment you type.";
 "correction.control.title" = "Correction";
-"correction.control.enable" = "Enable Smart Correction";
+"correction.control.enable" = "Enable Amethyst Correction";
 "correction.control.enable.desc" = "When on, the candidate list shows likely corrections for the current input.";
 "correction.position.title" = "Correction Position";
 "correction.position.top" = "Top";
@@ -726,6 +726,17 @@ Its underlying mechanism is essentially the same as the correction systems shipp
 "correction.position.desc" = "Where the correction candidate appears. Defaults to 2nd; can also be pinned to top.";
 "correction.count.title" = "Correction Count";
 "correction.count.desc" = "Max correction candidates to inject. Default 1 (closest only); up to 3. Higher values add clutter and make selection harder.";
+"correction.dict.title" = "Correction Dictionary";
+"correction.dict.desc" = "Export the dictionary, edit the third column (candidate words) to Traditional Chinese in a text editor, then import to overwrite.";
+"correction.dict.export" = "Export Dictionary…";
+"correction.dict.import" = "Import Dictionary…";
+"correction.dict.restore" = "Restore Factory Dictionary";
+"correction.dict.export.done" = "Correction dictionary exported";
+"correction.dict.export.failed" = "Export failed";
+"correction.dict.import.done" = "New dictionary imported and applied";
+"correction.dict.import.failed" = "Invalid dictionary format; import failed";
+"correction.dict.restore.done" = "Factory dictionary restored";
+"correction.dict.restore.failed" = "Failed to restore factory dictionary";
 "correction.principle.title" = "How It Works";
 "correction.principle.desc" = "A rule- and table-based synchronous layer: detect adjacent-key typos and phonetic confusion, then re-lookup corrected pinyin and mark the best result as a correction candidate.";
 "correction.roadmap.title" = "Coming Next";
