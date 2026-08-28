@@ -856,56 +856,7 @@ final class SettingsStore {
     Task { @MainActor in
       defer { self.isApplying = false }
       do {
-        // 若雾凇拼音面板有未保存改动，先把 save_options 同步进本面板编译结果，
-        // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
-        self.rimeIce?.contribute(to: self)
-        try self.rimeIce?.writePatch()
-        let squirrelSet = self.compileSquirrelPatch()
-        let defaultSet = self.compileDefaultPatch()
-        for (key, value) in squirrelSet { self.squirrelPatch.set(value?.yamlObject, forPath: key) }
-        for (key, value) in defaultSet { self.defaultPatch.set(value?.yamlObject, forPath: key) }
-        // 开发者（大狼）专属配色与用户自定义配色：把当前正在使用的方案定义注入
-        // squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
-        // 未使用的方案定义则清理，保持补丁干净、避免无用的孤立预设。
-        var activeDevIDs = Set([self.colorSchemeID])
-        if self.followSystemAppearance {
-          activeDevIDs.insert(self.colorSchemeDarkID)
-        }
-        activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
-        let customIDs = UserColorSchemes.ids
-        let allowedPresetIDs = activeDevIDs.union(customIDs)
-        // 清理 preset_color_schemes 残留：用户可能用扁平写法（preset_color_schemes/<id>）
-        // 或嵌套写法，两种都要扫描；只保留当前激活的开发者/用户方案，其余全部摘除。
-        let presetPrefix = "preset_color_schemes/"
-        var existingPresetIDs = Set<String>()
-        if let nested = self.squirrelPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
-          existingPresetIDs.formUnion(nested.keys)
-        }
-        for key in self.squirrelPatch.topLevelKeys where key.hasPrefix(presetPrefix) {
-          let id = String(key.dropFirst(presetPrefix.count))
-          if !id.isEmpty { existingPresetIDs.insert(id) }
-        }
-        for id in existingPresetIDs where !allowedPresetIDs.contains(id) {
-          self.squirrelPatch.set(nil, forPath: "preset_color_schemes/\(id)")
-        }
-        for id in activeDevIDs {
-          if let def = DeveloperColorSchemes.presetDefinition(for: id) {
-            self.squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
-          }
-        }
-        for id in customIDs {
-          if let def = UserColorSchemes.presetDefinition(for: id) {
-            self.squirrelPatch.set(def, forPath: "preset_color_schemes/\(id)")
-          }
-        }
-        UserColorSchemes.managedIDs = customIDs
-        try self.squirrelPatch.save()
-        try self.defaultPatch.save()
-        self.baselineSquirrel = squirrelSet
-        self.baselineDefault = defaultSet
-        // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
-        self.managingKeyBindings = self.tabPagingEnabled
-
+        try self.performApplyWrites()
         if self.environment.isInstalled {
           self.statusMessage = "status.deploying"
           do {
@@ -939,6 +890,66 @@ final class SettingsStore {
         self.statusMessage = "status.writeFailed"
       }
     }
+  }
+
+  /// 同步执行「写盘 + 同步基线」部分（不含部署与外部进程）。
+  ///
+  /// 从 `apply()` 的异步后台任务中抽出，供生产复用；同时暴露给单元测试，让 fixture
+  /// 用例在同步上下文中确定性地验证写盘结果与自愈逻辑，不依赖 `apply()` 的异步 `Task`
+  /// 调度时序（否则同步断言总在写盘前发生，保护用例形同虚设）。
+  func performApplyWrites() throws {
+    // 若雾凇拼音面板有未保存改动，先把 save_options 同步进本面板编译结果，
+    // 并写盘 rime_ice.custom.yaml（统一一次部署，自动继承 v1.1.4 源文件预检）。
+    self.rimeIce?.contribute(to: self)
+    try self.rimeIce?.writePatch()
+    let squirrelSet = self.compileSquirrelPatch()
+    let defaultSet = self.compileDefaultPatch()
+
+    // 组装 squirrel.custom.yaml 的完整逐行编辑集（含配色预设定义）；
+    // 用 applyLineEdits 只改托管键对应行，保留用户手写的其它条目与注释。
+    var squirrelEdits: PatchSet = squirrelSet
+    // 开发者（大狼）专属配色与用户自定义配色：把当前正在使用的方案定义注入
+    // squirrel.custom.yaml 的 preset_color_schemes/<id>，让鼠须管能解析并实际渲染；
+    // 未使用的方案定义则清理，保持补丁干净、避免无用的孤立预设。
+    var activeDevIDs = Set([self.colorSchemeID])
+    if self.followSystemAppearance {
+      activeDevIDs.insert(self.colorSchemeDarkID)
+    }
+    activeDevIDs.formIntersection(DeveloperColorSchemes.ids)
+    let customIDs = UserColorSchemes.ids
+    let allowedPresetIDs = activeDevIDs.union(customIDs)
+    // 清理 preset_color_schemes 残留：用户可能用扁平写法（preset_color_schemes/<id>）
+    // 或嵌套写法，两种都要扫描；只保留当前激活的开发者/用户方案，其余全部摘除。
+    let presetPrefix = "preset_color_schemes/"
+    var existingPresetIDs = Set<String>()
+    if let nested = self.squirrelPatch.value(forPath: "preset_color_schemes") as? [String: Any] {
+      existingPresetIDs.formUnion(nested.keys)
+    }
+    for key in self.squirrelPatch.topLevelKeys where key.hasPrefix(presetPrefix) {
+      let id = String(key.dropFirst(presetPrefix.count))
+      if !id.isEmpty { existingPresetIDs.insert(id) }
+    }
+    for id in existingPresetIDs where !allowedPresetIDs.contains(id) {
+      squirrelEdits["preset_color_schemes/\(id)"] = PatchValue?.none
+    }
+    for id in activeDevIDs {
+      if let def = DeveloperColorSchemes.presetDefinition(for: id) {
+        squirrelEdits["preset_color_schemes/\(id)"] = .dictionary(def)
+      }
+    }
+    for id in customIDs {
+      if let def = UserColorSchemes.presetDefinition(for: id) {
+        squirrelEdits["preset_color_schemes/\(id)"] = .dictionary(def)
+      }
+    }
+    UserColorSchemes.managedIDs = customIDs
+
+    try self.squirrelPatch.applyLineEdits(squirrelEdits)
+    try self.defaultPatch.applyLineEdits(defaultSet)
+    self.baselineSquirrel = squirrelSet
+    self.baselineDefault = defaultSet
+    // 应用成功后，把托管状态同步为当前开关状态，确保用户立刻再次切换时逻辑正确
+    self.managingKeyBindings = self.tabPagingEnabled
   }
 
   func revert() {

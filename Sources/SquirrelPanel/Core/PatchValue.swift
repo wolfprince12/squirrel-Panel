@@ -23,6 +23,9 @@ enum PatchValue: Equatable {
   /// 任意「列表的映射」结构（例如 rime_ice.custom.yaml 的 switches 整段），
   /// 用于整段重写而非逐键 patch。
   case mapList([[String: Any]])
+  /// 单个映射结构（例如 squirrel.custom.yaml 的 preset_color_schemes/<id> 配色定义），
+  /// 用于整段重写。
+  case dictionary([String: Any])
 
   /// 转换成可交给 Yams 序列化的对象
   var yamlObject: Any {
@@ -38,6 +41,7 @@ enum PatchValue: Equatable {
     case .keyBindings(let v): return v
     case .mapList(let v): return v
     case .punctuation(let v): return v
+    case .dictionary(let v): return v
     }
   }
 
@@ -52,6 +56,7 @@ enum PatchValue: Equatable {
     case (.keyBindings(let a), .keyBindings(let b)): return listOfMapsEqual(a, b)
     case (.mapList(let a), .mapList(let b)): return listOfMapsEqual(a, b)
     case (.punctuation(let a), .punctuation(let b)): return valueEqual(a, b)
+    case (.dictionary(let a), .dictionary(let b)): return valueEqual(a, b)
     default:
       return false
     }

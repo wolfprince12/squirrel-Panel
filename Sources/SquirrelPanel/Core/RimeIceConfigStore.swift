@@ -1031,8 +1031,7 @@ final class RimeIceConfigStore {
       baselineIce = set
       return
     }
-    for (key, value) in set { icePatch.set(value?.yamlObject, forPath: key) }
-    try icePatch.save()
+    try icePatch.applyLineEdits(set)
     baselineIce = set
   }
 

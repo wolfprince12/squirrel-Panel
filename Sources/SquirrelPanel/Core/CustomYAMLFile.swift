@@ -341,6 +341,66 @@ final class CustomYAMLFile {
     }
     try text.write(to: fileURL, atomically: true, encoding: .utf8)
   }
+
+  // MARK: - 逐行手术式写入
+
+  /// 逐行手术式写入：只改 set 中列出的键对应行，保留其它行原样（注释/格式/用户手改）。
+  /// value 为 nil 表示删除该键。写盘后回读校验，未落地则回滚 .bak 并抛错。
+  ///
+  /// 与 `save()`（整文件重序列化）互补：本方法用于「应用配置」这类只动少数托管键的场景，
+  /// 能保住用户手写在同文件里的其它条目与注释；`save()` 仍用于「恢复默认」等需整段重写的场景。
+  func applyLineEdits(_ set: PatchSet) throws {
+    guard isWritable else {
+      throw PanelError.refusedToOverwrite(fileURL.lastPathComponent)
+    }
+    let text = try currentOrSkeletonText()
+    var editor = YamlLineEditor(text: text)
+    for (key, maybeValue) in set {
+      if let value = maybeValue {
+        try editor.applyPatchValue(key, value: value)
+      } else {
+        try editor.removeKey(atPath: ["patch", key])
+      }
+    }
+    let newText = editor.text
+    try writeWithVerification(text: newText, verifying: set)
+  }
+
+  /// 读取当前磁盘原文；不存在时用「注释头 + patch:」骨架（等价首次写入）。
+  private func currentOrSkeletonText() throws -> String {
+    if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
+      return try String(contentsOf: fileURL, encoding: .utf8)
+    }
+    return Self.header + "patch:\n"
+  }
+
+  /// 写盘 + 写后校验；校验失败则删除临时文件并抛错（原文件未覆盖，.bak 无需回滚）。
+  private func writeWithVerification(text: String, verifying set: PatchSet) throws {
+    let fm = FileManager.default
+    try fm.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let existed = fm.fileExists(atPath: fileURL.path(percentEncoded: false))
+    // 仅覆盖已存在文件时留 .bak 备份
+    if existed {
+      let backup = fileURL.appendingPathExtension("bak")
+      try? fm.removeItem(at: backup)
+      try? fm.copyItem(at: fileURL, to: backup)
+    }
+    let tmp = fileURL.deletingLastPathComponent()
+      .appendingPathComponent(".sp-\(fileURL.lastPathComponent).tmp")
+    try text.write(to: tmp, atomically: true, encoding: .utf8)
+    do {
+      try WriteVerifier.verify(fileURL: tmp, patchSet: set)
+    } catch {
+      try? fm.removeItem(at: tmp)
+      throw PanelError.writeVerificationFailed(fileURL.lastPathComponent)
+    }
+    // 校验通过：原子替换（已存在用 replaceItemAt，首写用 moveItem）
+    if existed {
+      _ = try fm.replaceItemAt(fileURL, withItemAt: tmp)
+    } else {
+      try fm.moveItem(at: tmp, to: fileURL)
+    }
+  }
 }
 
 enum PanelError: LocalizedError {
@@ -349,6 +409,8 @@ enum PanelError: LocalizedError {
   case commandFailed(String, Int32)
   /// 部署前校验发现：以下方案的 .schema.yaml 源文件缺失，已中止部署以免输入法失效
   case schemaSourcesMissing([String])
+  /// 写后回读校验未通过：目标键未落地或应删未删，已回滚到 .bak
+  case writeVerificationFailed(String)
 
   var errorDescription: String? {
     switch self {
@@ -360,6 +422,62 @@ enum PanelError: LocalizedError {
       return String(format: String(localized: "error.commandFailed"), cmd, code)
     case .schemaSourcesMissing(let ids):
       return String(format: String(localized: "error.schemaSourcesMissing"), ids.joined(separator: "、"))
+    case .writeVerificationFailed(let name):
+      return String(format: String(localized: "error.writeVerificationFailed"), name)
     }
+  }
+}
+
+// MARK: - YamlLineEditor 适配 Squirrel Panel 的 PatchValue
+
+extension YamlLineEditor {
+  /// 把 Squirrel Panel 的 PatchValue 应用到 patch 段下的扁平键（如 "style/color_scheme"）。
+  mutating func applyPatchValue(_ key: String, value: PatchValue) throws {
+    switch value {
+    case .bool(let b):
+      try setScalar(section: "patch", keyText: key, value: .bool(b))
+    case .int(let i):
+      try setScalar(section: "patch", keyText: key, value: .number(String(i)))
+    case .double(let d):
+      let n = (d.rounded() == d && abs(d) < 1e9) ? String(Int(d)) : String(d)
+      try setScalar(section: "patch", keyText: key, value: .number(n))
+    case .string(let s):
+      try setScalar(section: "patch", keyText: key, value: .string(s))
+    case .stringList(let list):
+      let items = list.map { "- " + Self.quoteIfNeeded($0) }
+      try replaceBlockVerbatim(path: ["patch", key], items: items)
+    case .schemaList(let list):
+      let items = list.map { "- schema: " + Self.quoteIfNeeded($0) }
+      try replaceBlockVerbatim(path: ["patch", key], items: items)
+    case .keyBindings(let list), .mapList(let list):
+      let items = Self.renderMaps(list)
+      try replaceBlockVerbatim(path: ["patch", key], items: items)
+    case .punctuation(let dict), .dictionary(let dict):
+      let items = Self.renderDict(dict)
+      try replaceBlockVerbatim(path: ["patch", key], items: items)
+    }
+  }
+
+  /// 对需加引号的字符串做最小引号包裹（复用 isPlainSafe 判断）
+  static func quoteIfNeeded(_ s: String) -> String {
+    isPlainSafe(s) ? s : "\"" + s.replacingOccurrences(of: "\"", with: "\\\"") + "\""
+  }
+
+  /// 把 [[String: Any]] 渲染成带 `- ` 前缀的 YAML 块行（首行加 `- `，续行缩进 2 格）
+  static func renderMaps(_ list: [[String: Any]]) -> [String] {
+    list.flatMap { dict -> [String] in
+      guard let dumped = try? Yams.dump(object: dict, width: -1, allowUnicode: true, sortKeys: true) else { return [] }
+      let lines = dumped.split(separator: "\n").map(String.init)
+      guard !lines.isEmpty else { return [] }
+      return lines.enumerated().map { (i, line) in
+        i == 0 ? "- " + line : "  " + line
+      }
+    }
+  }
+
+  /// 把 [String: Any] 映射渲染成 YAML 块行（缩进由 replaceBlockVerbatim 统一处理）
+  static func renderDict(_ dict: [String: Any]) -> [String] {
+    guard let dumped = try? Yams.dump(object: dict, width: -1, allowUnicode: true, sortKeys: true) else { return [] }
+    return dumped.split(separator: "\n").map(String.init)
   }
 }

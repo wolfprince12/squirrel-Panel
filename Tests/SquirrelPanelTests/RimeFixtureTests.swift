@@ -263,8 +263,7 @@ final class RimeFixtureTests: XCTestCase {
     defer { teardown(fixture) }
 
     let (settings, _) = makeStores()
-    settings.apply()
-    XCTAssertNil(settings.lastError, "fixture 下写盘不应出错")
+    XCTAssertNoThrow(try settings.performApplyWrites(), "fixture 下写盘不应出错")
 
     let written = try XCTUnwrap(text(at: fixture.defaultCustomURL), "应用后应写出 default.custom.yaml")
     XCTAssertFalse(written.contains("save_options"),
@@ -295,7 +294,7 @@ final class RimeFixtureTests: XCTestCase {
     XCTAssertFalse(settings.isDirty,
                    "老用户一启动就显示「有未保存更改」是惊吓；baseline 必须与编译结果同源")
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     let healed = try XCTUnwrap(text(at: fixture.defaultCustomURL))
     XCTAssertFalse(healed.contains("save_options"), "下一次 apply 必须把陈旧的出厂快照删掉")
   }
@@ -313,7 +312,7 @@ final class RimeFixtureTests: XCTestCase {
     XCTAssertTrue(ice.compileIcePatch().values.allSatisfy { $0 == nil },
                   "前置：出厂态下一个托管键都不需要写")
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     XCTAssertNil(settings.lastError)
     XCTAssertFalse(exists(fixture.iceCustomURL),
                    "无任何托管键要写时不得凭空创建 rime_ice.custom.yaml")
@@ -338,7 +337,7 @@ final class RimeFixtureTests: XCTestCase {
     let (settings, ice) = makeStores()
     XCTAssertTrue(ice.isInstalled)
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     XCTAssertNil(settings.lastError)
     XCTAssertTrue(exists(fixture.iceCustomURL), "已存在的文件不得被跳过写盘")
     let healed = try XCTUnwrap(text(at: fixture.iceCustomURL))
@@ -360,7 +359,7 @@ final class RimeFixtureTests: XCTestCase {
     }
     XCTAssertNotNil(ice.compileIcePatch()["switches"] ?? nil, "前置：偏离出厂后应有内容要写")
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     XCTAssertNil(settings.lastError)
     XCTAssertTrue(exists(fixture.iceCustomURL), "有托管键要写时必须落盘")
     let written = try XCTUnwrap(text(at: fixture.iceCustomURL))
@@ -463,7 +462,7 @@ final class RimeFixtureTests: XCTestCase {
     let (settings, ice) = makeStores()
     XCTAssertTrue(ice.isInstalled, "前置：fixture 里雾凇方案是装好的")
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     XCTAssertNil(settings.lastError, "fixture 下写盘不应出错")
 
     let healed = try XCTUnwrap(text(at: fixture.iceCustomURL), "文件已存在，不得跳过写盘")
@@ -541,7 +540,7 @@ final class RimeFixtureTests: XCTestCase {
     XCTAssertTrue(ice.compileIcePatch().isEmpty, "未安装时编译结果必须为空")
     XCTAssertFalse(ice.isDirty, "占位开关不得让面板凭空变脏")
 
-    settings.apply()
+    XCTAssertNoThrow(try settings.performApplyWrites())
     XCTAssertNil(settings.lastError)
     XCTAssertFalse(exists(userDirectory.appending(path: "rime_ice.custom.yaml")),
                    "雾凇没装就不该生成 rime_ice.custom.yaml，占位开关更不能被写出去")
