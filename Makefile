@@ -8,7 +8,8 @@ RESOURCES   := Resources
 VERSION     := $(shell plutil -extract CFBundleShortVersionString raw "$(RESOURCES)/AppInfo.plist" 2>/dev/null || echo 0.2.3)
 # 某些沙箱化的终端环境下 SwiftPM 无法执行清单编译，可用
 #   make release SWIFT_BUILD="swift build --disable-sandbox"
-SWIFT_BUILD ?= swift build
+NODE_BIN    ?= /Users/wolfprince/.workbuddy/binaries/node/versions/22.22.2-2/bin/node
+APPDMG      ?= /Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules/.bin/appdmg
 
 .PHONY: all debug release bundle universal dmg install uninstall run clean icons
 
@@ -60,9 +61,7 @@ dmg: release
 	@cp tools/appdmg.json "$(DIST)/dmg-staging/appdmg.json"
 	@cd "$(DIST)/dmg-staging" && \
 	  NODE_PATH=/Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules \
-	  /Users/wolfprince/.workbuddy/binaries/node/versions/22.22.2/bin/node \
-	  /Users/wolfprince/.workbuddy/binaries/node/workspace/node_modules/.bin/appdmg \
-	  appdmg.json "../Squirrel-Panel-$(VERSION).dmg"
+	  $(NODE_BIN) $(APPDMG) appdmg.json "../Squirrel-Panel-$(VERSION).dmg"
 	@rm -rf "$(DIST)/dmg-staging"
 	@echo "✅ 已生成 $(DIST)/Squirrel-Panel-$(VERSION).dmg"
 
