@@ -52,7 +52,12 @@ bundle:
 
 ## 生成 DMG 安装包（需要 npm install -g appdmg）
 dmg: release
-	@swift tools/make_dmg_cover.swift
+	@if [ -f "tools/dmg/DMG-Cover.png" ]; then \
+	  cp "tools/dmg/DMG-Cover.png" "$(DIST)/DMG-Cover.png"; \
+	  echo "DMG 封面（手工设计稿）：tools/dmg/DMG-Cover.png"; \
+	else \
+	  swift tools/make_dmg_cover.swift; \
+	fi
 	@rm -rf "$(DIST)/dmg-staging"
 	@mkdir -p "$(DIST)/dmg-staging"
 	@cp -R "$(BUNDLE)" "$(DIST)/dmg-staging/"
