@@ -25,7 +25,9 @@ struct AppOptionsPage: View {
             Divider()
             ForEach($store.appOptions) { $entry in
               AppOptionRow(entry: $entry) {
-                store.appOptions.removeAll { $0.bundleID == entry.bundleID }
+                // bundleID 必须先求值成值类型再传给 store：谓词里读 Binding 会与
+                // removeAll 的 modify 访问重叠，触发 Swift 独占性检查 abort（见 store 注释）。
+                store.removeAppOption(bundleID: entry.bundleID)
               }
               Divider()
             }

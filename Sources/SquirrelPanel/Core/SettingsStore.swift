@@ -679,6 +679,18 @@ final class SettingsStore {
     originalAppBundleIDs = Set(entries.keys)
   }
 
+  /// 删除一条分应用适配记录（只改内存，写盘在 apply 时按 `originalAppBundleIDs` 清理）。
+  ///
+  /// ⚠️ 视图里**不要**写 `store.appOptions.removeAll { $0.bundleID == 某 Binding 的 id }`：
+  /// `removeAll(where:)` 在整个遍历期间对 `appOptions` 持有 modify 访问，而谓词里再读
+  /// `ForEach($store.appOptions)` 派发的元素 Binding（`Binding.readValue()` → 对同一属性的
+  /// key path 读），就是对同一存储属性的第二次重叠访问 —— Swift 独占性检查在运行时
+  /// `swift_beginAccess` 直接 abort（EXC_CRASH / SIGABRT，v2.0.3 删除应用必崩）。
+  /// 把 bundleID 作为参数先求值完毕，读与写就成了先后两次互不重叠的访问。
+  func removeAppOption(bundleID: String) {
+    appOptions.removeAll { $0.bundleID == bundleID }
+  }
+
   static func displayName(for bundleID: String) -> String {
     if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
       let name = FileManager.default.displayName(atPath: url.path(percentEncoded: false))
