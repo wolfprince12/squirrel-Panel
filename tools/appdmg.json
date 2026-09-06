@@ -3,9 +3,9 @@
   "icon": "../../Resources/AppIcon.icns",
   "background": "../../tools/dmg/DMG-Cover.png",
   "contents": [
-    { "x": 190, "y": 358, "type": "file", "path": "Squirrel Panel.app" },
-    { "x": 420, "y": 358, "type": "link", "path": "/Applications" },
-    { "x": 618, "y": 358, "type": "file", "path": "fix.command" }
+    { "x": 190, "y": 353, "type": "file", "path": "Squirrel Panel.app" },
+    { "x": 420, "y": 353, "type": "link", "path": "/Applications" },
+    { "x": 618, "y": 353, "type": "file", "path": "fix.command" }
   ],
   "window": {
     "size": { "width": 820, "height": 540 },
