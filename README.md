@@ -8,6 +8,8 @@
 
 > 本项目与鼠须管输入法本体相互独立。安装本 App 后，即可在图形界面里控制自己电脑上的鼠须管，无需手动编辑 YAML；卸载本 App 也不会影响输入法本身。
 
+**快速安装**：`brew tap wolfprince12/tap && brew install --cask squirrel-panel`
+
 ---
 
 </div>
@@ -116,6 +118,8 @@
 
 ## 下载 / 安装
 
+> **系统要求**：macOS 14 Sonoma 或更高版本（Apple Silicon）。
+
 ### 方式一 · Homebrew（推荐，可一键升级）
 
 ```bash
@@ -126,6 +130,10 @@ brew tap wolfprince12/tap && brew install --cask squirrel-panel
 > `Cask 'squirrel-panel' is unavailable: No Cask with this name exists.` —— 补上 `brew tap wolfprince12/tap` 即可。
 
 升级：`brew upgrade --cask squirrel-panel`；开启自动更新：`brew autoupdate start --upgrade`。
+
+> **首次运行**：本 App 为个人签名、未经 Apple 公证。若提示「无法打开」，执行
+> `xattr -d com.apple.quarantine "/Applications/Squirrel Panel.app"`，
+> 或前往 **系统设置 → 隐私与安全性** 点击「仍要打开」。
 
 ### 方式二 · 手动下载 DMG
 
@@ -301,6 +309,8 @@ All repair, reset, and diagnostic actions are now centralized. Destructive opera
 
 ## Install
 
+> **Requirements**: macOS 14 Sonoma or later (Apple Silicon).
+
 ### Option 1 · Homebrew (recommended, one-command upgrades)
 
 ```bash
@@ -312,6 +322,10 @@ brew tap wolfprince12/tap && brew install --cask squirrel-panel
 > `Cask 'squirrel-panel' is unavailable: No Cask with this name exists.`
 
 Upgrade with `brew upgrade --cask squirrel-panel`, or enable automatic updates with `brew autoupdate start --upgrade`.
+
+> **First launch**: this app is self-signed and not notarised by Apple. If macOS says it cannot be opened, run
+> `xattr -d com.apple.quarantine "/Applications/Squirrel Panel.app"`,
+> or go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ### Option 2 · Manual DMG download
 
