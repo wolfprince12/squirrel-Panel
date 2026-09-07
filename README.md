@@ -116,6 +116,20 @@
 
 ## 下载 / 安装
 
+### 方式一 · Homebrew（推荐，可一键升级）
+
+```bash
+brew tap wolfprince12/tap
+brew install --cask squirrel-panel
+```
+
+> **必须先执行 `brew tap`**：本工具托管在个人 Homebrew tap，尚未进入官方 `homebrew/cask`。未 tap 时会报
+> `Cask 'squirrel-panel' is unavailable: No Cask with this name exists.` —— 补上 `brew tap wolfprince12/tap` 即可。
+
+升级：`brew upgrade --cask squirrel-panel`；开启自动更新：`brew autoupdate start --upgrade`。
+
+### 方式二 · 手动下载 DMG
+
 1. 从 [Releases](https://github.com/wolfprince12/squirrel-Panel/releases) 下载最新的 `Squirrel-Panel-x.y.z.dmg`。
 2. 打开 DMG，将 `Squirrel Panel.app` 拖入 **应用程序** 文件夹。
 3. 首次运行如提示「无法打开」，请前往 **系统设置 → 隐私与安全性** 点击「仍要打开」。
@@ -287,6 +301,21 @@ All repair, reset, and diagnostic actions are now centralized. Destructive opera
 ![Maintenance panel](docs/v1.3.2-maintenance.png)
 
 ## Install
+
+### Option 1 · Homebrew (recommended, one-command upgrades)
+
+```bash
+brew tap wolfprince12/tap
+brew install --cask squirrel-panel
+```
+
+> **`brew tap` is mandatory**: this app is distributed via a personal Homebrew tap, not the official
+> `homebrew/cask`. Without tapping first you will see
+> `Cask 'squirrel-panel' is unavailable: No Cask with this name exists.`
+
+Upgrade with `brew upgrade --cask squirrel-panel`, or enable automatic updates with `brew autoupdate start --upgrade`.
+
+### Option 2 · Manual DMG download
 
 1. Download the latest `Squirrel-Panel-x.y.z.dmg` from [Releases](https://github.com/wolfprince12/squirrel-Panel/releases).
 2. Open the DMG and drag `Squirrel Panel.app` into **Applications**. The app name follows your system language: **Squirrel Panel** (English), **鼠须管控制面板** (Simplified Chinese), or **鼠鬚管控制面板** (Traditional Chinese).
