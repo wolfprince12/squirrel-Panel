@@ -119,8 +119,7 @@
 ### 方式一 · Homebrew（推荐，可一键升级）
 
 ```bash
-brew tap wolfprince12/tap
-brew install --cask squirrel-panel
+brew tap wolfprince12/tap && brew install --cask squirrel-panel
 ```
 
 > **必须先执行 `brew tap`**：本工具托管在个人 Homebrew tap，尚未进入官方 `homebrew/cask`。未 tap 时会报
@@ -305,8 +304,7 @@ All repair, reset, and diagnostic actions are now centralized. Destructive opera
 ### Option 1 · Homebrew (recommended, one-command upgrades)
 
 ```bash
-brew tap wolfprince12/tap
-brew install --cask squirrel-panel
+brew tap wolfprince12/tap && brew install --cask squirrel-panel
 ```
 
 > **`brew tap` is mandatory**: this app is distributed via a personal Homebrew tap, not the official
