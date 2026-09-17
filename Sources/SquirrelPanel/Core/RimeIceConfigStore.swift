@@ -553,14 +553,24 @@ final class RimeIceConfigStore {
     }
     luaFilters = lua
 
-    // 纠错开启时，重叠的 derive 规则由 mergedAlgebra 的 corrSel 写入磁盘，
-    // 不能仅凭「规则存在于 algebra」就反推回模糊音选择——否则用户取消的模糊音会被静默恢复
-    // （issue：开启紫毫纠错 + 取消全部模糊音 + 重新部署后，模糊音重新被选中）。
-    // 仅当纠错未挂载时，磁盘上的重叠规则才代表用户自己的模糊音选择（currentFilters 已见于上方）。
+    // 模糊音选择反推：非重叠规则始终按磁盘 algebra 反推（它们只可能来自用户勾选）。
+    // 重叠规则（与纠错共用同一条 derive 字符串）在纠错开启时由 mergedAlgebra 的 corrSel
+    // 强制写入磁盘，无从区分「用户勾选」还是「纠错强制」。分两种情况：
+    //  - 纠错开启：保留 reload 前在内存的选择（即用户 UI 当前勾选态），避免「应用并重新部署」
+    //    把用户刚启用的模糊音静默清空（issue：开启紫毫纠错 + 随机启用模糊音 + 部署后恢复已选 0 条）。
+    //  - 纠错关闭：磁盘上的重叠规则只可能来自用户模糊音勾选，照常反推。
     let correctionActive = currentFilters.contains("lua_filter@*amethyst_corrector")
-    fuzzySelection = Set(currentAlgebra.filter {
-      Self.fuzzyRuleSet.contains($0) && (!correctionActive || !Self.correctionRuleSet.contains($0))
+    var inferredFuzzy = Set(currentAlgebra.filter {
+      Self.fuzzyRuleSet.contains($0) && !Self.correctionRuleSet.contains($0)
     })
+    if correctionActive {
+      inferredFuzzy.formUnion(fuzzySelection.filter { Self.correctionRuleSet.contains($0) })
+    } else {
+      inferredFuzzy.formUnion(currentAlgebra.filter {
+        Self.fuzzyRuleSet.contains($0) && Self.correctionRuleSet.contains($0)
+      })
+    }
+    fuzzySelection = inferredFuzzy
 
     // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*amethyst_corrector。
     // 机制 B（lua_filter）是纠错的主载体，机制 A（derive）仅为其辅助；以过滤器为准最可靠，
