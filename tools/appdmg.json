@@ -1,14 +1,32 @@
 {
   "title": "Squirrel Panel",
   "icon": "../../Resources/AppIcon.icns",
-  "background": "../../tools/dmg/DMG-Cover.png",
+  "background": "../../tools/dmg/DMG-Cover-1x.png",
   "contents": [
-    { "x": 190, "y": 353, "type": "file", "path": "Squirrel Panel.app" },
-    { "x": 420, "y": 353, "type": "link", "path": "/Applications" },
-    { "x": 618, "y": 353, "type": "file", "path": "fix.command" }
+    {
+      "x": 190,
+      "y": 353,
+      "type": "file",
+      "path": "Squirrel Panel.app"
+    },
+    {
+      "x": 420,
+      "y": 353,
+      "type": "link",
+      "path": "/Applications"
+    },
+    {
+      "x": 618,
+      "y": 353,
+      "type": "file",
+      "path": "fix.command"
+    }
   ],
   "window": {
-    "size": { "width": 820, "height": 540 },
+    "size": {
+      "width": 820,
+      "height": 540
+    },
     "icon-size": 96
   },
   "format": "UDZO"

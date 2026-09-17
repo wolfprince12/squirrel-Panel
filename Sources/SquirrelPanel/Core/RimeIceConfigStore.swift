@@ -553,7 +553,14 @@ final class RimeIceConfigStore {
     }
     luaFilters = lua
 
-    fuzzySelection = Set(currentAlgebra.filter { Self.fuzzyRuleSet.contains($0) })
+    // 纠错开启时，重叠的 derive 规则由 mergedAlgebra 的 corrSel 写入磁盘，
+    // 不能仅凭「规则存在于 algebra」就反推回模糊音选择——否则用户取消的模糊音会被静默恢复
+    // （issue：开启紫毫纠错 + 取消全部模糊音 + 重新部署后，模糊音重新被选中）。
+    // 仅当纠错未挂载时，磁盘上的重叠规则才代表用户自己的模糊音选择（currentFilters 已见于上方）。
+    let correctionActive = currentFilters.contains("lua_filter@*amethyst_corrector")
+    fuzzySelection = Set(currentAlgebra.filter {
+      Self.fuzzyRuleSet.contains($0) && (!correctionActive || !Self.correctionRuleSet.contains($0))
+    })
 
     // 拼音纠错挂载态以磁盘实际为准：engine/filters 是否含 lua_filter@*amethyst_corrector。
     // 机制 B（lua_filter）是纠错的主载体，机制 A（derive）仅为其辅助；以过滤器为准最可靠，
@@ -765,7 +772,10 @@ final class RimeIceConfigStore {
     let corrSel = correctionEnabled
       ? Self.correctionRules.map(\.rule)
       : []
-    return fuzzySel + corrSel + base
+    let merged = fuzzySel + corrSel + base
+    // 模糊音与纠错共享部分 derive 规则，去重保序，避免同一规则在 algebra 中重复出现。
+    var seen = Set<String>()
+    return merged.filter { seen.insert($0).inserted }
   }
 
   // MARK: - 写：界面 → 补丁
