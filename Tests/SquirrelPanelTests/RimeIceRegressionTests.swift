@@ -143,6 +143,39 @@ final class RimeIceRegressionTests: XCTestCase {
     XCTAssertEqual(Array(merged.suffix(base.count)), base)
   }
 
+  // MARK: - algebra 补丁持久化
+
+  /// 第二次 apply 时，merged 与 current 相等也不能删除已写入的模糊音补丁。
+  func testAlgebraPatchIsKeptWhenMergedEqualsCurrent() {
+    let factory = ["erase/^hm$/", "derive/^([jqxy])u/$1v/"]
+    let current = factory + ["derive/^([zcs])h/$1/"]
+    XCTAssertTrue(RimeIceConfigStore.shouldWriteAlgebraPatch(
+      merged: current, template: factory, correctionEnabled: false))
+  }
+
+  /// 只有恢复到可信出厂 algebra 后，才允许删除补丁。
+  func testAlgebraPatchCanBeRemovedWhenMergedEqualsFactory() {
+    let factory = ["erase/^hm$/", "derive/^([jqxy])u/$1v/"]
+    XCTAssertFalse(RimeIceConfigStore.shouldWriteAlgebraPatch(
+      merged: factory,
+      template: factory, correctionEnabled: false))
+  }
+
+  /// 出厂模板不可用（空模板）时，非空 algebra 必须 fail-closed 保留。
+  func testAlgebraPatchIsKeptWhenFactoryTemplateUnavailable() {
+    let current = ["erase/^hm$/", "derive/^([zcs])h/$1/"]
+    XCTAssertTrue(RimeIceConfigStore.shouldWriteAlgebraPatch(
+      merged: current, template: [], correctionEnabled: false))
+  }
+
+  /// 纠错开启时，即使结果看似稳定，也必须写回完整 merged algebra。
+  func testAlgebraPatchIsKeptWhenCorrectionEnabled() {
+    let factory = ["erase/^hm$/"]
+    XCTAssertTrue(RimeIceConfigStore.shouldWriteAlgebraPatch(
+      merged: factory + ["derive/an$/ang/"],
+      template: factory, correctionEnabled: true))
+  }
+
   // MARK: - 自定义短语：空条目
 
   /// 界面上点了「+」但没填内容就保存，不应向 tabledb 写入只含制表符的空行。
