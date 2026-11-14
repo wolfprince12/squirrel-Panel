@@ -875,23 +875,40 @@ final class RimeIceConfigStore {
     // 始终含真实工厂规则 + 面板增量，绝非残缺列表），无差异才回落，绝不写 : []。
     // 出厂模板不可信（base 解析失败、template 变空）时，merged 仍由 current 派生、
     // 必含真实工厂规则，整体写回安全；仅当 merged 本身为空才回落（避免清空输入法）。
-    let currentAlgebra = currentList("speller/algebra", fallback: template.algebra)
     let algebra = mergedAlgebra()
-    // ⚠️ 纠错开启时 derive 规则是面板「非工厂」增量：一旦因「algebra == currentAlgebra」
-    // 走 nil 删键，rime_ice.custom.yaml 回退到出厂 algebra（无 derive）→ 纠错开关被假关闭、
-    // 且 UI 与磁盘脱钩。故纠错开启时**恒写完整 merged**，绝不走删键短路。
-    // 仅纠错关闭、或 merged 确为空（清空输入法的灾难态）才回落 nil。
-    if correctionEnabled {
+    // algebra 补丁的删除判据必须比较「可信的出厂结果」，不能比较 currentAlgebra：
+    // currentAlgebra 可能已经包含上一次由面板写入的模糊音/纠错/用户规则；
+    // algebra == currentAlgebra 只表示“这次没有变化”，绝不表示“没有用户增量”。
+    // 否则任意后续 apply（主题、基础开关等）都会把承载模糊音的补丁删掉。
+    // 纠错开启时始终写完整 merged；模板解析为空时也只有 merged 为空才允许删键，
+    // 避免模板不可用时误删用户配置。
+    if Self.shouldWriteAlgebraPatch(
+      merged: algebra,
+      template: template.algebra,
+      correctionEnabled: correctionEnabled
+    ) {
       set["speller/algebra"] = algebra.isEmpty ? PatchValue?.none : .stringList(algebra)
-    } else if algebra == currentAlgebra {
-      set["speller/algebra"] = PatchValue?.none
-    } else if algebra.isEmpty {
-      set["speller/algebra"] = PatchValue?.none
     } else {
-      set["speller/algebra"] = .stringList(algebra)
+      set["speller/algebra"] = PatchValue?.none
     }
 
     return set
+  }
+
+  /// 判断 `speller/algebra` 是否需要保留补丁。
+  ///
+  /// 不能用 merged == current 作为删除判据：current 可能就是上一次面板
+  /// 写入的用户增量。只有合并结果为空，或确实等于可信出厂模板时，才可删键；
+  /// 出厂模板解析失败（空模板但当前/合并结果非空）时必须 fail-closed 保留补丁。
+  static func shouldWriteAlgebraPatch(
+    merged: [String],
+    template: [String],
+    correctionEnabled: Bool
+  ) -> Bool {
+    if merged.isEmpty { return false }
+    if correctionEnabled { return true }
+    if template.isEmpty { return true }
+    return merged != template
   }
 
   /// 列表型键的安全写入护栏（根治「面板部署清空输入法」）。
